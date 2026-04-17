@@ -1,0 +1,16 @@
+export const UI = {
+  radiusSm: 10,
+  radiusMd: 14,
+  radiusLg: 20,
+  inputHeight: 46,
+  buttonHeight: 40,
+  iconButton: 40,
+  dateFieldWidth: 200,
+  dateFieldMinWidth: 180,
+  dateFieldMaxWidth: 210,
+  paddingSm: 12,
+  paddingMd: 16,
+  paddingLg: 24,
+  shadowCardWeb: '0 12px 32px rgba(0,0,0,0.12)',
+  shadowModalWeb: '0 20px 50px rgba(0,0,0,0.18)',
+} as const;
