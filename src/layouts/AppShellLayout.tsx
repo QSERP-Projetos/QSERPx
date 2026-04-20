@@ -21,6 +21,8 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
     .toLowerCase();
 
   const codeRouteMap: Record<string, string> = {
+    DSB001: ROUTES.dashboardFinanceiro,
+    DSB002: ROUTES.dashboardVendas,
     VEN001: ROUTES.pedidoVendaRepresentantes,
     VEN002: ROUTES.pedidoVenda,
     VEN003: ROUTES.pedidoVenda,
@@ -43,6 +45,10 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
 
   const routeByCode = codeRouteMap[normalizedCode];
   const routeByTitle =
+    (normalizedTitle.includes('dashboard') && normalizedTitle.includes('finance')
+      ? ROUTES.dashboardFinanceiro
+      : undefined) ||
+    (normalizedTitle.includes('dashboard') && normalizedTitle.includes('venda') ? ROUTES.dashboardVendas : undefined) ||
     (normalizedTitle.includes('pedido') && normalizedTitle.includes('venda') ? ROUTES.pedidoVenda : undefined) ||
     (normalizedTitle.includes('pedido') && normalizedTitle.includes('compra') && normalizedTitle.includes('liber')
       ? ROUTES.comprasPedidoLiberacao

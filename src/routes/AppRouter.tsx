@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../constants/routes';
 import { RequireAuth } from './RequireAuth';
@@ -24,6 +25,18 @@ import { FichaInspecaoProcessoPage } from '../features/qualidade/pages/FichaInsp
 import { FichaInspecaoRecebimentoPage } from '../features/qualidade/pages/FichaInspecaoRecebimentoPage';
 import { AppShellLayout } from '../layouts/AppShellLayout';
 
+const DashboardFinanceiroPage = lazy(() =>
+  import('../features/dashboards/pages/DashboardFinanceiroPage').then((module) => ({
+    default: module.DashboardFinanceiroPage,
+  })),
+);
+
+const DashboardVendasPage = lazy(() =>
+  import('../features/dashboards/pages/DashboardVendasPage').then((module) => ({
+    default: module.DashboardVendasPage,
+  })),
+);
+
 export function AppRouter() {
   return (
     <Routes>
@@ -36,6 +49,22 @@ export function AppRouter() {
       <Route element={<RequireAuth />}>
         <Route element={<AppShellLayout />}>
           <Route path={ROUTES.home} element={<HomePage />} />
+          <Route
+            path={ROUTES.dashboardFinanceiro}
+            element={
+              <Suspense fallback={<p className="module-empty">Carregando dashboard financeiro...</p>}>
+                <DashboardFinanceiroPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path={ROUTES.dashboardVendas}
+            element={
+              <Suspense fallback={<p className="module-empty">Carregando dashboard de vendas...</p>}>
+                <DashboardVendasPage />
+              </Suspense>
+            }
+          />
           <Route path={ROUTES.pedidoVenda} element={<PedidoVendaPage />} />
           <Route path={ROUTES.pedidoVendaRepresentantes} element={<PedidoVendaRepresentantesPage />} />
           <Route path={ROUTES.pedidoVendaNovo} element={<Navigate to={ROUTES.pedidoVenda} replace />} />
