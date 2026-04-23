@@ -279,6 +279,14 @@ export function SessoesPage() {
       showToast('Sessão encerrada com sucesso.', 'success');
       setConfirmOpen(false);
       setSessaoSelecionada(null);
+
+      const minhaSessaoId = GlobalConfig.getIdSessaoUsuario();
+      if (minhaSessaoId !== undefined && sessaoId === minhaSessaoId) {
+        await GlobalConfig.clearConfig();
+        navigate(ROUTES.login, { replace: true });
+        return;
+      }
+
       await carregarSessoes(selectedUser);
       await carregarTotalSessoes();
     } catch (error: any) {
@@ -537,40 +545,72 @@ export function SessoesPage() {
         </AdvancedFiltersPanel>
 
         <section className="module-table list-layout-table">
-        {loading ? (
-          <p className="module-empty">Carregando sessões...</p>
-        ) : rowsPesquisa.length === 0 ? (
-          <p className="module-empty">Nenhuma sessão encontrada.</p>
-        ) : (
-          <>
-            <div className="table-scroll module-table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('usuario')}>
-                      Usuário <span>{getSortIndicator('usuario')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('sessao')}>
-                      Sessão <span>{getSortIndicator('sessao')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('dataLogin')}>
-                      Data login <span>{getSortIndicator('dataLogin')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('versao')}>
-                      Versão <span>{getSortIndicator('versao')}</span>
-                    </button>
-                  </th>
-                  <th className="module-table__actions-col">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
+          {loading ? (
+            <p className="module-empty">Carregando sessões...</p>
+          ) : rowsPesquisa.length === 0 ? (
+            <p className="module-empty">Nenhuma sessão encontrada.</p>
+          ) : (
+            <>
+              <div className="table-scroll module-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('usuario')}>
+                          Usuário <span>{getSortIndicator('usuario')}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('sessao')}>
+                          Sessão <span>{getSortIndicator('sessao')}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('dataLogin')}>
+                          Data login <span>{getSortIndicator('dataLogin')}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('versao')}>
+                          Versão <span>{getSortIndicator('versao')}</span>
+                        </button>
+                      </th>
+                      <th className="module-table__actions-col">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rowsPesquisa.map((row, index) => {
+                      const key = resolveSessaoId(row) || index;
+                      const usuarioSessao = resolveSessaoUsuario(row) || '-';
+                      const dataLogin = formatDateTime(String(row?.data_Hora_Login ?? row?.data_hora_login ?? ''));
+                      const versao = String(row?.versao_Sistema ?? row?.versao_sistema ?? '-');
+
+                      return (
+                        <tr key={key}>
+                          <td>{usuarioSessao}</td>
+                          <td>{resolveSessaoId(row) || '-'}</td>
+                          <td>{dataLogin}</td>
+                          <td>{versao}</td>
+                          <td>
+                            <div className="table-actions">
+                              <button
+                                type="button"
+                                title="Encerrar sessão"
+                                aria-label="Encerrar sessão"
+                                onClick={() => abrirEncerrarSessao(row)}
+                              >
+                                <IoLogOutOutline size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="module-cards">
                 {rowsPesquisa.map((row, index) => {
                   const key = resolveSessaoId(row) || index;
                   const usuarioSessao = resolveSessaoUsuario(row) || '-';
@@ -578,72 +618,40 @@ export function SessoesPage() {
                   const versao = String(row?.versao_Sistema ?? row?.versao_sistema ?? '-');
 
                   return (
-                    <tr key={key}>
-                      <td>{usuarioSessao}</td>
-                      <td>{resolveSessaoId(row) || '-'}</td>
-                      <td>{dataLogin}</td>
-                      <td>{versao}</td>
-                      <td>
-                        <div className="table-actions">
-                          <button
-                            type="button"
-                            title="Encerrar sessão"
-                            aria-label="Encerrar sessão"
-                            onClick={() => abrirEncerrarSessao(row)}
-                          >
-                            <IoLogOutOutline size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                    <article className="module-card" key={`card-${key}`}>
+                      <div className="module-card__row">
+                        <span>Usuário</span>
+                        <strong>{usuarioSessao}</strong>
+                      </div>
+                      <div className="module-card__row">
+                        <span>Sessão</span>
+                        <strong>{resolveSessaoId(row) || '-'}</strong>
+                      </div>
+                      <div className="module-card__row">
+                        <span>Data login</span>
+                        <strong>{dataLogin}</strong>
+                      </div>
+                      <div className="module-card__row">
+                        <span>Versão</span>
+                        <strong>{versao}</strong>
+                      </div>
+
+                      <div className="module-card__actions">
+                        <button
+                          type="button"
+                          title="Encerrar sessão"
+                          aria-label="Encerrar sessão"
+                          onClick={() => abrirEncerrarSessao(row)}
+                        >
+                          <IoLogOutOutline size={16} />
+                        </button>
+                      </div>
+                    </article>
                   );
                 })}
-              </tbody>
-            </table>
-            </div>
-
-            <div className="module-cards">
-              {rowsPesquisa.map((row, index) => {
-                const key = resolveSessaoId(row) || index;
-                const usuarioSessao = resolveSessaoUsuario(row) || '-';
-                const dataLogin = formatDateTime(String(row?.data_Hora_Login ?? row?.data_hora_login ?? ''));
-                const versao = String(row?.versao_Sistema ?? row?.versao_sistema ?? '-');
-
-                return (
-                  <article className="module-card" key={`card-${key}`}>
-                    <div className="module-card__row">
-                      <span>Usuário</span>
-                      <strong>{usuarioSessao}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Sessão</span>
-                      <strong>{resolveSessaoId(row) || '-'}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Data login</span>
-                      <strong>{dataLogin}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Versão</span>
-                      <strong>{versao}</strong>
-                    </div>
-
-                    <div className="module-card__actions">
-                      <button
-                        type="button"
-                        title="Encerrar sessão"
-                        aria-label="Encerrar sessão"
-                        onClick={() => abrirEncerrarSessao(row)}
-                      >
-                        <IoLogOutOutline size={16} />
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </>
-        )}
+              </div>
+            </>
+          )}
         </section>
       </section>
 

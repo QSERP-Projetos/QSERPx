@@ -11,7 +11,7 @@ import { useDynamicMenu } from '../hooks/useDynamicMenu';
 import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { GlobalConfig } from '../services/globalConfig';
-import { logoutCall } from '../services/apiCalls';
+import { verificarSessaoCall, logoutCall } from '../services/apiCalls';
 
 const resolveRouteFromTransaction = (transactionCode: string, title: string): string | undefined => {
   const normalizedCode = String(transactionCode || '').toUpperCase();
@@ -104,6 +104,27 @@ export function AppShellLayout() {
   const userName = useMemo(() => GlobalConfig.getUsuario() || '', []);
   const companyName = useMemo(() => GlobalConfig.getNomeEmpresa() || '', []);
   const nivelUsuario = useMemo(() => Number(GlobalConfig.getNivelUsuario() ?? 0), []);
+
+  useEffect(() => {
+    const verificarSessao = async () => {
+      const baseUrl = GlobalConfig.getBaseUrl();
+      const token = GlobalConfig.getJwToken();
+      const idSessao = GlobalConfig.getIdSessaoUsuario();
+      if (!baseUrl || !token || !idSessao) return;
+      try {
+        const resp = await verificarSessaoCall(baseUrl, token, idSessao);
+        if (!resp.succeeded) {
+          await GlobalConfig.clearConfig();
+          navigate(ROUTES.login, { replace: true });
+        }
+      } catch {
+        // ignora erros de rede para não derrubar a sessão por instabilidade
+      }
+    };
+
+    const interval = setInterval(() => { void verificarSessao(); }, 60_000);
+    return () => clearInterval(interval);
+  }, [navigate]);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEYS.sidenavCollapsed, sidebarCollapsed ? '1' : '0');
@@ -283,27 +304,27 @@ export function AppShellLayout() {
 
       {configModalOpen
         ? createPortal(
-            <section
-              className="modal-backdrop"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Tela de configuração"
-              onClick={(event) => {
-                if (event.target === event.currentTarget) {
-                  setConfigModalOpen(false);
-                }
-              }}
-            >
-              <ConfigScreen
-                embedded
-                secondaryButtonLabel="Fechar"
-                onSecondaryAction={() => setConfigModalOpen(false)}
-                redirectToLoginAfterSave={false}
-                onSaveSuccess={() => setConfigModalOpen(false)}
-              />
-            </section>,
-            document.body,
-          )
+          <section
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Tela de configuração"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                setConfigModalOpen(false);
+              }
+            }}
+          >
+            <ConfigScreen
+              embedded
+              secondaryButtonLabel="Fechar"
+              onSecondaryAction={() => setConfigModalOpen(false)}
+              redirectToLoginAfterSave={false}
+              onSaveSuccess={() => setConfigModalOpen(false)}
+            />
+          </section>,
+          document.body,
+        )
         : null}
     </div>
   );

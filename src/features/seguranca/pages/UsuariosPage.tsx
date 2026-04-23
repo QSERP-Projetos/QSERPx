@@ -383,9 +383,10 @@ export function UsuariosPage() {
       const modulo = asText(item?.modulo_Transacao ?? item?.modulo_transacao).toUpperCase();
       const matchSearch = !term || codigo.toLowerCase().includes(term) || nome.includes(term);
       const matchModule = !moduloFilter || modulo === moduloFilter;
-      return matchSearch && matchModule;
+      const notLinked = !usuarioTransacoesSet.has(codigo);
+      return matchSearch && matchModule && notLinked;
     });
-  }, [moduloFilter, transacoes, transacoesSearch]);
+  }, [moduloFilter, transacoes, transacoesSearch, usuarioTransacoesSet]);
 
   const transacoesUsuarioFiltradas = useMemo(() => {
     const term = transacoesSearch.trim().toLowerCase();
@@ -633,40 +634,80 @@ export function UsuariosPage() {
         </div>
 
         <section className="module-table list-layout-table">
-        {loadingUsuarios ? (
-          <p className="module-empty">Carregando usuários...</p>
-        ) : usuariosFiltrados.length === 0 ? (
-          <p className="module-empty">Nenhum usuário encontrado.</p>
-        ) : (
-          <>
-            <div className="table-scroll module-table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('codigo')}>
-                      Código <span>{getSortIndicator('codigo')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('usuario')}>
-                      Usuário <span>{getSortIndicator('usuario')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('email')}>
-                      E-mail <span>{getSortIndicator('email')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('nivel')}>
-                      Nível <span>{getSortIndicator('nivel')}</span>
-                    </button>
-                  </th>
-                  <th className="module-table__actions-col">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
+          {loadingUsuarios ? (
+            <p className="module-empty">Carregando usuários...</p>
+          ) : usuariosFiltrados.length === 0 ? (
+            <p className="module-empty">Nenhum usuário encontrado.</p>
+          ) : (
+            <>
+              <div className="table-scroll module-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('codigo')}>
+                          Código <span>{getSortIndicator('codigo')}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('usuario')}>
+                          Usuário <span>{getSortIndicator('usuario')}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('email')}>
+                          E-mail <span>{getSortIndicator('email')}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('nivel')}>
+                          Nível <span>{getSortIndicator('nivel')}</span>
+                        </button>
+                      </th>
+                      <th className="module-table__actions-col">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usuariosOrdenados.map((item, index) => {
+                      const codigo = asText(item?.codigo_Usuario ?? item?.codigo_usuario);
+                      const nome = asText(item?.nome_Usuario ?? item?.nome_usuario);
+                      const email = asText(item?.e_mail_Usuario ?? item?.e_mail_usuario);
+                      const nivel = asText(item?.nivel_Usuario ?? item?.nivel_usuario);
+
+                      return (
+                        <tr key={`${codigo || 'usuario'}-${index}`}>
+                          <td>{codigo || '-'}</td>
+                          <td>{nome || '-'}</td>
+                          <td>{email || '-'}</td>
+                          <td>{getNivelLabel(nivel)}</td>
+                          <td>
+                            <div className="table-actions">
+                              <button
+                                type="button"
+                                title="Parâmetros do usuário"
+                                aria-label="Parâmetros do usuário"
+                                onClick={() => abrirParametros(item)}
+                              >
+                                <IoSettingsOutline size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                title="Transações do usuário"
+                                aria-label="Transações do usuário"
+                                onClick={() => void abrirTransacoes(item)}
+                              >
+                                <IoListOutline size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="module-cards">
                 {usuariosOrdenados.map((item, index) => {
                   const codigo = asText(item?.codigo_Usuario ?? item?.codigo_usuario);
                   const nome = asText(item?.nome_Usuario ?? item?.nome_usuario);
@@ -674,88 +715,48 @@ export function UsuariosPage() {
                   const nivel = asText(item?.nivel_Usuario ?? item?.nivel_usuario);
 
                   return (
-                    <tr key={`${codigo || 'usuario'}-${index}`}>
-                      <td>{codigo || '-'}</td>
-                      <td>{nome || '-'}</td>
-                      <td>{email || '-'}</td>
-                      <td>{getNivelLabel(nivel)}</td>
-                      <td>
-                        <div className="table-actions">
-                          <button
-                            type="button"
-                            title="Parâmetros do usuário"
-                            aria-label="Parâmetros do usuário"
-                            onClick={() => abrirParametros(item)}
-                          >
-                            <IoSettingsOutline size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            title="Transações do usuário"
-                            aria-label="Transações do usuário"
-                            onClick={() => void abrirTransacoes(item)}
-                          >
-                            <IoListOutline size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                    <article className="module-card" key={`card-${codigo || 'usuario'}-${index}`}>
+                      <div className="module-card__row">
+                        <span>Código</span>
+                        <strong>{codigo || '-'}</strong>
+                      </div>
+                      <div className="module-card__row">
+                        <span>Usuário</span>
+                        <strong>{nome || '-'}</strong>
+                      </div>
+                      <div className="module-card__row">
+                        <span>E-mail</span>
+                        <strong>{email || '-'}</strong>
+                      </div>
+                      <div className="module-card__row">
+                        <span>Nível</span>
+                        <strong>{getNivelLabel(nivel)}</strong>
+                      </div>
+
+                      <div className="module-card__actions">
+                        <button
+                          type="button"
+                          title="Parâmetros do usuário"
+                          aria-label="Parâmetros do usuário"
+                          onClick={() => abrirParametros(item)}
+                        >
+                          <IoSettingsOutline size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Transações do usuário"
+                          aria-label="Transações do usuário"
+                          onClick={() => void abrirTransacoes(item)}
+                        >
+                          <IoListOutline size={16} />
+                        </button>
+                      </div>
+                    </article>
                   );
                 })}
-              </tbody>
-            </table>
-            </div>
-
-            <div className="module-cards">
-              {usuariosOrdenados.map((item, index) => {
-                const codigo = asText(item?.codigo_Usuario ?? item?.codigo_usuario);
-                const nome = asText(item?.nome_Usuario ?? item?.nome_usuario);
-                const email = asText(item?.e_mail_Usuario ?? item?.e_mail_usuario);
-                const nivel = asText(item?.nivel_Usuario ?? item?.nivel_usuario);
-
-                return (
-                  <article className="module-card" key={`card-${codigo || 'usuario'}-${index}`}>
-                    <div className="module-card__row">
-                      <span>Código</span>
-                      <strong>{codigo || '-'}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Usuário</span>
-                      <strong>{nome || '-'}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>E-mail</span>
-                      <strong>{email || '-'}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Nível</span>
-                      <strong>{getNivelLabel(nivel)}</strong>
-                    </div>
-
-                    <div className="module-card__actions">
-                      <button
-                        type="button"
-                        title="Parâmetros do usuário"
-                        aria-label="Parâmetros do usuário"
-                        onClick={() => abrirParametros(item)}
-                      >
-                        <IoSettingsOutline size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        title="Transações do usuário"
-                        aria-label="Transações do usuário"
-                        onClick={() => void abrirTransacoes(item)}
-                      >
-                        <IoListOutline size={16} />
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </>
-        )}
+              </div>
+            </>
+          )}
         </section>
       </section>
 
@@ -916,7 +917,6 @@ export function UsuariosPage() {
                       const codigo = asText(item?.codigo_Transacao ?? item?.codigo_transacao).toUpperCase();
                       const nome = asText(item?.nome_Formulario ?? item?.nome_formulario) || codigo;
                       const modulo = asText(item?.modulo_Transacao ?? item?.modulo_transacao).toUpperCase();
-                      const vinculado = usuarioTransacoesSet.has(codigo);
 
                       return (
                         <div className="permission-row" key={`${codigo || 'sistema'}-${index}`}>
@@ -930,7 +930,6 @@ export function UsuariosPage() {
                               title="Vincular transação"
                               aria-label="Vincular transação"
                               onClick={() => void vincularTransacao(item)}
-                              disabled={vinculado}
                             >
                               <IoAddCircleOutline size={16} />
                             </button>
@@ -1007,38 +1006,38 @@ export function UsuariosPage() {
 
             <div className="permission-grid">
               <section className="permission-column">
-                <h3>Transação</h3>
+                <h3>Sistema</h3>
                 <div className="permission-box">
                   {loadingAcoes ? (
                     <p className="module-empty">Carregando ações...</p>
-                  ) : acoesSistema.length === 0 ? (
+                  ) : acoesSistema.filter((item) => !usuarioAcoesSet.has(asText(item?.id_Transacao_Acao ?? item?.id_transacao_acao))).length === 0 ? (
                     <p className="module-empty">Nenhuma ação disponível.</p>
                   ) : (
-                    acoesSistema.map((item, index) => {
-                      const idAcao = asText(item?.id_Transacao_Acao ?? item?.id_transacao_acao);
-                      const descricao = asText(item?.descricao_Acao ?? item?.descricao_acao) || idAcao;
-                      const vinculado = usuarioAcoesSet.has(idAcao);
+                    acoesSistema
+                      .filter((item) => !usuarioAcoesSet.has(asText(item?.id_Transacao_Acao ?? item?.id_transacao_acao)))
+                      .map((item, index) => {
+                        const idAcao = asText(item?.id_Transacao_Acao ?? item?.id_transacao_acao);
+                        const descricao = asText(item?.descricao_Acao ?? item?.descricao_acao) || idAcao;
 
-                      return (
-                        <div className="permission-row" key={`${idAcao || 'acao'}-${index}`}>
-                          <div className="permission-row__meta">
-                            <strong title={descricao}>{descricao}</strong>
-                            <small>{idAcao || '-'}</small>
+                        return (
+                          <div className="permission-row" key={`${idAcao || 'acao'}-${index}`}>
+                            <div className="permission-row__meta">
+                              <strong title={descricao}>{descricao}</strong>
+                              <small>{idAcao || '-'}</small>
+                            </div>
+                            <div className="permission-row__actions">
+                              <button
+                                type="button"
+                                title="Vincular ação"
+                                aria-label="Vincular ação"
+                                onClick={() => void vincularAcao(item)}
+                              >
+                                <IoAddCircleOutline size={16} />
+                              </button>
+                            </div>
                           </div>
-                          <div className="permission-row__actions">
-                            <button
-                              type="button"
-                              title="Vincular ação"
-                              aria-label="Vincular ação"
-                              onClick={() => void vincularAcao(item)}
-                              disabled={vinculado}
-                            >
-                              <IoAddCircleOutline size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })
+                        );
+                      })
                   )}
                 </div>
               </section>

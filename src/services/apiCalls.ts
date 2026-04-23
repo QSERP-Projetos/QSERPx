@@ -1988,6 +1988,23 @@ export const buscaSessaoUsuarioCall = async (
 };
 
 // ============================================
+// API: Verificar Sessão Ativa (heartbeat)
+// ============================================
+export const verificarSessaoCall = async (
+  url: string,
+  jwtToken: string,
+  idSessao: number
+): Promise<ApiCallResponse> => {
+  return apiManager.makeApiCall(
+    `${normalizeBaseUrl(url)}/api/v1/Sessao?idSessao=${idSessao}`,
+    ApiCallType.GET,
+    {
+      'Authorization': `Bearer ${jwtToken}`,
+    }
+  );
+};
+
+// ============================================
 // API: Busca Sessões
 // ============================================
 export const buscaSessoesCall = async (
