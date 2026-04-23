@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IoAlertCircleOutline, IoArrowBack, IoRefreshOutline, IoTrashOutline } from 'react-icons/io5';
+import {
+  IoAlertCircleOutline,
+  IoArrowBack,
+  IoFilterOutline,
+  IoRefreshOutline,
+  IoStatsChartOutline,
+} from 'react-icons/io5';
 import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
 import { GlobalConfig } from '../../../services/globalConfig';
-import { DashboardChart } from '../components/DashboardChart';
-import { DashboardConfigurator } from '../components/DashboardConfigurator';
-import { DashboardFiltersBar } from '../components/DashboardFiltersBar';
+import { CustomDatePicker } from '../../../components/CustomDatePicker';
+import { SearchableSelect } from '../../../components/SearchableSelect';
+import { AdvancedFiltersPanel } from '../../../components/AdvancedFiltersPanel';
+import { DashboardChart } from '../components/DashboardChartPanel';
 import { DashboardKpiCards } from '../components/DashboardKpiCards';
 import { DashboardSummaryTable } from '../components/DashboardSummaryTable';
 import { getDashboardVendas, type DashboardVendasResponse } from '../services/dashboardApi';
@@ -22,13 +29,11 @@ import type {
 import {
   groupSum,
   limitRowsForPie,
-  monthStartPtBr,
   normalizeText,
   parseDateStrict,
   sortRows,
   toApiDate,
   toNumber,
-  todayPtBr,
 } from '../utils/dashboardUtils';
 
 type VendasBase = 'faturamento' | 'atraso' | 'forecast' | 'consolidado';
@@ -45,12 +50,12 @@ type VendasMetric =
   | 'comparativoAtrasoForecast';
 
 const chartTypeOptions: Option[] = [
-  { value: 'bar', label: 'Barras' },
-  { value: 'line', label: 'Linhas' },
+  { value: 'bar', label: 'Barra' },
+  { value: 'line', label: 'Linha' },
   { value: 'pie', label: 'Pizza' },
   { value: 'donut', label: 'Rosca' },
   { value: 'area', label: 'Área' },
-  { value: 'bar-horizontal', label: 'Coluna horizontal' },
+  { value: 'bar-horizontal', label: 'Barra horizontal' },
   { value: 'cards', label: 'Cards de indicadores' },
   { value: 'table', label: 'Tabela resumida' },
 ];
@@ -62,34 +67,21 @@ const dataOptions: Option[] = [
   { value: 'consolidado', label: 'Bloco: Visão consolidada' },
 ];
 
-const groupOptionsByBase: Record<VendasBase, Option[]> = {
-  faturamento: [
-    { value: 'mes', label: 'Mês de faturamento' },
-    { value: 'vendedor', label: 'Vendedor' },
-    { value: 'regiao', label: 'Região' },
-    { value: 'tipoDestinatario', label: 'Tipo de destinatário' },
-  ],
-  atraso: [
-    { value: 'cliente', label: 'Cliente' },
-    { value: 'destino', label: 'Destino do pedido' },
-    { value: 'tipoDestinatario', label: 'Tipo de pedido' },
-  ],
-  forecast: [{ value: 'mes', label: 'Mês de entrega' }],
-  consolidado: [
-    { value: 'mes', label: 'Comparativo por mês' },
-    { value: 'resumo', label: 'Resumo consolidado' },
-  ],
-};
+const agrupamentoPrincipalOptions: Option[] = [
+  { value: 'vendedor', label: 'Vendedor' },
+  { value: 'regiao', label: 'Região' },
+  { value: 'cliente', label: 'Cliente' },
+];
 
 const metricOptionsByBase: Record<VendasBase, Option[]> = {
   faturamento: [
-    { value: 'valorTotal', label: 'Valor total de faturamento' },
-    { value: 'valorMercadoria', label: 'Valor de mercadoria' },
-    { value: 'valorImpostos', label: 'Impostos e adicionais' },
+    { value: 'valorTotal', label: 'Faturamento total' },
+    { value: 'valorMercadoria', label: 'Mercadoria' },
+    { value: 'valorImpostos', label: 'Impostos/adicionais' },
     { value: 'quantidadeRegistros', label: 'Quantidade de registros' },
   ],
   atraso: [
-    { value: 'valorAtraso', label: 'Valor total em atraso' },
+    { value: 'valorAtraso', label: 'Total em atraso' },
     { value: 'clientesAtraso', label: 'Clientes com atraso (qtd registros)' },
   ],
   forecast: [{ value: 'valorPrevisto', label: 'Valor previsto no forecast' }],
@@ -138,12 +130,14 @@ const buildVendasRows = (
         if (groupBy === 'mes') return getMesInfo(item, 'faturamento').key;
         if (groupBy === 'vendedor') return normalizeText(item?.Nome_Vendedor ?? item?.nome_Vendedor ?? 'sem-vendedor') || 'sem-vendedor';
         if (groupBy === 'regiao') return normalizeText(item?.Nome_Regiao ?? item?.nome_Regiao ?? 'sem-regiao') || 'sem-regiao';
+        if (groupBy === 'cliente') return normalizeText(item?.Nome_Fantasia ?? item?.nome_Fantasia ?? 'sem-cliente') || 'sem-cliente';
         return normalizeText(item?.Tipo_Destinatario ?? item?.tipo_Destinatario ?? 'sem-tipo') || 'sem-tipo';
       },
       (item) => {
         if (groupBy === 'mes') return getMesInfo(item, 'faturamento').label;
         if (groupBy === 'vendedor') return String(item?.Nome_Vendedor ?? item?.nome_Vendedor ?? 'Sem vendedor').trim() || 'Sem vendedor';
         if (groupBy === 'regiao') return String(item?.Nome_Regiao ?? item?.nome_Regiao ?? 'Sem região').trim() || 'Sem região';
+        if (groupBy === 'cliente') return String(item?.Nome_Fantasia ?? item?.nome_Fantasia ?? 'Sem cliente').trim() || 'Sem cliente';
         return String(item?.Tipo_Destinatario ?? item?.tipo_Destinatario ?? 'Sem tipo').trim() || 'Sem tipo';
       },
       (item) => (groupBy === 'mes' ? getMesInfo(item, 'faturamento').order : 0),
@@ -157,13 +151,14 @@ const buildVendasRows = (
     );
 
     const format = metric === 'quantidadeRegistros' ? 'number' : 'currency';
+    const metricLabel = metricOptionsByBase.faturamento.find((item) => item.value === metric)?.label || 'Valor';
 
     return {
       rows: sortRows(rows, metric),
-      series: [{ key: metric, label: metricOptionsByBase.faturamento.find((item) => item.value === metric)?.label || 'Valor', color: '#2563eb', format }],
+      series: [{ key: metric, label: metricLabel, color: '#2563eb', format }],
       columns: [
         { key: 'label', label: 'Agrupamento', format: 'text' },
-        { key: metric, label: metricOptionsByBase.faturamento.find((item) => item.value === metric)?.label || 'Valor', format },
+        { key: metric, label: metricLabel, format },
       ],
     };
   }
@@ -173,11 +168,15 @@ const buildVendasRows = (
       atraso,
       (item) => {
         if (groupBy === 'cliente') return normalizeText(item?.Nome_Fantasia ?? item?.nome_Fantasia ?? 'sem-cliente') || 'sem-cliente';
+        if (groupBy === 'regiao') return normalizeText(item?.Nome_Regiao ?? item?.nome_Regiao ?? 'sem-regiao') || 'sem-regiao';
+        if (groupBy === 'vendedor') return normalizeText(item?.Nome_Vendedor ?? item?.nome_Vendedor ?? 'sem-vendedor') || 'sem-vendedor';
         if (groupBy === 'destino') return normalizeText(item?.Destino_Pedido ?? item?.destino_Pedido ?? 'sem-destino') || 'sem-destino';
         return normalizeText(item?.Tipo_Pedido ?? item?.tipo_Pedido ?? 'sem-tipo') || 'sem-tipo';
       },
       (item) => {
         if (groupBy === 'cliente') return String(item?.Nome_Fantasia ?? item?.nome_Fantasia ?? 'Sem cliente').trim() || 'Sem cliente';
+        if (groupBy === 'regiao') return String(item?.Nome_Regiao ?? item?.nome_Regiao ?? 'Sem região').trim() || 'Sem região';
+        if (groupBy === 'vendedor') return String(item?.Nome_Vendedor ?? item?.nome_Vendedor ?? 'Sem vendedor').trim() || 'Sem vendedor';
         if (groupBy === 'destino') return String(item?.Destino_Pedido ?? item?.destino_Pedido ?? 'Sem destino').trim() || 'Sem destino';
         return String(item?.Tipo_Pedido ?? item?.tipo_Pedido ?? 'Sem tipo').trim() || 'Sem tipo';
       },
@@ -189,13 +188,14 @@ const buildVendasRows = (
     );
 
     const format = metric === 'clientesAtraso' ? 'number' : 'currency';
+    const metricLabel = metricOptionsByBase.atraso.find((item) => item.value === metric)?.label || 'Valor';
 
     return {
       rows: sortRows(rows, metric),
-      series: [{ key: metric, label: metricOptionsByBase.atraso.find((item) => item.value === metric)?.label || 'Valor', color: '#ef4444', format }],
+      series: [{ key: metric, label: metricLabel, color: '#ef4444', format }],
       columns: [
         { key: 'label', label: 'Agrupamento', format: 'text' },
-        { key: metric, label: metricOptionsByBase.atraso.find((item) => item.value === metric)?.label || 'Valor', format },
+        { key: metric, label: metricLabel, format },
       ],
     };
   }
@@ -294,17 +294,23 @@ export function DashboardVendasPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-  const [codigoEmpresa, setCodigoEmpresa] = useState(() => String(GlobalConfig.getCodEmpresa() ?? ''));
-  const [dataDe, setDataDe] = useState(monthStartPtBr());
-  const [dataAte, setDataAte] = useState(todayPtBr());
+  const codigoEmpresa = useMemo(() => String(GlobalConfig.getCodEmpresa() ?? ''), []);
+
+  const [appliedDataDe, setAppliedDataDe] = useState('');
+  const [appliedDataAte, setAppliedDataAte] = useState('');
+  const [draftDataDe, setDraftDataDe] = useState('');
+  const [draftDataAte, setDraftDataAte] = useState('');
   const [errors, setErrors] = useState<DashboardDateErrors>({});
 
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [chartType, setChartType] = useState<DashboardChartType>('bar');
   const [selectedData, setSelectedData] = useState<VendasBase>('consolidado');
-  const [groupBy, setGroupBy] = useState<VendasGroup>('mes');
+  const [groupBy, setGroupBy] = useState<VendasGroup>('vendedor');
   const [metric, setMetric] = useState<VendasMetric>('comparativoFatForecast');
+  const [filtroDependente, setFiltroDependente] = useState('todos');
 
   const [loading, setLoading] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [payload, setPayload] = useState<DashboardVendasResponse>({
     MoedasSemCotacao: [],
@@ -314,14 +320,45 @@ export function DashboardVendasPage() {
   });
   const requestIdRef = useRef(0);
 
-  const groupOptions = useMemo(() => groupOptionsByBase[selectedData], [selectedData]);
+  const groupOptions = useMemo(() => agrupamentoPrincipalOptions, []);
   const metricOptions = useMemo(() => metricOptionsByBase[selectedData], [selectedData]);
 
-  useEffect(() => {
-    if (!groupOptions.some((item) => item.value === groupBy)) {
-      setGroupBy(groupOptions[0].value as VendasGroup);
+  const filtroDependenteMeta = useMemo(
+    () => ({
+      label: groupBy === 'regiao' ? 'Região' : groupBy === 'cliente' ? 'Cliente' : 'Vendedor',
+      allLabel: groupBy === 'regiao' ? 'Todas' : 'Todos',
+      placeholder: groupBy === 'regiao' ? 'Pesquisar região' : groupBy === 'cliente' ? 'Pesquisar cliente' : 'Pesquisar vendedor',
+    }),
+    [groupBy],
+  );
+
+  const filtroDependenteOptions = useMemo<Option[]>(() => {
+    const labels = new Set<string>();
+
+    if (groupBy === 'cliente') {
+      for (const item of payload.Atraso) {
+        const label = String(item?.Nome_Fantasia ?? item?.nome_Fantasia ?? '').trim();
+        if (label) labels.add(label);
+      }
+    } else if (groupBy === 'regiao') {
+      for (const item of payload.Faturamento) {
+        const label = String(item?.Nome_Regiao ?? item?.nome_Regiao ?? '').trim();
+        if (label) labels.add(label);
+      }
+    } else {
+      for (const item of payload.Faturamento) {
+        const label = String(item?.Nome_Vendedor ?? item?.nome_Vendedor ?? '').trim();
+        if (label) labels.add(label);
+      }
     }
-  }, [groupBy, groupOptions]);
+
+    return [
+      { value: 'todos', label: filtroDependenteMeta.allLabel },
+      ...Array.from(labels)
+        .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+        .map((label) => ({ value: label, label })),
+    ];
+  }, [filtroDependenteMeta.allLabel, groupBy, payload.Atraso, payload.Faturamento]);
 
   useEffect(() => {
     if (!metricOptions.some((item) => item.value === metric)) {
@@ -329,33 +366,64 @@ export function DashboardVendasPage() {
     }
   }, [metric, metricOptions]);
 
-  const validateFilters = useCallback(
-    (showErrors: boolean) => {
-      const nextErrors: DashboardDateErrors = {};
+  useEffect(() => {
+    if (groupBy === 'cliente' && selectedData !== 'atraso') {
+      setSelectedData('atraso');
+    }
+  }, [groupBy, selectedData]);
 
-      if (!String(codigoEmpresa).trim()) {
-        nextErrors.codigoEmpresa = 'Informe a empresa para consultar.';
-      }
+  useEffect(() => {
+    if (!filtroDependenteOptions.some((item) => item.value === filtroDependente)) {
+      setFiltroDependente('todos');
+    }
+  }, [filtroDependente, filtroDependenteOptions]);
 
-      const parsedDe = parseDateStrict(dataDe);
-      const parsedAte = parseDateStrict(dataAte);
+  useEffect(() => {
+    if (!advancedOpen) return;
 
-      if (!parsedDe) nextErrors.dataDe = 'Data de inválida.';
-      if (!parsedAte) nextErrors.dataAte = 'Data até inválida.';
+    setDraftDataDe(appliedDataDe);
+    setDraftDataAte(appliedDataAte);
+    setErrors({});
+  }, [advancedOpen, appliedDataAte, appliedDataDe]);
 
-      if (parsedDe && parsedAte && parsedDe.getTime() > parsedAte.getTime()) {
-        nextErrors.dataDe = 'Data de não pode ser maior que Data até.';
-        nextErrors.dataAte = 'Data até não pode ser menor que Data de.';
-      }
+  const validateFilters = useCallback(() => {
+    const nextErrors: DashboardDateErrors = {};
 
-      if (showErrors) setErrors(nextErrors);
-      return Object.keys(nextErrors).length === 0;
-    },
-    [codigoEmpresa, dataAte, dataDe],
-  );
+    if (!String(draftDataDe).trim()) {
+      nextErrors.dataDe = 'Informe Data de.';
+    }
 
-  const fetchDashboard = useCallback(async () => {
-    if (!validateFilters(true)) return;
+    if (!String(draftDataAte).trim()) {
+      nextErrors.dataAte = 'Informe Data até.';
+    }
+
+    const parsedDe = parseDateStrict(draftDataDe);
+    const parsedAte = parseDateStrict(draftDataAte);
+
+    if (draftDataDe.trim() && !parsedDe) nextErrors.dataDe = 'Data de inválida.';
+    if (draftDataAte.trim() && !parsedAte) nextErrors.dataAte = 'Data até inválida.';
+
+    if (parsedDe && parsedAte && parsedDe.getTime() > parsedAte.getTime()) {
+      nextErrors.dataDe = 'Data de não pode ser maior que Data até.';
+      nextErrors.dataAte = 'Data até não pode ser menor que Data de.';
+    }
+
+    if (!codigoEmpresa.trim()) {
+      setErrorMessage('Empresa inválida para o dashboard. Faça login novamente.');
+      setErrors(nextErrors);
+      return false;
+    }
+
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return false;
+
+    return true;
+  }, [codigoEmpresa, draftDataAte, draftDataDe]);
+
+  const fetchDashboard = useCallback(async (filters: { dataDe: string; dataAte: string }) => {
+    const parsedDe = parseDateStrict(filters.dataDe);
+    const parsedAte = parseDateStrict(filters.dataAte);
+    if (!parsedDe || !parsedAte) return;
 
     const baseUrl = GlobalConfig.getBaseUrl();
     const token = GlobalConfig.getJwToken();
@@ -375,8 +443,8 @@ export function DashboardVendasPage() {
         baseUrl,
         token,
         codigoEmpresa: codigoEmpresa.trim(),
-        dataDe: toApiDate(dataDe),
-        dataAte: toApiDate(dataAte),
+        dataDe: toApiDate(filters.dataDe),
+        dataAte: toApiDate(filters.dataAte),
       });
 
       if (requestIdRef.current !== requestId) return;
@@ -389,27 +457,36 @@ export function DashboardVendasPage() {
     } finally {
       if (requestIdRef.current === requestId) {
         setLoading(false);
+        setHasFetched(true);
       }
     }
-  }, [codigoEmpresa, dataAte, dataDe, showToast, validateFilters]);
-
-  useEffect(() => {
-    if (!validateFilters(false)) return;
-
-    const timer = window.setTimeout(() => {
-      void fetchDashboard();
-    }, 500);
-
-    return () => window.clearTimeout(timer);
-  }, [codigoEmpresa, dataAte, dataDe, fetchDashboard, validateFilters]);
+  }, [codigoEmpresa, showToast]);
 
   const kpis = useMemo<DashboardKpiCard[]>(() => {
-    const totalFaturamento = payload.Faturamento.reduce(
+    const matchesFilter = (value: string, selected: string) => {
+      const selectedNormalized = normalizeText(selected);
+      if (!selectedNormalized || selectedNormalized === 'todos') return true;
+      return normalizeText(value) === selectedNormalized;
+    };
+
+    const filteredFaturamento = payload.Faturamento.filter((item) => {
+      if (groupBy === 'cliente') return true;
+      const target = groupBy === 'regiao' ? String(item?.Nome_Regiao ?? item?.nome_Regiao ?? '').trim() : String(item?.Nome_Vendedor ?? item?.nome_Vendedor ?? '').trim();
+      return matchesFilter(target, filtroDependente);
+    });
+
+    const filteredAtraso = payload.Atraso.filter((item) => {
+      if (groupBy !== 'cliente') return true;
+      const cliente = String(item?.Nome_Fantasia ?? item?.nome_Fantasia ?? '').trim();
+      return matchesFilter(cliente, filtroDependente);
+    });
+
+    const totalFaturamento = filteredFaturamento.reduce(
       (acc, item) => acc + toNumber(item?.Valor_Total ?? item?.valor_Total ?? item?.valorTotal ?? 0),
       0,
     );
 
-    const totalAtraso = payload.Atraso.reduce(
+    const totalAtraso = filteredAtraso.reduce(
       (acc, item) => acc + toNumber(item?.Valor_Atraso_Periodo ?? item?.valor_Atraso_Periodo ?? item?.valorAtrasoPeriodo ?? 0),
       0,
     );
@@ -420,11 +497,11 @@ export function DashboardVendasPage() {
     );
 
     const vendedores = new Set(
-      payload.Faturamento.map((item) => String(item?.Codigo_Vendedor ?? item?.codigo_Vendedor ?? item?.codigoVendedor ?? '').trim()),
+      filteredFaturamento.map((item) => String(item?.Codigo_Vendedor ?? item?.codigo_Vendedor ?? item?.codigoVendedor ?? '').trim()),
     );
 
-    const regioes = new Set(payload.Faturamento.map((item) => String(item?.Nome_Regiao ?? item?.nome_Regiao ?? '').trim()));
-    const clientesAtraso = new Set(payload.Atraso.map((item) => String(item?.Codigo_Cliente ?? item?.codigo_Cliente ?? '').trim()));
+    const regioes = new Set(filteredFaturamento.map((item) => String(item?.Nome_Regiao ?? item?.nome_Regiao ?? '').trim()));
+    const clientesAtraso = new Set(filteredAtraso.map((item) => String(item?.Codigo_Cliente ?? item?.codigo_Cliente ?? '').trim()));
 
     return [
       { key: 'total-faturamento', label: 'Faturamento total', value: totalFaturamento, format: 'currency' },
@@ -434,22 +511,62 @@ export function DashboardVendasPage() {
       { key: 'qtd-regioes', label: 'Quantidade de regiões', value: regioes.size, format: 'number' },
       { key: 'qtd-clientes-atraso', label: 'Clientes com atraso', value: clientesAtraso.size, format: 'number' },
     ];
-  }, [payload]);
+  }, [filtroDependente, groupBy, payload]);
 
-  const processed = useMemo(() => buildVendasRows(selectedData, groupBy, metric, payload), [groupBy, metric, payload, selectedData]);
+  const filteredPayload = useMemo<DashboardVendasResponse>(() => {
+    const matchesFilter = (value: string, selected: string) => {
+      const selectedNormalized = normalizeText(selected);
+      if (!selectedNormalized || selectedNormalized === 'todos') return true;
+      return normalizeText(value) === selectedNormalized;
+    };
+
+    const filteredFaturamento = payload.Faturamento.filter((item) => {
+      if (groupBy === 'cliente') return true;
+      const target = groupBy === 'regiao' ? String(item?.Nome_Regiao ?? item?.nome_Regiao ?? '').trim() : String(item?.Nome_Vendedor ?? item?.nome_Vendedor ?? '').trim();
+      return matchesFilter(target, filtroDependente);
+    });
+
+    const filteredAtraso = payload.Atraso.filter((item) => {
+      if (groupBy !== 'cliente') return true;
+      const cliente = String(item?.Nome_Fantasia ?? item?.nome_Fantasia ?? '').trim();
+      return matchesFilter(cliente, filtroDependente);
+    });
+
+    return {
+      ...payload,
+      Faturamento: filteredFaturamento,
+      Atraso: filteredAtraso,
+    };
+  }, [filtroDependente, groupBy, payload]);
+
+  const processed = useMemo(
+    () => buildVendasRows(selectedData, groupBy, metric, filteredPayload),
+    [filteredPayload, groupBy, metric, selectedData],
+  );
+
+  const displayedRows = processed.rows;
 
   const chartRows = useMemo(() => {
     if ((chartType === 'pie' || chartType === 'donut') && processed.series[0]) {
-      return limitRowsForPie(processed.rows, processed.series[0].key, 8);
+      return limitRowsForPie(displayedRows, processed.series[0].key, 8);
     }
 
-    return processed.rows;
-  }, [chartType, processed.rows, processed.series]);
+    return displayedRows;
+  }, [chartType, displayedRows, processed.series]);
 
-  const hasAnyData = payload.Faturamento.length > 0 || payload.Atraso.length > 0 || payload.Forecast.length > 0;
+  const secondaryChartRows = useMemo(() => {
+    if (!processed.series[0]) return [] as DashboardRow[];
+    const metricKey = processed.series[0].key;
+    return [...displayedRows]
+      .sort((a, b) => Number(b[metricKey] ?? 0) - Number(a[metricKey] ?? 0))
+      .slice(0, 8);
+  }, [displayedRows, processed.series]);
+
+  const hasAnyData = filteredPayload.Faturamento.length > 0 || filteredPayload.Atraso.length > 0 || filteredPayload.Forecast.length > 0;
+  const hasDataAfterSearch = displayedRows.length > 0;
 
   return (
-    <main className="clientes-page list-layout-page dashboard-page">
+    <main className="clientes-page list-layout-page dashboard-page dashboard-vendas-page">
       <section className="clientes-page__header">
         <div className="clientes-page__title-wrap">
           <button className="icon-button" type="button" onClick={() => navigate(ROUTES.home)} aria-label="Voltar">
@@ -458,94 +575,178 @@ export function DashboardVendasPage() {
 
           <div>
             <h1>Dashboard - Vendas</h1>
-            <p>Visão dinâmica de faturamento, atraso e forecast com comparativos configuráveis.</p>
+            <p>Visão dinâmica de faturamento, atraso e forecast com visualizações configuráveis.</p>
           </div>
         </div>
+      </section>
 
-        <div className="dashboard-header-actions">
-          <button className="icon-button module-action-button" type="button" onClick={() => void fetchDashboard()} title="Atualizar" aria-label="Atualizar">
-            <IoRefreshOutline size={16} />
+      <AdvancedFiltersPanel
+        open={advancedOpen}
+        onClose={() => setAdvancedOpen(false)}
+        onApply={() => {
+          if (!validateFilters()) return;
+
+          setAppliedDataDe(draftDataDe);
+          setAppliedDataAte(draftDataAte);
+
+          setAdvancedOpen(false);
+          void fetchDashboard({ dataDe: draftDataDe, dataAte: draftDataAte });
+        }}
+        applyLabel="Aplicar"
+        cancelLabel="Fechar"
+      >
+        <div className="dashboard-vendas-advanced-grid">
+          <label className="list-layout-field list-layout-field--date dashboard-field dashboard-vendas-date-field">
+            <span>Data de</span>
+            <CustomDatePicker value={draftDataDe} onChange={setDraftDataDe} className={errors.dataDe ? 'pcp-date-error' : undefined} />
+            <small className={`module-field-error${errors.dataDe ? '' : ' dashboard-error-empty'}`}>{errors.dataDe || ' '}</small>
+          </label>
+
+          <label className="list-layout-field list-layout-field--date dashboard-field dashboard-vendas-date-field">
+            <span>Data até</span>
+            <CustomDatePicker value={draftDataAte} onChange={setDraftDataAte} className={errors.dataAte ? 'pcp-date-error' : undefined} />
+            <small className={`module-field-error${errors.dataAte ? '' : ' dashboard-error-empty'}`}>{errors.dataAte || ' '}</small>
+          </label>
+
+          <label className="list-layout-field list-layout-field--sm dashboard-field">
+            <span>Tipo de gráfico</span>
+            <SearchableSelect
+              value={chartType}
+              onChange={(value) => setChartType(value as DashboardChartType)}
+              options={chartTypeOptions}
+              searchPlaceholder="Pesquisar tipo"
+              ariaLabel="Tipo de gráfico"
+            />
+          </label>
+
+          <label className="list-layout-field list-layout-field--sm dashboard-field">
+            <span>Dados a exibir</span>
+            <SearchableSelect
+              value={selectedData}
+              onChange={(value) => setSelectedData(value as VendasBase)}
+              options={dataOptions}
+              searchPlaceholder="Pesquisar bloco"
+              ariaLabel="Dados a exibir"
+            />
+          </label>
+
+          <label className="list-layout-field list-layout-field--sm dashboard-field">
+            <span>Agrupar por</span>
+            <SearchableSelect
+              value={groupBy}
+              onChange={(value) => setGroupBy(value as VendasGroup)}
+              options={groupOptions}
+              searchPlaceholder="Pesquisar agrupamento"
+              ariaLabel="Agrupar por"
+            />
+          </label>
+
+          <label className="list-layout-field list-layout-field--sm dashboard-field">
+            <span>{filtroDependenteMeta.label}</span>
+            <SearchableSelect
+              value={filtroDependente}
+              onChange={setFiltroDependente}
+              options={filtroDependenteOptions}
+              searchPlaceholder={filtroDependenteMeta.placeholder}
+              ariaLabel={filtroDependenteMeta.label}
+            />
+          </label>
+
+          <label className="list-layout-field list-layout-field--sm dashboard-field">
+            <span>Tipo de valor</span>
+            <SearchableSelect
+              value={metric}
+              onChange={(value) => setMetric(value as VendasMetric)}
+              options={metricOptions}
+              searchPlaceholder="Pesquisar métrica"
+              ariaLabel="Tipo de valor"
+            />
+          </label>
+
+        </div>
+      </AdvancedFiltersPanel>
+
+      <section className="card dashboard-vendas-results">
+        <div className="dashboard-vendas-controls-inline dashboard-vendas-results__actions">
+          <button
+            className={`icon-button module-action-button${advancedOpen ? ' module-action-button--primary' : ''}`}
+            type="button"
+            onClick={() => setAdvancedOpen(true)}
+            title="Filtros avançados"
+            aria-label="Filtros avançados"
+          >
+            <IoFilterOutline size={16} />
           </button>
+
           <button
             className="icon-button module-action-button"
             type="button"
             onClick={() => {
-              setCodigoEmpresa(String(GlobalConfig.getCodEmpresa() ?? ''));
-              setDataDe(monthStartPtBr());
-              setDataAte(todayPtBr());
-              setErrors({});
-              setErrorMessage('');
+              if (!appliedDataDe || !appliedDataAte) {
+                setAdvancedOpen(true);
+                return;
+              }
+
+              void fetchDashboard({ dataDe: appliedDataDe, dataAte: appliedDataAte });
             }}
-            title="Limpar filtros"
-            aria-label="Limpar filtros"
+            title="Atualizar"
+            aria-label="Atualizar"
+            disabled={loading}
           >
-            <IoTrashOutline size={16} />
+            <IoRefreshOutline size={16} />
           </button>
         </div>
+
+        {errorMessage ? <p className="status-box status-box--error">{errorMessage}</p> : null}
+        {loading ? <p className="module-empty">Carregando dashboard de vendas...</p> : null}
+
+        {!loading && !errorMessage && !hasFetched ? (
+          <div className="dashboard-empty-state" role="status" aria-live="polite">
+            <IoStatsChartOutline size={24} aria-hidden="true" />
+            <p>Preencha os filtros e clique em atualizar para visualizar os gráficos</p>
+          </div>
+        ) : null}
+
+        {!loading && !errorMessage && hasFetched && (!hasAnyData || !hasDataAfterSearch) ? (
+          <div className="dashboard-empty-state" role="status" aria-live="polite">
+            <IoStatsChartOutline size={24} aria-hidden="true" />
+            <p>Nenhum dado encontrado para os filtros informados</p>
+          </div>
+        ) : null}
+
+        {!loading && !errorMessage && hasFetched && hasAnyData && hasDataAfterSearch ? (
+          <>
+            <DashboardKpiCards cards={kpis} />
+
+            <section className="dashboard-chart-grid">
+              <article className="card dashboard-chart-card">
+                <header className="dashboard-section-header">
+                  <h2>Visualização principal</h2>
+                  <p>Altere o tipo de gráfico e os agrupamentos nos filtros avançados.</p>
+                </header>
+                <DashboardChart chartType={chartType} rows={chartRows} series={processed.series} xKey="label" />
+              </article>
+
+              <article className="card dashboard-chart-card">
+                <header className="dashboard-section-header">
+                  <h2>Top agrupamentos</h2>
+                  <p>Resumo dos principais grupos para leitura rápida.</p>
+                </header>
+                <DashboardChart chartType="bar-horizontal" rows={secondaryChartRows} series={processed.series} xKey="label" />
+              </article>
+            </section>
+
+            <DashboardSummaryTable rows={displayedRows} columns={processed.columns} />
+          </>
+        ) : null}
+
+        {payload.MoedasSemCotacao.length > 0 ? (
+          <p className="status-box status-box--error dashboard-alert-row dashboard-alert-row--bottom">
+            <IoAlertCircleOutline size={18} />
+            Existem moedas sem cotação no período. Verifique antes de tomar decisões baseadas nos totais.
+          </p>
+        ) : null}
       </section>
-
-      <DashboardFiltersBar
-        codigoEmpresa={codigoEmpresa}
-        dataDe={dataDe}
-        dataAte={dataAte}
-        errors={errors}
-        loading={loading}
-        onCodigoEmpresaChange={setCodigoEmpresa}
-        onDataDeChange={setDataDe}
-        onDataAteChange={setDataAte}
-        onRefresh={() => void fetchDashboard()}
-        onClear={() => {
-          setCodigoEmpresa(String(GlobalConfig.getCodEmpresa() ?? ''));
-          setDataDe(monthStartPtBr());
-          setDataAte(todayPtBr());
-          setErrors({});
-          setErrorMessage('');
-        }}
-      />
-
-      {payload.MoedasSemCotacao.length > 0 ? (
-        <p className="status-box status-box--error dashboard-alert-row">
-          <IoAlertCircleOutline size={18} />
-          Existem moedas sem cotação no período. Verifique antes de tomar decisões baseadas nos totais.
-        </p>
-      ) : null}
-
-      {errorMessage ? <p className="status-box status-box--error">{errorMessage}</p> : null}
-      {loading ? <p className="module-empty">Carregando dashboard de vendas...</p> : null}
-      {!loading && !errorMessage && !hasAnyData ? (
-        <p className="module-empty">Nenhum dado encontrado para os filtros informados.</p>
-      ) : null}
-
-      {!loading && !errorMessage && hasAnyData ? (
-        <>
-          <DashboardKpiCards cards={kpis} />
-
-          <DashboardConfigurator
-            chartType={chartType}
-            selectedData={selectedData}
-            groupBy={groupBy}
-            metric={metric}
-            chartTypeOptions={chartTypeOptions}
-            dataOptions={dataOptions}
-            groupOptions={groupOptions}
-            metricOptions={metricOptions}
-            onChartTypeChange={setChartType}
-            onSelectedDataChange={(value) => setSelectedData(value as VendasBase)}
-            onGroupByChange={(value) => setGroupBy(value as VendasGroup)}
-            onMetricChange={(value) => setMetric(value as VendasMetric)}
-          />
-
-          <section className="card dashboard-chart-card">
-            <header className="dashboard-section-header">
-              <h2>Visualização principal</h2>
-              <p>Troque entre blocos de faturamento, atraso, forecast e visão consolidada sem recarregar a página.</p>
-            </header>
-            <DashboardChart chartType={chartType} rows={chartRows} series={processed.series} xKey="label" />
-          </section>
-
-          <DashboardSummaryTable rows={processed.rows} columns={processed.columns} />
-        </>
-      ) : null}
     </main>
   );
 }
