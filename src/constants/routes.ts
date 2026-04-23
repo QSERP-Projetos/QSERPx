@@ -5,6 +5,8 @@ export const ROUTES = {
   login: '/login',
   selectCompany: '/select-company',
   home: '/home',
+  dashboardFinanceiro: '/dashboards/financeiro',
+  dashboardVendas: '/dashboards/vendas',
   pedidoVenda: '/pedidos-venda',
   pedidoVendaRepresentantes: '/pedidos-venda-representantes',
   pedidoVendaNovo: '/pedidos-venda/novo',

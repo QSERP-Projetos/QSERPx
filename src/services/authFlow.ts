@@ -121,29 +121,31 @@ export const completeCompanySession = async ({
   GlobalConfig.setSituacaoLicenca(situacaoLicenca);
   GlobalConfig.setDataValidadeLicenca(dataValida);
 
+  const addResp = await adicionarLicencaCall(baseUrl, tokenTipo1, {
+    id: lic?.id,
+    situacao_licenca: lic?.situacao_licenca,
+    data_validade: formatDate(lic?.data_validade),
+    mensagem_fim_validade: lic?.mensagem_fim_validade,
+    dias_ant_mensagem_fim_validade: lic?.dias_ant_mensagem_fim_validade,
+    numero_acessos: lic?.numero_acessos,
+    numero_hd: numHD,
+    instancia_sql: lic?.instancia_sql,
+    nome_banco: lic?.nome_banco,
+    versao_sistema: lic?.versao_sistema,
+    usuario_sql: lic?.usuario_sql,
+    senha_sql: lic?.senha_sql,
+    versao_limite: lic?.versao_limite,
+    tipo_licenca: lic?.tipo_licenca,
+    tipo_banco: lic?.tipo_banco,
+  });
+
+  if (!addResp.succeeded) {
+    return { success: false, message: 'Falha ao gravar dados da licença.' };
+  }
+
   const consultaResp = await consultaLicencaCall(baseUrl, tokenTipo1, idLicenca, numHD);
   if (!consultaResp.succeeded) {
-    const addResp = await adicionarLicencaCall(baseUrl, tokenTipo1, {
-      id: lic?.id,
-      situacao_licenca: lic?.situacao_licenca,
-      data_validade: formatDate(lic?.data_validade),
-      mensagem_fim_validade: lic?.mensagem_fim_validade,
-      dias_ant_mensagem_fim_validade: lic?.dias_ant_mensagem_fim_validade,
-      numero_acessos: lic?.numero_acessos,
-      numero_hd: numHD,
-      instancia_sql: lic?.instancia_sql,
-      nome_banco: lic?.nome_banco,
-      versao_sistema: lic?.versao_sistema,
-      usuario_sql: lic?.usuario_sql,
-      senha_sql: lic?.senha_sql,
-      versao_limite: lic?.versao_limite,
-      tipo_licenca: lic?.tipo_licenca,
-      tipo_banco: lic?.tipo_banco,
-    });
-
-    if (!addResp.succeeded) {
-      return { success: false, message: 'Falha ao inserir dados da licença.' };
-    }
+    return { success: false, message: 'Falha ao consultar a licença gravada.' };
   }
 
   const today = new Date();

@@ -58,6 +58,11 @@ export function ConfigScreen({
     const loadSavedUrl = async () => {
       await GlobalConfig.loadBaseUrl();
       const savedBaseUrl = GlobalConfig.getBaseUrl();
+      const savedHd = GlobalConfig.getNumHD();
+
+      if (savedHd) {
+        setNumHdValue(savedHd);
+      }
       
       if (savedBaseUrl) {
         // Extrair protocolo e URL
@@ -171,31 +176,35 @@ export function ConfigScreen({
       const idLicenca = lic?.id;
       const idCliente = lic?.id_cliente;
 
+      const addResp = await adicionarLicencaCall(baseUrl, token, {
+        id: lic?.id,
+        situacao_licenca: lic?.situacao_licenca,
+        data_validade: lic?.data_validade,
+        mensagem_fim_validade: lic?.mensagem_fim_validade,
+        dias_ant_mensagem_fim_validade: lic?.dias_ant_mensagem_fim_validade,
+        numero_acessos: lic?.numero_acessos,
+        numero_hd: numHD,
+        instancia_sql: lic?.instancia_sql,
+        nome_banco: lic?.nome_banco,
+        versao_sistema: lic?.versao_sistema,
+        usuario_sql: lic?.usuario_sql,
+        senha_sql: lic?.senha_sql,
+        versao_limite: lic?.versao_limite,
+        tipo_licenca: lic?.tipo_licenca,
+        tipo_banco: lic?.tipo_banco,
+      });
+
+      if (!addResp.succeeded) {
+        setStatus('error');
+        setErrorMessage('Falha ao gravar dados da licença no banco de dados.');
+        return;
+      }
+
       const consultaResp = await consultaLicencaCall(baseUrl, token, idLicenca, numHD);
       if (!consultaResp.succeeded) {
-        const addResp = await adicionarLicencaCall(baseUrl, token, {
-          id: lic?.id,
-          situacao_licenca: lic?.situacao_licenca,
-          data_validade: lic?.data_validade,
-          mensagem_fim_validade: lic?.mensagem_fim_validade,
-          dias_ant_mensagem_fim_validade: lic?.dias_ant_mensagem_fim_validade,
-          numero_acessos: lic?.numero_acessos,
-          numero_hd: numHD,
-          instancia_sql: lic?.instancia_sql,
-          nome_banco: lic?.nome_banco,
-          versao_sistema: lic?.versao_sistema,
-          usuario_sql: lic?.usuario_sql,
-          senha_sql: lic?.senha_sql,
-          versao_limite: lic?.versao_limite,
-          tipo_licenca: lic?.tipo_licenca,
-          tipo_banco: lic?.tipo_banco,
-        });
-
-        if (!addResp.succeeded) {
-          setStatus('error');
-          setErrorMessage('Falha ao inserir dados da licença no banco de dados.');
-          return;
-        }
+        setStatus('error');
+        setErrorMessage('Falha ao consultar a licença gravada no banco de dados.');
+        return;
       }
 
       const validade = lic?.data_validade ? new Date(lic.data_validade) : undefined;

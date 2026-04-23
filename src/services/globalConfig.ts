@@ -148,6 +148,12 @@ export class GlobalConfig {
     return this.baseUrl;
   }
 
+  static async clearBaseUrl(): Promise<void> {
+    this.baseUrl = '';
+    safeRemove(STORAGE_KEYS.baseUrl);
+    safeRemove(STORAGE_KEYS.baseUrlPersistent);
+  }
+
   static async loadSession(): Promise<void> {
     const raw = safeGet(STORAGE_KEYS.session);
     if (!raw) return;
