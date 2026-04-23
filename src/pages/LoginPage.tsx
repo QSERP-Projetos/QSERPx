@@ -162,6 +162,12 @@ export function LoginPage() {
     }
   };
 
+  const handleResetConnection = async () => {
+    await GlobalConfig.clearBaseUrl();
+    showToast('URL removida. Configure uma nova conexão.', 'info');
+    navigate(ROUTES.configInicial, { replace: true });
+  };
+
   return (
     <main className="auth-screen auth-screen--login">
       <section className="auth-card auth-card--login">
@@ -240,6 +246,10 @@ export function LoginPage() {
         <button className="primary-button primary-button--login" type="button" onClick={handleLogin} disabled={loading}>
           {loading ? 'Entrando...' : <IoLogInOutline size={18} />}
         </button>
+
+        <button className="secondary-button" type="button" onClick={() => void handleResetConnection()} disabled={loading}>
+          Resetar URL e nova conexão
+        </button>
       </section>
 
       {hdSemLicenca && (
@@ -268,6 +278,18 @@ export function LoginPage() {
                 }}
               >
                 Copiar HD
+              </button>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => {
+                  setHdSemLicenca(null);
+                  GlobalConfig.setNumHD('');
+                  GlobalConfig.setChaveCriptoHD('');
+                  navigate(ROUTES.configInicial, { replace: true });
+                }}
+              >
+                Resetar HD e configurar
               </button>
               <button className="secondary-button" type="button" onClick={() => setHdSemLicenca(null)}>
                 Cancelar
