@@ -17,6 +17,7 @@ type SearchableSelectProps = {
   name?: string;
   ariaLabel?: string;
   className?: string;
+  dropUp?: boolean;
 };
 
 const normalizeText = (value: string) =>
@@ -36,6 +37,7 @@ export function SearchableSelect({
   name,
   ariaLabel,
   className,
+  dropUp = false,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -116,6 +118,7 @@ export function SearchableSelect({
 
   const wrapperClassName = className ? `searchable-select ${className}` : 'searchable-select';
   const controlClassName = `searchable-select__control${isOpen ? ' is-open' : ''}`;
+  const popoverClassName = `searchable-select__popover${dropUp ? ' searchable-select__popover--drop-up' : ''}`;
 
   return (
     <div className={wrapperClassName} ref={rootRef}>
@@ -159,7 +162,7 @@ export function SearchableSelect({
       </button>
 
       {isOpen && (
-        <div className="searchable-select__popover">
+        <div className={popoverClassName}>
           <input
             ref={searchInputRef}
             className="search-input"

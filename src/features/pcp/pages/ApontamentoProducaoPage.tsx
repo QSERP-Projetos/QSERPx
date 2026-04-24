@@ -901,31 +901,31 @@ export function ApontamentoProducaoPage() {
     try {
       const resp = apontamentoCronometro
         ? await incluirApontProdCronometroCall(baseUrl, token, {
-            codigoEmpresa,
-            numOrdem: form.numOrdem.trim(),
-            numOperacao: Number(form.numOperacao.trim()) || 0,
-            numMaquina: form.numMaquina.trim(),
-            numRegistro: form.numRegistro.trim(),
-            usuario: GlobalConfig.getUsuario(),
-          })
+          codigoEmpresa,
+          numOrdem: form.numOrdem.trim(),
+          numOperacao: Number(form.numOperacao.trim()) || 0,
+          numMaquina: form.numMaquina.trim(),
+          numRegistro: form.numRegistro.trim(),
+          usuario: GlobalConfig.getUsuario(),
+        })
         : await incluirApontProdPadraoCall(baseUrl, token, {
-            codigoEmpresa,
-            numApontamento: 0,
-            numOrdem: form.numOrdem.trim(),
-            numOperacao: Number(form.numOperacao.trim()) || 0,
-            numMaquina: form.numMaquina.trim(),
-            numRegistro: form.numRegistro.trim(),
-            dataInicio: form.dataInicio,
-            horaInicio: form.horaInicio,
-            dataFim: form.dataFim,
-            horaFim: form.horaFim,
-            codigoMotivo: form.codigoMotivo.trim(),
-            codigoBloqueio: form.codigoBloqueio.trim(),
-            usuario: GlobalConfig.getUsuario(),
-            qtdProduzida: toApiQuantidade(form.qtdProduzida),
-            qtdRejeitada: toApiQuantidade(form.qtdRejeitada),
-            permitirApontamentoSemOperacao: permitirApontSemOperacao,
-          });
+          codigoEmpresa,
+          numApontamento: 0,
+          numOrdem: form.numOrdem.trim(),
+          numOperacao: Number(form.numOperacao.trim()) || 0,
+          numMaquina: form.numMaquina.trim(),
+          numRegistro: form.numRegistro.trim(),
+          dataInicio: form.dataInicio,
+          horaInicio: form.horaInicio,
+          dataFim: form.dataFim,
+          horaFim: form.horaFim,
+          codigoMotivo: form.codigoMotivo.trim(),
+          codigoBloqueio: form.codigoBloqueio.trim(),
+          usuario: GlobalConfig.getUsuario(),
+          qtdProduzida: toApiQuantidade(form.qtdProduzida),
+          qtdRejeitada: toApiQuantidade(form.qtdRejeitada),
+          permitirApontamentoSemOperacao: permitirApontSemOperacao,
+        });
 
       if (!resp.succeeded) {
         showToast(getApiErrorMessage(resp, 'Falha ao incluir apontamento.'), 'error');
@@ -1043,9 +1043,8 @@ export function ApontamentoProducaoPage() {
                 }}
               />
               <small
-                className={`module-field-error apontamento-producao-field__error-slot${
-                  filtroErrors.dataInicio ? '' : ' apontamento-producao-field__error-slot--empty'
-                }`}
+                className={`module-field-error apontamento-producao-field__error-slot${filtroErrors.dataInicio ? '' : ' apontamento-producao-field__error-slot--empty'
+                  }`}
               >
                 {filtroErrors.dataInicio || ' '}
               </small>
@@ -1063,9 +1062,8 @@ export function ApontamentoProducaoPage() {
                 }}
               />
               <small
-                className={`module-field-error apontamento-producao-field__error-slot${
-                  filtroErrors.dataFim ? '' : ' apontamento-producao-field__error-slot--empty'
-                }`}
+                className={`module-field-error apontamento-producao-field__error-slot${filtroErrors.dataFim ? '' : ' apontamento-producao-field__error-slot--empty'
+                  }`}
               >
                 {filtroErrors.dataFim || ' '}
               </small>
@@ -1098,9 +1096,8 @@ export function ApontamentoProducaoPage() {
                 ) : null}
               </div>
               <small
-                className={`module-field-error apontamento-producao-field__error-slot${
-                  filtroErrors.codProd ? '' : ' apontamento-producao-field__error-slot--empty'
-                }`}
+                className={`module-field-error apontamento-producao-field__error-slot${filtroErrors.codProd ? '' : ' apontamento-producao-field__error-slot--empty'
+                  }`}
               >
                 {filtroErrors.codProd || ' '}
               </small>
@@ -1464,74 +1461,74 @@ export function ApontamentoProducaoPage() {
                   </label>
 
                   <div className="form-grid-3__full apontamento-producao-modal__quantidades">
-                <label>
-                  <span>Qtd. produzida</span>
-                  <div className="apontamento-producao-modal-field apontamento-producao-modal-field--clearable">
-                    <input
-                      className={formErrors.qtdProduzida ? 'module-input-error' : ''}
-                      value={form.qtdProduzida}
-                      inputMode="decimal"
-                      onChange={(event) => {
-                        setForm((prev) => ({ ...prev, qtdProduzida: event.target.value }));
-                        if (formErrors.qtdProduzida) setFormErrors((prev) => ({ ...prev, qtdProduzida: undefined }));
-                      }}
-                    />
-                    {form.qtdProduzida.trim() ? (
-                      <button
-                        type="button"
-                        className="field-clear-button"
-                        aria-label="Limpar quantidade produzida"
-                        title="Limpar"
-                        onClick={() => setForm((prev) => ({ ...prev, qtdProduzida: '' }))}
-                      >
-                        <IoCloseCircleOutline size={16} />
-                      </button>
-                    ) : null}
-                  </div>
-                  {formErrors.qtdProduzida ? <small className="module-field-error">{formErrors.qtdProduzida}</small> : null}
-                </label>
+                    <label>
+                      <span>Qtd. produzida</span>
+                      <div className="apontamento-producao-modal-field apontamento-producao-modal-field--clearable">
+                        <input
+                          className={formErrors.qtdProduzida ? 'module-input-error' : ''}
+                          value={form.qtdProduzida}
+                          inputMode="decimal"
+                          onChange={(event) => {
+                            setForm((prev) => ({ ...prev, qtdProduzida: event.target.value }));
+                            if (formErrors.qtdProduzida) setFormErrors((prev) => ({ ...prev, qtdProduzida: undefined }));
+                          }}
+                        />
+                        {form.qtdProduzida.trim() ? (
+                          <button
+                            type="button"
+                            className="field-clear-button"
+                            aria-label="Limpar quantidade produzida"
+                            title="Limpar"
+                            onClick={() => setForm((prev) => ({ ...prev, qtdProduzida: '' }))}
+                          >
+                            <IoCloseCircleOutline size={16} />
+                          </button>
+                        ) : null}
+                      </div>
+                      {formErrors.qtdProduzida ? <small className="module-field-error">{formErrors.qtdProduzida}</small> : null}
+                    </label>
 
-                <label>
-                  <span>Qtd. rejeitada</span>
-                  <div className="apontamento-producao-modal-field apontamento-producao-modal-field--clearable">
-                    <input
-                      className={formErrors.qtdRejeitada ? 'module-input-error' : ''}
-                      value={form.qtdRejeitada}
-                      inputMode="decimal"
-                      onChange={(event) => {
-                        setForm((prev) => ({ ...prev, qtdRejeitada: event.target.value }));
-                        if (formErrors.qtdRejeitada) setFormErrors((prev) => ({ ...prev, qtdRejeitada: undefined }));
-                      }}
-                    />
-                    {form.qtdRejeitada.trim() ? (
-                      <button
-                        type="button"
-                        className="field-clear-button"
-                        aria-label="Limpar quantidade rejeitada"
-                        title="Limpar"
-                        onClick={() => setForm((prev) => ({ ...prev, qtdRejeitada: '' }))}
-                      >
-                        <IoCloseCircleOutline size={16} />
-                      </button>
-                    ) : null}
-                  </div>
-                  {formErrors.qtdRejeitada ? <small className="module-field-error">{formErrors.qtdRejeitada}</small> : null}
-                </label>
+                    <label>
+                      <span>Qtd. rejeitada</span>
+                      <div className="apontamento-producao-modal-field apontamento-producao-modal-field--clearable">
+                        <input
+                          className={formErrors.qtdRejeitada ? 'module-input-error' : ''}
+                          value={form.qtdRejeitada}
+                          inputMode="decimal"
+                          onChange={(event) => {
+                            setForm((prev) => ({ ...prev, qtdRejeitada: event.target.value }));
+                            if (formErrors.qtdRejeitada) setFormErrors((prev) => ({ ...prev, qtdRejeitada: undefined }));
+                          }}
+                        />
+                        {form.qtdRejeitada.trim() ? (
+                          <button
+                            type="button"
+                            className="field-clear-button"
+                            aria-label="Limpar quantidade rejeitada"
+                            title="Limpar"
+                            onClick={() => setForm((prev) => ({ ...prev, qtdRejeitada: '' }))}
+                          >
+                            <IoCloseCircleOutline size={16} />
+                          </button>
+                        ) : null}
+                      </div>
+                      {formErrors.qtdRejeitada ? <small className="module-field-error">{formErrors.qtdRejeitada}</small> : null}
+                    </label>
 
-                <label className="apontamento-producao-modal__parcial">
-                  <span>Parcial</span>
-                  <select
-                    value={form.parcial ? 'true' : 'false'}
-                    onChange={(event) => setForm((prev) => ({ ...prev, parcial: event.target.value === 'true' }))}
-                  >
-                    <option value="false">Não</option>
-                    <option value="true">Sim</option>
-                  </select>
-                </label>
+                    <label className="apontamento-producao-modal__parcial">
+                      <span>Parcial</span>
+                      <select
+                        value={form.parcial ? 'true' : 'false'}
+                        onChange={(event) => setForm((prev) => ({ ...prev, parcial: event.target.value === 'true' }))}
+                      >
+                        <option value="false">Não</option>
+                        <option value="true">Sim</option>
+                      </select>
+                    </label>
                   </div>
 
                   {qtdRejeitadaInformada ? (
-                    <>
+                    <div className="form-grid-2 form-grid-3__full">
                       <label>
                         <span>Motivo rejeição</span>
                         <SearchableSelect
@@ -1544,6 +1541,7 @@ export function ApontamentoProducaoPage() {
                           ariaLabel="Motivo rejeição"
                           searchPlaceholder="Pesquisar motivo de rejeição"
                           className={formErrors.codigoMotivo ? 'is-error' : undefined}
+                          dropUp
                         />
                         {formErrors.codigoMotivo ? <small className="module-field-error">{formErrors.codigoMotivo}</small> : null}
                       </label>
@@ -1560,10 +1558,11 @@ export function ApontamentoProducaoPage() {
                           ariaLabel="Motivo bloqueio"
                           searchPlaceholder="Pesquisar motivo de bloqueio"
                           className={formErrors.codigoBloqueio ? 'is-error' : undefined}
+                          dropUp
                         />
                         {formErrors.codigoBloqueio ? <small className="module-field-error">{formErrors.codigoBloqueio}</small> : null}
                       </label>
-                    </>
+                    </div>
                   ) : null}
                 </>
               ) : null}

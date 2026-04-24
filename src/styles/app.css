@@ -4309,6 +4309,18 @@ select.text-field:focus {
   gap: 14px;
 }
 
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.form-grid-2 label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
 .form-grid-3 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -4318,6 +4330,7 @@ select.text-field:focus {
 .form-grid-3 label {
   display: grid;
   gap: 6px;
+  min-width: 0;
 }
 
 .form-grid-3 .checkbox-field {
@@ -6183,6 +6196,7 @@ select.text-field:focus {
 }
 
 @media (max-width: 1024px) {
+
   .app-shell__content:has(.clientes-page),
   .app-shell__content:has(.list-layout-page),
   .app-shell__content:has(.usuarios-page),
