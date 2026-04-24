@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   IoAddOutline,
   IoArrowBack,
+  IoChevronDownOutline,
+  IoChevronForwardOutline,
   IoCloseCircleOutline,
   IoCloseOutline,
   IoFilterOutline,
@@ -144,6 +146,7 @@ export function OrdensServicoPage() {
   const [dataInicio, setDataInicio] = useState(formatToday());
   const [dataFim, setDataFim] = useState(formatToday());
   const [searchTerm, setSearchTerm] = useState('');
+  const [expandedOsCards, setExpandedOsCards] = useState<Record<string, boolean>>({});
   const [filtrosOpen, setFiltrosOpen] = useState(false);
   const [filtroErrors, setFiltroErrors] = useState<FiltroErrors>({});
   const [sortField, setSortField] = useState<SortField>('os');
@@ -768,39 +771,62 @@ export function OrdensServicoPage() {
                 const tipo = String(row?.descricao_Tipo ?? row?.descricaoTipo ?? '-');
                 const centroCusto = String(row?.descricao_CCusto ?? row?.descricaoCCusto ?? '-');
                 const situacao = String(row?.situacaoOS ?? row?.situacao_Os ?? row?.situacao ?? '-');
+                const cardKey = `${os || `idx-${index}`}-${cliente}`;
+                const isExpandedCard = Boolean(expandedOsCards[cardKey]);
 
                 return (
                   <article className="module-card" key={`card-os-${index}`}>
-                    <div className="module-card__row">
-                      <span>OS</span>
-                      <strong>{os}</strong>
+                    <div className="module-card__row module-card__row--split">
+                      <div className="module-card__row-stack">
+                        <span>OS</span>
+                        <strong>{os}</strong>
+                      </div>
+                      <button
+                        type="button"
+                        className="module-card__expand-toggle"
+                        onClick={() =>
+                          setExpandedOsCards((prev) => ({
+                            ...prev,
+                            [cardKey]: !prev[cardKey],
+                          }))
+                        }
+                        aria-label={isExpandedCard ? 'Recolher detalhes da OS' : 'Expandir detalhes da OS'}
+                        title={isExpandedCard ? 'Recolher detalhes' : 'Expandir detalhes'}
+                      >
+                        {isExpandedCard ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
+                      </button>
                     </div>
-                    <div className="module-card__row">
-                      <span>Abertura</span>
-                      <strong>
-                        {aberturaData} {aberturaHora}
-                      </strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Código produto</span>
-                      <strong>{codigoProduto}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Cliente</span>
-                      <strong>{cliente}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Tipo</span>
-                      <strong>{tipo}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Centro Custo</span>
-                      <strong>{centroCusto}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Situação</span>
-                      <strong>{situacao}</strong>
-                    </div>
+
+                    {isExpandedCard ? (
+                      <>
+                        <div className="module-card__row">
+                          <span>Abertura</span>
+                          <strong>
+                            {aberturaData} {aberturaHora}
+                          </strong>
+                        </div>
+                        <div className="module-card__row">
+                          <span>Código produto</span>
+                          <strong>{codigoProduto}</strong>
+                        </div>
+                        <div className="module-card__row">
+                          <span>Cliente</span>
+                          <strong>{cliente}</strong>
+                        </div>
+                        <div className="module-card__row">
+                          <span>Tipo</span>
+                          <strong>{tipo}</strong>
+                        </div>
+                        <div className="module-card__row">
+                          <span>Centro Custo</span>
+                          <strong>{centroCusto}</strong>
+                        </div>
+                        <div className="module-card__row">
+                          <span>Situação</span>
+                          <strong>{situacao}</strong>
+                        </div>
+                      </>
+                    ) : null}
                   </article>
                 );
               })}
@@ -1053,12 +1079,12 @@ export function OrdensServicoPage() {
                   {materiais.map((item, index) => (
                     <article className="module-card" key={`material-card-${item.codigo || 'sem-codigo'}-${index}`}>
                       <div className="module-card__row">
-                        <span>Código</span>
-                        <strong>{item.codigo || '-'}</strong>
-                      </div>
-                      <div className="module-card__row">
-                        <span>Descrição</span>
-                        <strong>{item.descricao || 'Sem descrição'}</strong>
+                        <span>Produto</span>
+                        <strong className="module-card__product-inline">
+                          {item.codigo && item.descricao
+                            ? `${item.codigo} - ${item.descricao}`
+                            : item.codigo || item.descricao || 'Sem descrição'}
+                        </strong>
                       </div>
                       <div className="module-card__actions">
                         <button

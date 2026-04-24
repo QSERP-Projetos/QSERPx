@@ -3057,10 +3057,37 @@ select.text-field:focus {
   width: min(980px, 100%);
 }
 
+.pedido-liberacao-detalhes-head {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 14px;
+  background: var(--color-input-bg);
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.pedido-liberacao-detalhes-head__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.pedido-liberacao-detalhes-head__top strong {
+  color: var(--color-text);
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .pedido-liberacao-detalhes-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px 20px;
+}
+
+.pedido-liberacao-detalhes-grid--summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .pedido-liberacao-detalhes-item {
@@ -3096,6 +3123,13 @@ select.text-field:focus {
   padding: 12px;
   display: grid;
   gap: 8px;
+}
+
+.pedido-liberacao-item-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .pedido-liberacao-item-card h3 {
@@ -4144,6 +4178,14 @@ select.text-field:focus {
   color: var(--color-text);
   font-size: 0.92rem;
   word-break: break-word;
+}
+
+.module-card__product-inline {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .module-card__actions {
@@ -6497,6 +6539,12 @@ select.text-field:focus {
 
   .pedido-liberacao-details-actions__button--estornar {
     margin-right: 0;
+  }
+
+  .pedido-liberacao-detalhes-grid,
+  .pedido-liberacao-detalhes-grid--summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
   }
 
   .clientes-modal-actions {

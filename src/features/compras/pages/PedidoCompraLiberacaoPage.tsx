@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   IoArrowBack,
   IoCheckmarkDoneOutline,
+  IoChevronDownOutline,
+  IoChevronForwardOutline,
   IoCloseCircleOutline,
   IoCloseOutline,
   IoEyeOffOutline,
@@ -188,6 +190,13 @@ export function PedidoCompraLiberacaoPage() {
   const [liberarOpen, setLiberarOpen] = useState(false);
   const [estornoConfirmOpen, setEstornoConfirmOpen] = useState(false);
   const [selecionado, setSelecionado] = useState<PedidoCompra | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 1024px)').matches;
+  });
+  const [expandedPedidoCards, setExpandedPedidoCards] = useState<Record<string, boolean>>({});
+  const [detalhesHeaderExpanded, setDetalhesHeaderExpanded] = useState(false);
+  const [expandedDetalheItens, setExpandedDetalheItens] = useState<Record<string, boolean>>({});
   const [sortField, setSortField] = useState<SortField>('pedido');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const initialLoadRef = useRef(false);
@@ -286,6 +295,20 @@ export function PedidoCompraLiberacaoPage() {
     void carregarPedidos();
   }, [carregarPedidos]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mediaQuery = window.matchMedia('(max-width: 1024px)');
+    const syncViewport = (event?: MediaQueryListEvent) => {
+      const isMobile = event ? event.matches : mediaQuery.matches;
+      setIsMobileViewport(isMobile);
+    };
+
+    syncViewport();
+    mediaQuery.addEventListener('change', syncViewport);
+    return () => mediaQuery.removeEventListener('change', syncViewport);
+  }, []);
+
   const handleAbrirDetalhes = async (pedido: PedidoCompra) => {
     const baseUrl = GlobalConfig.getBaseUrl();
     const token = GlobalConfig.getJwToken();
@@ -311,6 +334,8 @@ export function PedidoCompraLiberacaoPage() {
     }
 
     setSelecionado(pedido);
+    setDetalhesHeaderExpanded(!isMobileViewport);
+    setExpandedDetalheItens({});
     setDetalhesOpen(true);
   };
 
@@ -562,28 +587,51 @@ export function PedidoCompraLiberacaoPage() {
               <div className="module-cards">
                 {pedidosFiltrados.map((pedido, index) => {
                   const materialInfo = resolvePedidoMaterialInfo(pedido);
+                  const cardKey = `${pedido.numPedido || `idx-${index}`}`;
+                  const isExpandedCard = Boolean(expandedPedidoCards[cardKey]);
                   return (
                     <article key={`card-${pedido.numPedido}-${index}`} className="module-card">
-                      <div className="module-card__row">
-                        <span>Pedido</span>
-                        <strong>{pedido.numPedido || '-'}</strong>
+                      <div className="module-card__row module-card__row--split">
+                        <div className="module-card__row-stack">
+                          <span>Pedido</span>
+                          <strong>{pedido.numPedido || '-'}</strong>
+                        </div>
+                        <button
+                          type="button"
+                          className="module-card__expand-toggle"
+                          onClick={() =>
+                            setExpandedPedidoCards((prev) => ({
+                              ...prev,
+                              [cardKey]: !prev[cardKey],
+                            }))
+                          }
+                          aria-label={isExpandedCard ? 'Recolher detalhes do pedido' : 'Expandir detalhes do pedido'}
+                          title={isExpandedCard ? 'Recolher detalhes' : 'Expandir detalhes'}
+                        >
+                          {isExpandedCard ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
+                        </button>
                       </div>
                       <div className="module-card__row">
                         <span>Data</span>
                         <strong>{pedido.dataPedido || '-'}</strong>
                       </div>
-                      <div className="module-card__row">
-                        <span>Tipo</span>
-                        <strong>{pedido.tipoPedido || '-'}</strong>
-                      </div>
-                      <div className="module-card__row">
-                        <span>Fornecedor</span>
-                        <strong>{pedido.fornecedor || '-'}</strong>
-                      </div>
-                      <div className="module-card__row">
-                        <span>Código material</span>
-                        <strong>{materialInfo.codigoMaterial}</strong>
-                      </div>
+
+                      {isExpandedCard ? (
+                        <>
+                          <div className="module-card__row">
+                            <span>Tipo</span>
+                            <strong>{pedido.tipoPedido || '-'}</strong>
+                          </div>
+                          <div className="module-card__row">
+                            <span>Fornecedor</span>
+                            <strong>{pedido.fornecedor || '-'}</strong>
+                          </div>
+                          <div className="module-card__row">
+                            <span>Código material</span>
+                            <strong>{materialInfo.codigoMaterial}</strong>
+                          </div>
+                        </>
+                      ) : null}
 
                       <div className="module-card__actions pedido-liberacao-card-actions">
                         <button
@@ -610,7 +658,6 @@ export function PedidoCompraLiberacaoPage() {
             <header className="modal-card__header">
               <div>
                 <h2>Pedido de compra - Detalhes</h2>
-                <p className="module-empty">Pedido: {selecionado.numPedido || '-'}</p>
               </div>
               <button
                 type="button"
@@ -621,52 +668,80 @@ export function PedidoCompraLiberacaoPage() {
                   setDetalhesOpen(false);
                   setEstornoConfirmOpen(false);
                   setSelecionado(null);
+                  setDetalhesHeaderExpanded(false);
+                  setExpandedDetalheItens({});
                 }}
               >
                 <IoCloseOutline size={18} />
               </button>
             </header>
 
-            <div className="pedido-liberacao-detalhes-grid">
-              <article className="pedido-liberacao-detalhes-item">
-                <span>Data</span>
-                <strong>{selecionado.dataPedido || '-'}</strong>
-              </article>
+            <div className="pedido-liberacao-detalhes-head">
+              <div className="pedido-liberacao-detalhes-head__top">
+                <strong>Dados do pedido</strong>
+                {isMobileViewport ? (
+                  <button
+                    type="button"
+                    className="module-card__expand-toggle"
+                    onClick={() => setDetalhesHeaderExpanded((prev) => !prev)}
+                    aria-label={detalhesHeaderExpanded ? 'Recolher dados do pedido' : 'Expandir dados do pedido'}
+                    title={detalhesHeaderExpanded ? 'Recolher detalhes' : 'Expandir detalhes'}
+                  >
+                    {detalhesHeaderExpanded ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
+                  </button>
+                ) : null}
+              </div>
 
-              <article className="pedido-liberacao-detalhes-item">
-                <span>Tipo</span>
-                <strong>{selecionado.tipoPedido || '-'}</strong>
-              </article>
+              <div className="pedido-liberacao-detalhes-grid pedido-liberacao-detalhes-grid--summary">
+                <article className="pedido-liberacao-detalhes-item">
+                  <span>Pedido</span>
+                  <strong>{selecionado.numPedido || '-'}</strong>
+                </article>
 
-              <article className="pedido-liberacao-detalhes-item">
-                <span>Fornecedor</span>
-                <strong>{selecionado.fornecedor || '-'}</strong>
-              </article>
+                <article className="pedido-liberacao-detalhes-item">
+                  <span>Data</span>
+                  <strong>{selecionado.dataPedido || '-'}</strong>
+                </article>
 
-              <article className="pedido-liberacao-detalhes-item">
-                <span>Condição pagto</span>
-                <strong>{selecionado.condPagto || '-'}</strong>
-              </article>
+                <article className="pedido-liberacao-detalhes-item">
+                  <span>Tipo</span>
+                  <strong>{selecionado.tipoPedido || '-'}</strong>
+                </article>
 
-              <article className="pedido-liberacao-detalhes-item">
-                <span>Endereço entrega</span>
-                <strong>{selecionado.endereco || '-'}</strong>
-              </article>
+                <article className="pedido-liberacao-detalhes-item">
+                  <span>Fornecedor</span>
+                  <strong>{selecionado.fornecedor || '-'}</strong>
+                </article>
+              </div>
 
-              <article className="pedido-liberacao-detalhes-item">
-                <span>Frete</span>
-                <strong>{selecionado.valorFrete || '-'}</strong>
-              </article>
+              {(!isMobileViewport || detalhesHeaderExpanded) ? (
+                <div className="pedido-liberacao-detalhes-grid pedido-liberacao-detalhes-grid--extra">
+                  <article className="pedido-liberacao-detalhes-item">
+                    <span>Condição pagto</span>
+                    <strong>{selecionado.condPagto || '-'}</strong>
+                  </article>
 
-              <article className="pedido-liberacao-detalhes-item">
-                <span>Incoterms</span>
-                <strong>{selecionado.incoterms || '-'}</strong>
-              </article>
+                  <article className="pedido-liberacao-detalhes-item">
+                    <span>Endereço entrega</span>
+                    <strong>{selecionado.endereco || '-'}</strong>
+                  </article>
 
-              <article className="pedido-liberacao-detalhes-item">
-                <span>Moeda</span>
-                <strong>{selecionado.moeda || '-'}</strong>
-              </article>
+                  <article className="pedido-liberacao-detalhes-item">
+                    <span>Frete</span>
+                    <strong>{selecionado.valorFrete || '-'}</strong>
+                  </article>
+
+                  <article className="pedido-liberacao-detalhes-item">
+                    <span>Incoterms</span>
+                    <strong>{selecionado.incoterms || '-'}</strong>
+                  </article>
+
+                  <article className="pedido-liberacao-detalhes-item">
+                    <span>Moeda</span>
+                    <strong>{selecionado.moeda || '-'}</strong>
+                  </article>
+                </div>
+              ) : null}
             </div>
 
             <div className="module-items-header">
@@ -701,10 +776,31 @@ export function PedidoCompraLiberacaoPage() {
                   const unidade = item?.unidade ?? item?.unidade_Medida ?? '-';
                   const saldo = item?.saldo ?? item?.saldo_Compra ?? '-';
                   const preco = item?.preco ?? item?.valor ?? item?.preco_Unitario ?? '-';
+                  const itemKey = `item-${index}-${String(codigo)}-${String(descricao)}`;
+                  const isExpandedItem = Boolean(expandedDetalheItens[itemKey]);
+                  const showExpandedItem = !isMobileViewport || isExpandedItem;
 
                   return (
                     <article className="pedido-liberacao-item-card" key={`item-${index}`}>
-                      {itensSelecionados.length > 1 ? <h3>Item {index + 1}</h3> : null}
+                      <div className="pedido-liberacao-item-card__top">
+                        {itensSelecionados.length > 1 ? <h3>Item {index + 1}</h3> : <h3>Item</h3>}
+                        {isMobileViewport ? (
+                          <button
+                            type="button"
+                            className="module-card__expand-toggle"
+                            onClick={() =>
+                              setExpandedDetalheItens((prev) => ({
+                                ...prev,
+                                [itemKey]: !prev[itemKey],
+                              }))
+                            }
+                            aria-label={isExpandedItem ? 'Recolher detalhes do item' : 'Expandir detalhes do item'}
+                            title={isExpandedItem ? 'Recolher detalhes' : 'Expandir detalhes'}
+                          >
+                            {isExpandedItem ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
+                          </button>
+                        ) : null}
+                      </div>
 
                       <div className="pedido-liberacao-item-row">
                         <span>Código</span>
@@ -714,22 +810,27 @@ export function PedidoCompraLiberacaoPage() {
                         <span>Descrição</span>
                         <strong>{String(descricao)}</strong>
                       </div>
-                      <div className="pedido-liberacao-item-row">
-                        <span>Quantidade</span>
-                        <strong>{String(quantidade)}</strong>
-                      </div>
-                      <div className="pedido-liberacao-item-row">
-                        <span>Unidade</span>
-                        <strong>{String(unidade)}</strong>
-                      </div>
-                      <div className="pedido-liberacao-item-row">
-                        <span>Saldo</span>
-                        <strong>{String(saldo)}</strong>
-                      </div>
-                      <div className="pedido-liberacao-item-row">
-                        <span>Preço</span>
-                        <strong>{String(preco)}</strong>
-                      </div>
+
+                      {showExpandedItem ? (
+                        <>
+                          <div className="pedido-liberacao-item-row">
+                            <span>Quantidade</span>
+                            <strong>{String(quantidade)}</strong>
+                          </div>
+                          <div className="pedido-liberacao-item-row">
+                            <span>Unidade</span>
+                            <strong>{String(unidade)}</strong>
+                          </div>
+                          <div className="pedido-liberacao-item-row">
+                            <span>Saldo</span>
+                            <strong>{String(saldo)}</strong>
+                          </div>
+                          <div className="pedido-liberacao-item-row">
+                            <span>Preço</span>
+                            <strong>{String(preco)}</strong>
+                          </div>
+                        </>
+                      ) : null}
                     </article>
                   );
                 })}

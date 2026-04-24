@@ -215,6 +215,11 @@ const resolveListRow = (row: any) => {
     operacao: getRowText(row, ['num_Operacao', 'Num_Operacao', 'numOperacao', 'operacao']),
     maquina: getRowText(row, ['num_Maquina', 'Num_Maquina', 'numMaquina']),
     produto: getRowText(row, ['codigo_Produto', 'codigoProduto', 'cod_Prod', 'codProd', 'produto']),
+    descricaoProduto: getRowText(
+      row,
+      ['descricao_Portug', 'descricaoPortug', 'descricao_Produto', 'descricaoProduto', 'descricao_Item', 'descricao'],
+      '-',
+    ),
     funcionario: getRowText(row, ['num_Registro', 'numRegistro', 'nome_Func', 'nomeFunc', 'funcionario']),
     inicioData: inicioDataHora.date || inicioData,
     inicioHora: inicioDataHora.time || inicioHora,
@@ -1218,6 +1223,12 @@ export function ApontamentoProducaoPage() {
               <div className="module-cards">
                 {rowsFiltradas.map((row, index) => {
                   const current = resolveListRow(row);
+                  const produtoLinha =
+                    current.produto !== '-' && current.descricaoProduto !== '-'
+                      ? `${current.produto} - ${current.descricaoProduto}`
+                      : current.produto !== '-'
+                        ? current.produto
+                        : current.descricaoProduto;
 
                   return (
                     <article
@@ -1243,7 +1254,7 @@ export function ApontamentoProducaoPage() {
                       </div>
                       <div className="module-card__row">
                         <span>Produto</span>
-                        <strong>{current.produto}</strong>
+                        <strong className="module-card__product-inline">{produtoLinha}</strong>
                       </div>
                     </article>
                   );
