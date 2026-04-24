@@ -88,6 +88,7 @@ export const useDynamicMenu = () => {
             transactionCode: 'SEG',
             subitems: [
               { title: 'Usuários', transactionCode: 'SEG001' },
+              { title: 'Tipo de Apontamento', transactionCode: 'SEG002' },
               { title: 'Sessões', transactionCode: 'CFG008' },
             ],
           };
@@ -117,8 +118,15 @@ export const useDynamicMenu = () => {
                   const subitems = item.subitems.filter((sub) => {
                     const code = String(sub.transactionCode || '').toUpperCase();
                     const title = String(sub.title || '').toLowerCase();
-                    if (code === 'SEG001' || code === 'CFG008') return false;
-                    if (title.includes('usuario') || title.includes('sessao') || title.includes('sessoes')) return false;
+                    if (code === 'SEG001' || code === 'SEG002' || code === 'CFG008' || code === 'CFG009') return false;
+                    if (
+                      title.includes('usuario') ||
+                      title.includes('sessao') ||
+                      title.includes('sessoes') ||
+                      title.includes('tipo apont')
+                    ) {
+                      return false;
+                    }
                     return true;
                   });
 

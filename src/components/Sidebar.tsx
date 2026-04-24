@@ -107,7 +107,7 @@ export function Sidebar({
   const { language, setLanguage } = useLanguage();
   const [isCompactViewport, setIsCompactViewport] = useState(() => {
     if (typeof window === 'undefined') return false;
-    return window.matchMedia('(max-width: 1023px)').matches;
+    return window.matchMedia('(max-width: 1024px)').matches;
   });
   const [activeFlyout, setActiveFlyout] = useState<SidebarFlyoutState | null>(null);
   const [settingsExpanded, setSettingsExpanded] = useState(true);
@@ -130,7 +130,7 @@ export function Sidebar({
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const mediaQuery = window.matchMedia('(max-width: 1023px)');
+    const mediaQuery = window.matchMedia('(max-width: 1024px)');
     const handleViewportChange = (event: MediaQueryListEvent) => {
       setIsCompactViewport(event.matches);
       if (event.matches) {

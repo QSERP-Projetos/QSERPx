@@ -17,7 +17,6 @@ import { OrdensServicoPage } from '../features/servico/pages/OrdensServicoPage';
 import { ApontamentoMaoObraPage } from '../features/servico/pages/ApontamentoMaoObraPage';
 import { PedidoCompraLiberacaoPage } from '../features/compras/pages/PedidoCompraLiberacaoPage';
 import { ClientesPage } from '../features/basico/pages/ClientesPage';
-import { TipoApontamentoPage } from '../features/seguranca/pages/TipoApontamentoPage';
 import { SessoesPage } from '../features/seguranca/pages/SessoesPage';
 import { UsuariosPage } from '../features/seguranca/pages/UsuariosPage';
 import { OrdensManutencaoPage } from '../features/manutencao/pages/OrdensManutencaoPage';
@@ -78,7 +77,6 @@ export function AppRouter() {
           <Route path={ROUTES.comprasPedidoLiberacao} element={<PedidoCompraLiberacaoPage />} />
           <Route path={ROUTES.basicoClientes} element={<ClientesPage />} />
           <Route path={ROUTES.segurancaUsuarios} element={<UsuariosPage />} />
-          <Route path={ROUTES.segurancaTipoApontamento} element={<TipoApontamentoPage />} />
           <Route path={ROUTES.segurancaSessoes} element={<SessoesPage />} />
           <Route path={ROUTES.manutencaoOrdens} element={<OrdensManutencaoPage />} />
           <Route path={ROUTES.qualidadeFichaProcesso} element={<FichaInspecaoProcessoPage />} />

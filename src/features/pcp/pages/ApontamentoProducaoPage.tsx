@@ -19,6 +19,7 @@ import { GlobalConfig } from '../../../services/globalConfig';
 import {
   buscaOFCall,
   buscaOperCall,
+  incluirApontProdCronometroCall,
   incluirApontProdPadraoCall,
   listApontamentosProducaoCall,
   listaFuncionariosCall,
@@ -367,6 +368,18 @@ const toApiQuantidade = (value: string): string => {
   return String(parsed);
 };
 
+const normalizeTipoApontamento = (value?: string) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const isCronometroTipo = (value?: string) => {
+  const normalized = normalizeTipoApontamento(value);
+  return normalized === 'apontamento cronometro' || normalized === 'apontamento por cronometro';
+};
+
 const toFuncionarioOptions = (payload: any): SelectOption[] => {
   const rows = getRows(payload);
 
@@ -508,6 +521,7 @@ export function ApontamentoProducaoPage() {
   const [revisaoOF, setRevisaoOF] = useState<number | undefined>(undefined);
   const [situacaoOF, setSituacaoOF] = useState<number | undefined>(undefined);
   const permitirApontSemOperacao = GlobalConfig.getPermitirApontamentoSemOperacao();
+  const apontamentoCronometro = isCronometroTipo(GlobalConfig.getTipoApontProd());
 
   const rowsOrdenadas = useMemo(() => {
     const list = [...rows];
@@ -705,7 +719,7 @@ export function ApontamentoProducaoPage() {
         numRevisao: revisaoOF,
         numOperacao: operacaoNumero,
         situacaoOF,
-        tipoApont: 'Padrao',
+        tipoApont: apontamentoCronometro ? 'Cronometro' : 'Padrao',
       });
 
       if (!resp.succeeded) {
@@ -727,7 +741,7 @@ export function ApontamentoProducaoPage() {
       showToast(error?.message || 'Erro ao validar operação.', 'error');
       return false;
     }
-  }, [codigoProduto, form.numOperacao, permitirApontSemOperacao, processoOF, revisaoOF, showToast, situacaoOF]);
+  }, [apontamentoCronometro, codigoProduto, form.numOperacao, permitirApontSemOperacao, processoOF, revisaoOF, showToast, situacaoOF]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -844,29 +858,31 @@ export function ApontamentoProducaoPage() {
       nextErrors.dataInicio = 'Data início é obrigatória.';
     }
 
-    if (!form.dataFim) {
-      nextErrors.dataFim = 'Data fim é obrigatória.';
-    }
-
     if (!isValidHour(form.horaInicio)) {
       nextErrors.horaInicio = 'Hora início inválida.';
     }
 
-    if (!isValidHour(form.horaFim)) {
-      nextErrors.horaFim = 'Hora fim inválida.';
-    }
+    if (!apontamentoCronometro) {
+      if (!form.dataFim) {
+        nextErrors.dataFim = 'Data fim é obrigatória.';
+      }
 
-    const qtdProduzidaNum = parseQuantidade(form.qtdProduzida);
-    const qtdRejeitadaNum = parseQuantidade(form.qtdRejeitada);
+      if (!isValidHour(form.horaFim)) {
+        nextErrors.horaFim = 'Hora fim inválida.';
+      }
 
-    if (qtdProduzidaNum <= 0 && qtdRejeitadaNum <= 0) {
-      nextErrors.qtdProduzida = 'Informe ao menos uma quantidade maior que zero.';
-      nextErrors.qtdRejeitada = 'Informe ao menos uma quantidade maior que zero.';
-    }
+      const qtdProduzidaNum = parseQuantidade(form.qtdProduzida);
+      const qtdRejeitadaNum = parseQuantidade(form.qtdRejeitada);
 
-    if (qtdRejeitadaNum > 0 && (!form.codigoMotivo || !form.codigoBloqueio)) {
-      if (!form.codigoMotivo) nextErrors.codigoMotivo = 'Motivo rejeição é obrigatório.';
-      if (!form.codigoBloqueio) nextErrors.codigoBloqueio = 'Motivo bloqueio é obrigatório.';
+      if (qtdProduzidaNum <= 0 && qtdRejeitadaNum <= 0) {
+        nextErrors.qtdProduzida = 'Informe ao menos uma quantidade maior que zero.';
+        nextErrors.qtdRejeitada = 'Informe ao menos uma quantidade maior que zero.';
+      }
+
+      if (qtdRejeitadaNum > 0 && (!form.codigoMotivo || !form.codigoBloqueio)) {
+        if (!form.codigoMotivo) nextErrors.codigoMotivo = 'Motivo rejeição é obrigatório.';
+        if (!form.codigoBloqueio) nextErrors.codigoBloqueio = 'Motivo bloqueio é obrigatório.';
+      }
     }
 
     setFormErrors(nextErrors);
@@ -883,31 +899,45 @@ export function ApontamentoProducaoPage() {
 
     setSaving(true);
     try {
-      const resp = await incluirApontProdPadraoCall(baseUrl, token, {
-        codigoEmpresa,
-        numApontamento: 0,
-        numOrdem: form.numOrdem.trim(),
-        numOperacao: Number(form.numOperacao.trim()) || 0,
-        numMaquina: form.numMaquina.trim(),
-        numRegistro: form.numRegistro.trim(),
-        dataInicio: form.dataInicio,
-        horaInicio: form.horaInicio,
-        dataFim: form.dataFim,
-        horaFim: form.horaFim,
-        codigoMotivo: form.codigoMotivo.trim(),
-        codigoBloqueio: form.codigoBloqueio.trim(),
-        usuario: GlobalConfig.getUsuario(),
-        qtdProduzida: toApiQuantidade(form.qtdProduzida),
-        qtdRejeitada: toApiQuantidade(form.qtdRejeitada),
-        permitirApontamentoSemOperacao: permitirApontSemOperacao,
-      });
+      const resp = apontamentoCronometro
+        ? await incluirApontProdCronometroCall(baseUrl, token, {
+            codigoEmpresa,
+            numOrdem: form.numOrdem.trim(),
+            numOperacao: Number(form.numOperacao.trim()) || 0,
+            numMaquina: form.numMaquina.trim(),
+            numRegistro: form.numRegistro.trim(),
+            usuario: GlobalConfig.getUsuario(),
+          })
+        : await incluirApontProdPadraoCall(baseUrl, token, {
+            codigoEmpresa,
+            numApontamento: 0,
+            numOrdem: form.numOrdem.trim(),
+            numOperacao: Number(form.numOperacao.trim()) || 0,
+            numMaquina: form.numMaquina.trim(),
+            numRegistro: form.numRegistro.trim(),
+            dataInicio: form.dataInicio,
+            horaInicio: form.horaInicio,
+            dataFim: form.dataFim,
+            horaFim: form.horaFim,
+            codigoMotivo: form.codigoMotivo.trim(),
+            codigoBloqueio: form.codigoBloqueio.trim(),
+            usuario: GlobalConfig.getUsuario(),
+            qtdProduzida: toApiQuantidade(form.qtdProduzida),
+            qtdRejeitada: toApiQuantidade(form.qtdRejeitada),
+            permitirApontamentoSemOperacao: permitirApontSemOperacao,
+          });
 
       if (!resp.succeeded) {
         showToast(getApiErrorMessage(resp, 'Falha ao incluir apontamento.'), 'error');
         return;
       }
 
-      showToast('Apontamento incluído com sucesso.', 'success');
+      showToast(
+        apontamentoCronometro
+          ? 'Apontamento incluído em modo cronômetro com sucesso.'
+          : 'Apontamento incluído com sucesso.',
+        'success',
+      );
       setModalOpen(false);
       resetModalState();
       void carregar();
@@ -933,6 +963,7 @@ export function ApontamentoProducaoPage() {
           <div>
             <h1>Apontamento de Produção</h1>
             <p className="apontamento-producao-subtitle">Incluir e consultar apontamentos de produção.</p>
+            <p className="apontamento-producao-subtitle">Modo configurado: {apontamentoCronometro ? 'Cronômetro' : 'Normal'}</p>
           </div>
         </div>
       </section>
@@ -1228,7 +1259,7 @@ export function ApontamentoProducaoPage() {
         <section className="modal-backdrop" role="dialog" aria-modal="true">
           <article className="modal-card modal-card--wide apontamento-producao-modal">
             <header className="modal-card__header">
-              <h2>Apontamento de Produção</h2>
+              <h2>Apontamento de Produção ({apontamentoCronometro ? 'Cronômetro' : 'Normal'})</h2>
               <button
                 type="button"
                 className="icon-button"
@@ -1396,33 +1427,43 @@ export function ApontamentoProducaoPage() {
                 {formErrors.horaInicio ? <small className="module-field-error">{formErrors.horaInicio}</small> : null}
               </label>
 
-              <label>
-                <span>Data fim</span>
-                <CustomDatePicker
-                  className={formErrors.dataFim ? 'pcp-date-error' : undefined}
-                  value={form.dataFim}
-                  onChange={(nextDate) => {
-                    setForm((prev) => ({ ...prev, dataFim: nextDate }));
-                    if (formErrors.dataFim) setFormErrors((prev) => ({ ...prev, dataFim: undefined }));
-                  }}
-                />
-                {formErrors.dataFim ? <small className="module-field-error">{formErrors.dataFim}</small> : null}
-              </label>
+              {apontamentoCronometro ? (
+                <div className="form-grid-3__full">
+                  <p className="module-empty">
+                    Modo cronômetro: o apontamento será iniciado agora e deverá ser concluído na rotina de conclusão.
+                  </p>
+                </div>
+              ) : null}
 
-              <label>
-                <span>Hora fim</span>
-                <CustomTimePicker
-                  className={formErrors.horaFim ? 'pcp-time-error' : undefined}
-                  value={form.horaFim}
-                  onChange={(nextValue) => {
-                    setForm((prev) => ({ ...prev, horaFim: nextValue }));
-                    if (formErrors.horaFim) setFormErrors((prev) => ({ ...prev, horaFim: undefined }));
-                  }}
-                />
-                {formErrors.horaFim ? <small className="module-field-error">{formErrors.horaFim}</small> : null}
-              </label>
+              {!apontamentoCronometro ? (
+                <>
+                  <label>
+                    <span>Data fim</span>
+                    <CustomDatePicker
+                      className={formErrors.dataFim ? 'pcp-date-error' : undefined}
+                      value={form.dataFim}
+                      onChange={(nextDate) => {
+                        setForm((prev) => ({ ...prev, dataFim: nextDate }));
+                        if (formErrors.dataFim) setFormErrors((prev) => ({ ...prev, dataFim: undefined }));
+                      }}
+                    />
+                    {formErrors.dataFim ? <small className="module-field-error">{formErrors.dataFim}</small> : null}
+                  </label>
 
-              <div className="form-grid-3__full apontamento-producao-modal__quantidades">
+                  <label>
+                    <span>Hora fim</span>
+                    <CustomTimePicker
+                      className={formErrors.horaFim ? 'pcp-time-error' : undefined}
+                      value={form.horaFim}
+                      onChange={(nextValue) => {
+                        setForm((prev) => ({ ...prev, horaFim: nextValue }));
+                        if (formErrors.horaFim) setFormErrors((prev) => ({ ...prev, horaFim: undefined }));
+                      }}
+                    />
+                    {formErrors.horaFim ? <small className="module-field-error">{formErrors.horaFim}</small> : null}
+                  </label>
+
+                  <div className="form-grid-3__full apontamento-producao-modal__quantidades">
                 <label>
                   <span>Qtd. produzida</span>
                   <div className="apontamento-producao-modal-field apontamento-producao-modal-field--clearable">
@@ -1487,41 +1528,43 @@ export function ApontamentoProducaoPage() {
                     <option value="true">Sim</option>
                   </select>
                 </label>
-              </div>
+                  </div>
 
-              {qtdRejeitadaInformada ? (
-                <>
-                  <label>
-                    <span>Motivo rejeição</span>
-                    <SearchableSelect
-                      value={form.codigoMotivo}
-                      onChange={(nextValue) => {
-                        setForm((prev) => ({ ...prev, codigoMotivo: nextValue }));
-                        if (formErrors.codigoMotivo) setFormErrors((prev) => ({ ...prev, codigoMotivo: undefined }));
-                      }}
-                      options={motivoRejeicaoOptions}
-                      ariaLabel="Motivo rejeição"
-                      searchPlaceholder="Pesquisar motivo de rejeição"
-                      className={formErrors.codigoMotivo ? 'is-error' : undefined}
-                    />
-                    {formErrors.codigoMotivo ? <small className="module-field-error">{formErrors.codigoMotivo}</small> : null}
-                  </label>
+                  {qtdRejeitadaInformada ? (
+                    <>
+                      <label>
+                        <span>Motivo rejeição</span>
+                        <SearchableSelect
+                          value={form.codigoMotivo}
+                          onChange={(nextValue) => {
+                            setForm((prev) => ({ ...prev, codigoMotivo: nextValue }));
+                            if (formErrors.codigoMotivo) setFormErrors((prev) => ({ ...prev, codigoMotivo: undefined }));
+                          }}
+                          options={motivoRejeicaoOptions}
+                          ariaLabel="Motivo rejeição"
+                          searchPlaceholder="Pesquisar motivo de rejeição"
+                          className={formErrors.codigoMotivo ? 'is-error' : undefined}
+                        />
+                        {formErrors.codigoMotivo ? <small className="module-field-error">{formErrors.codigoMotivo}</small> : null}
+                      </label>
 
-                  <label>
-                    <span>Motivo bloqueio</span>
-                    <SearchableSelect
-                      value={form.codigoBloqueio}
-                      onChange={(nextValue) => {
-                        setForm((prev) => ({ ...prev, codigoBloqueio: nextValue }));
-                        if (formErrors.codigoBloqueio) setFormErrors((prev) => ({ ...prev, codigoBloqueio: undefined }));
-                      }}
-                      options={motivoBloqueioOptions}
-                      ariaLabel="Motivo bloqueio"
-                      searchPlaceholder="Pesquisar motivo de bloqueio"
-                      className={formErrors.codigoBloqueio ? 'is-error' : undefined}
-                    />
-                    {formErrors.codigoBloqueio ? <small className="module-field-error">{formErrors.codigoBloqueio}</small> : null}
-                  </label>
+                      <label>
+                        <span>Motivo bloqueio</span>
+                        <SearchableSelect
+                          value={form.codigoBloqueio}
+                          onChange={(nextValue) => {
+                            setForm((prev) => ({ ...prev, codigoBloqueio: nextValue }));
+                            if (formErrors.codigoBloqueio) setFormErrors((prev) => ({ ...prev, codigoBloqueio: undefined }));
+                          }}
+                          options={motivoBloqueioOptions}
+                          ariaLabel="Motivo bloqueio"
+                          searchPlaceholder="Pesquisar motivo de bloqueio"
+                          className={formErrors.codigoBloqueio ? 'is-error' : undefined}
+                        />
+                        {formErrors.codigoBloqueio ? <small className="module-field-error">{formErrors.codigoBloqueio}</small> : null}
+                      </label>
+                    </>
+                  ) : null}
                 </>
               ) : null}
             </div>

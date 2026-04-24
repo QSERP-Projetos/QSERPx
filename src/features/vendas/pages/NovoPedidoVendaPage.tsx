@@ -511,7 +511,7 @@ export function PedidoVendaFormPanel({
   const [loadingTabelaPreco, setLoadingTabelaPreco] = useState(false);
   const [tabelaPrecoRows, setTabelaPrecoRows] = useState<TabelaPrecoItem[]>([]);
   const [tabelaPrecoTermo, setTabelaPrecoTermo] = useState('');
-  const [isMobileLayout, setIsMobileLayout] = useState(() => window.matchMedia('(max-width: 920px)').matches);
+  const [isMobileLayout, setIsMobileLayout] = useState(() => window.matchMedia('(max-width: 1024px)').matches);
   const [mobileItemModalOpen, setMobileItemModalOpen] = useState(false);
   const [mobileItemDraft, setMobileItemDraft] = useState<ItemForm>(emptyItem());
   const [mobileItemEditIndex, setMobileItemEditIndex] = useState<number | null>(null);
@@ -1645,7 +1645,7 @@ export function PedidoVendaFormPanel({
   }, [carregarListas, isViewOnly, open]);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 920px)');
+    const mediaQuery = window.matchMedia('(max-width: 1024px)');
     const syncLayout = () => setIsMobileLayout(mediaQuery.matches);
     syncLayout();
 

@@ -667,19 +667,31 @@ select {
   background: var(--color-surface);
 }
 
-.app-shell__floating-menu-trigger {
+.icon-button.app-shell__floating-menu-trigger {
   display: none;
   position: fixed;
-  right: max(12px, env(safe-area-inset-right));
-  bottom: calc(12px + env(safe-area-inset-bottom));
-  width: 48px;
-  height: 48px;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  width: 50px;
+  height: 50px;
   border-radius: 14px;
   z-index: 1002;
-  background: var(--color-surface);
-  color: var(--color-text);
-  border-color: var(--color-border);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary-border);
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.36);
+}
+
+:root[data-theme="dark"] .icon-button.app-shell__floating-menu-trigger {
+  background: #ffffff;
+  color: #111111;
+  border-color: rgba(255, 255, 255, 0.65);
+}
+
+:root[data-theme="light"] .icon-button.app-shell__floating-menu-trigger {
+  background: #000000;
+  color: #ffffff;
+  border-color: rgba(0, 0, 0, 0.55);
 }
 
 .app-shell__topbar-title {
@@ -2441,7 +2453,7 @@ select {
   cursor: not-allowed;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .permissions-modal {
     grid-template-columns: 1fr;
   }
@@ -3069,7 +3081,7 @@ select {
   background: var(--color-empty-bg);
 }
 
-@media (min-width: 640px) {
+@media (min-width: 1025px) {
   .app-shell__content {
     padding: 16px;
   }
@@ -3110,7 +3122,7 @@ select {
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1025px) {
   .app-shell__content {
     padding: 24px;
   }
@@ -3132,17 +3144,23 @@ select {
   }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1024px) {
   .app-shell__topbar {
     display: none;
   }
 
-  .app-shell__floating-menu-trigger {
+  .icon-button.app-shell__floating-menu-trigger {
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .app-shell__content {
+    padding: 2px;
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1025px) {
   .app-shell {
     grid-template-columns: var(--sidebar-width) 1fr;
   }
@@ -3203,7 +3221,7 @@ select {
   }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1024px) {
   .sidebar__footer-toggle {
     display: none;
   }
@@ -3237,7 +3255,7 @@ select {
   }
 }
 
-@media (max-width: 639px) {
+@media (max-width: 1024px) {
   .card {
     padding: var(--space-4);
   }

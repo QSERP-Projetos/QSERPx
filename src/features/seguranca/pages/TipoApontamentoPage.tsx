@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IoArrowBack } from 'react-icons/io5';
-import { ROUTES } from '../../../constants/routes';
-import { useToast } from '../../../contexts/ToastContext';
 import { SearchableSelect } from '../../../components/SearchableSelect';
+import { ROUTES } from '../../../constants/routes';
 import { GlobalConfig } from '../../../services/globalConfig';
-import { acoesUsuariosCall } from '../../../services/apiCalls';
+
+interface TipoApontamentoPageProps {
+  embedded?: boolean;
+  onRequestClose?: () => void;
+}
 
 type ApontamentoOption = {
   value: string;
@@ -39,112 +41,91 @@ const getValidOption = (value?: string) => {
   return found?.value ?? apontamentoOptions[0].value;
 };
 
-export function TipoApontamentoPage() {
+export function TipoApontamentoPage({ embedded = false, onRequestClose }: TipoApontamentoPageProps) {
   const navigate = useNavigate();
-  const { showToast } = useToast();
-
-  const [loading, setLoading] = useState(false);
   const [apontamentoProd, setApontamentoProd] = useState(apontamentoOptions[0].value);
   const [apontamentoMaoObra, setApontamentoMaoObra] = useState(apontamentoOptions[0].value);
   const [permitirApontSemOper, setPermitirApontSemOper] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     setApontamentoProd(getValidOption(GlobalConfig.getTipoApontProd()));
     setApontamentoMaoObra(getValidOption(GlobalConfig.getTipoApontMaoObra()));
     setPermitirApontSemOper(GlobalConfig.getPermitirApontamentoSemOperacao());
+    setInitialized(true);
   }, []);
 
-  const handleConfirmar = async () => {
-    if (loading) return;
+  useEffect(() => {
+    if (!initialized) return;
 
-    const baseUrl = GlobalConfig.getBaseUrl();
-    const token = GlobalConfig.getJwToken();
-    const usuario = GlobalConfig.getUsuario();
-    const codigoEmpresa = GlobalConfig.getCodEmpresa();
-    const idSessao = GlobalConfig.getIdSessaoUsuario();
+    GlobalConfig.setTipoApontProd(apontamentoProd);
+    GlobalConfig.setTipoApontMaoObra(apontamentoMaoObra);
+    GlobalConfig.setPermitirApontamentoSemOperacao(permitirApontSemOper);
+  }, [initialized, apontamentoProd, apontamentoMaoObra, permitirApontSemOper]);
 
-    if (!baseUrl || !token || !usuario) {
-      showToast('Informações de sessão não encontradas.', 'error');
+  const handleClose = () => {
+    if (onRequestClose) {
+      onRequestClose();
       return;
     }
 
-    setLoading(true);
-    try {
-      await acoesUsuariosCall(baseUrl, token, {
-        codigoEmpresa: codigoEmpresa ?? undefined,
-        idSessao: idSessao ?? undefined,
-        codigoUsuario: usuario,
-      });
-
-      GlobalConfig.setTipoApontProd(apontamentoProd);
-      GlobalConfig.setTipoApontMaoObra(apontamentoMaoObra);
-      GlobalConfig.setPermitirApontamentoSemOperacao(permitirApontSemOper);
-
-      showToast('Tipo de apontamento alterado com sucesso.', 'success');
-    } catch (error: any) {
-      showToast(error?.message || 'Falha ao atualizar tipo de apontamento.', 'error');
-    } finally {
-      setLoading(false);
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
     }
+
+    navigate(ROUTES.home, { replace: true });
   };
 
+  const content = (
+    <section className="auth-card tipo-apontamento-card" onClick={(event) => event.stopPropagation()}>
+        <div className="brand-center">
+          <h1>Tipo de Apontamento</h1>
+          <p className="tipo-apontamento-card__subtitle">
+            Configuração do modo padrão de apontamento para Produção e Mão de Obra.
+          </p>
+        </div>
+
+        <label className="tipo-apontamento-card__field">
+          <span className="field-label">Tipo apontamento produção</span>
+          <SearchableSelect
+            value={apontamentoProd}
+            onChange={setApontamentoProd}
+            options={apontamentoOptions}
+            ariaLabel="Tipo apontamento produção"
+            searchPlaceholder="Pesquisar tipo"
+          />
+        </label>
+
+        <label className="tipo-apontamento-card__field">
+          <span className="field-label">Tipo apontamento mão de obra</span>
+          <SearchableSelect
+            value={apontamentoMaoObra}
+            onChange={setApontamentoMaoObra}
+            options={apontamentoOptions}
+            ariaLabel="Tipo apontamento mão de obra"
+            searchPlaceholder="Pesquisar tipo"
+          />
+        </label>
+
+        <label className="tipo-apontamento-card__checkbox">
+          <span className="field-label">Permitir apontamento sem operação</span>
+          <input
+            type="checkbox"
+            checked={permitirApontSemOper}
+            onChange={(event) => setPermitirApontSemOper(event.target.checked)}
+          />
+        </label>
+      </section>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
   return (
-    <main className="module-screen">
-      <section className="module-header">
-        <div className="module-header__left">
-          <button className="icon-button" type="button" onClick={() => navigate(ROUTES.home)} aria-label="Voltar">
-            <IoArrowBack size={18} />
-          </button>
-          <div>
-            <h1>Tipo de Apontamento</h1>
-            <p>Configuração do modo padrão de apontamento para Produção e Mão de Obra.</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="module-form">
-        <div className="form-grid-3">
-          <label className="form-grid-3__full">
-            <span>Tipo apontamento produção</span>
-            <SearchableSelect
-              value={apontamentoProd}
-              onChange={setApontamentoProd}
-              options={apontamentoOptions}
-              ariaLabel="Tipo apontamento produção"
-              searchPlaceholder="Pesquisar tipo"
-            />
-          </label>
-
-          <label className="form-grid-3__full">
-            <span>Tipo apontamento mão de obra</span>
-            <SearchableSelect
-              value={apontamentoMaoObra}
-              onChange={setApontamentoMaoObra}
-              options={apontamentoOptions}
-              ariaLabel="Tipo apontamento mão de obra"
-              searchPlaceholder="Pesquisar tipo"
-            />
-          </label>
-
-          <label className="form-grid-3__full checkbox-field">
-            <span>Permitir apontamento sem operação</span>
-            <input
-              type="checkbox"
-              checked={permitirApontSemOper}
-              onChange={(event) => setPermitirApontSemOper(event.target.checked)}
-            />
-          </label>
-        </div>
-
-        <div className="form-actions">
-          <button className="secondary-button" type="button" onClick={() => navigate(ROUTES.home)} disabled={loading}>
-            Voltar
-          </button>
-          <button className="primary-button" type="button" onClick={() => void handleConfirmar()} disabled={loading}>
-            {loading ? 'Salvando...' : 'Confirmar'}
-          </button>
-        </div>
-      </section>
-    </main>
+    <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Tipo de apontamento" onClick={handleClose}>
+      {content}
+    </section>
   );
 }

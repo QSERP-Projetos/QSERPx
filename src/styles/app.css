@@ -745,7 +745,7 @@ body {
   margin: 0;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1024px) {
 
   .dashboard-filters-grid,
   .dashboard-config-grid {
@@ -790,7 +790,7 @@ body {
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1024px) {
 
   .dashboard-filters-grid,
   .dashboard-config-grid,
@@ -914,6 +914,39 @@ body {
   background: var(--color-surface);
   display: grid;
   gap: 12px;
+}
+
+.tipo-apontamento-card {
+  width: min(560px, 100%);
+  gap: 14px;
+}
+
+.tipo-apontamento-card__subtitle {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.92rem;
+}
+
+.tipo-apontamento-card__field {
+  display: grid;
+  gap: 6px;
+}
+
+.tipo-apontamento-card__checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+  gap: 10px;
+}
+
+.tipo-apontamento-card__checkbox input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
 }
 
 .auth-card--login {
@@ -3802,7 +3835,7 @@ select.text-field:focus {
   display: none;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1024px) {
   .preparacao-maquina-modal .form-grid-3 {
     grid-template-columns: 1fr;
   }
@@ -4634,7 +4667,7 @@ select.text-field:focus {
   margin-top: 14px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .ficha-inspecao-laudo-item-card__header {
     align-items: flex-start;
     flex-direction: column;
@@ -5580,7 +5613,7 @@ select.text-field:focus {
   justify-content: flex-end;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1024px) {
   .ordens-servico-material-modal {
     width: min(100%, 720px);
   }
@@ -5687,7 +5720,7 @@ select.text-field:focus {
   }
 }
 
-@media (max-width: 920px) {
+@media (max-width: 1024px) {
   .pedido-venda-itens-desktop-cards {
     display: none;
   }
@@ -5698,7 +5731,7 @@ select.text-field:focus {
   }
 }
 
-@media (max-width: 1360px) and (min-width: 641px) {
+@media (min-width: 1025px) {
   .pedido-venda-form-modal--view .pedido-venda-itens-scroll-area {
     overflow: auto;
   }
@@ -5709,7 +5742,7 @@ select.text-field:focus {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
   .pedido-venda-planilha-modal {
     width: 100%;
     max-height: calc(100dvh - 24px);
@@ -6149,7 +6182,14 @@ select.text-field:focus {
   background: rgba(248, 113, 113, 0.12);
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1024px) {
+  .app-shell__content:has(.clientes-page),
+  .app-shell__content:has(.list-layout-page),
+  .app-shell__content:has(.usuarios-page),
+  .app-shell__content:has(.ordens-manutencao-page) {
+    padding: 2px;
+  }
+
   .modal-backdrop {
     place-items: start center;
     padding: 12px;
@@ -6217,11 +6257,11 @@ select.text-field:focus {
   }
 
   .module-screen {
-    padding: 12px;
+    padding: 2px;
   }
 
   .clientes-page {
-    padding: 12px;
+    padding: 2px;
   }
 
   .clientes-page__header {
@@ -6495,9 +6535,14 @@ select.text-field:focus {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
   .app-shell__content:has(.list-layout-page) {
     overflow: hidden;
+  }
+
+  .module-screen.list-layout-page {
+    padding: 2px;
+    gap: 4px;
   }
 
   .list-layout-page {
@@ -6505,9 +6550,9 @@ select.text-field:focus {
     min-height: 0;
     overflow: hidden;
     grid-template-rows: auto minmax(0, 1fr);
-    padding-top: 4px;
-    padding-bottom: calc(8px + env(safe-area-inset-bottom));
-    gap: 6px;
+    padding-top: 2px;
+    padding-bottom: calc(2px + env(safe-area-inset-bottom));
+    gap: 4px;
   }
 
   .list-layout-page .clientes-page__header,
@@ -6519,7 +6564,7 @@ select.text-field:focus {
     min-height: 0;
     grid-template-rows: auto minmax(0, 1fr);
     overflow: hidden;
-    gap: 6px;
+    gap: 4px;
   }
 
   .list-layout-page .list-layout-panel__top {
@@ -6857,15 +6902,7 @@ select.text-field:focus {
   }
 }
 
-@media (max-width: 900px) and (orientation: landscape) {
-  .apontamento-producao-page {
-    max-width: 430px;
-    margin: 0 auto;
-    width: 100%;
-  }
-}
-
-@media (max-width: 430px) {
+@media (max-width: 1024px) {
   body {
     font-size: var(--font-mobile-content);
     line-height: 1.5;

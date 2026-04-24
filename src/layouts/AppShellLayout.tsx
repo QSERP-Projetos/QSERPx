@@ -4,6 +4,7 @@ import { IoCloseOutline, IoMenuOutline } from 'react-icons/io5';
 import { createPortal } from 'react-dom';
 import { Sidebar } from '../components/Sidebar';
 import { ConfigScreen } from '../components/ConfigScreen';
+import { TipoApontamentoPage } from '../features/seguranca/pages/TipoApontamentoPage';
 import { APP_NAME, APP_VERSION } from '../constants/appInfo';
 import { ROUTES } from '../constants/routes';
 import { STORAGE_KEYS } from '../constants/storageKeys';
@@ -29,9 +30,7 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
     BAS001: ROUTES.basicoClientes,
     COM001: ROUTES.comprasPedidoLiberacao,
     COM002: ROUTES.comprasPedidoLiberacao,
-    CFG009: ROUTES.segurancaTipoApontamento,
     SEG001: ROUTES.segurancaUsuarios,
-    SEG002: ROUTES.segurancaTipoApontamento,
     CFG008: ROUTES.segurancaSessoes,
     PCP001: ROUTES.pcpApontamentoProducao,
     PCP002: ROUTES.pcpOrdensFabricacao,
@@ -55,9 +54,6 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
       : undefined) ||
     (normalizedTitle.includes('cliente') ? ROUTES.basicoClientes : undefined) ||
     (normalizedTitle.includes('usuario') ? ROUTES.segurancaUsuarios : undefined) ||
-    (normalizedTitle.includes('tipo') && normalizedTitle.includes('apont')
-      ? ROUTES.segurancaTipoApontamento
-      : undefined) ||
     (normalizedTitle.includes('sess') ? ROUTES.segurancaSessoes : undefined) ||
     (normalizedTitle.includes('ordem') && normalizedTitle.includes('fabricacao') ? ROUTES.pcpOrdensFabricacao : undefined) ||
     (normalizedTitle.includes('apont') && normalizedTitle.includes('produc')
@@ -84,6 +80,20 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
   return routeByCode || routeByTitle;
 };
 
+const isTipoApontamentoTransaction = (transactionCode: string, title: string) => {
+  const normalizedCode = String(transactionCode || '').toUpperCase();
+  const normalizedTitle = String(title || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  if (normalizedCode === 'CFG009' || normalizedCode === 'SEG002') {
+    return true;
+  }
+
+  return normalizedTitle.includes('tipo') && normalizedTitle.includes('apont');
+};
+
 export function AppShellLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -96,10 +106,15 @@ export function AppShellLayout() {
     return saved === '1';
   });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 1024px)').matches;
+  });
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [logoutPending, setLogoutPending] = useState(false);
   const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [tipoApontamentoModalOpen, setTipoApontamentoModalOpen] = useState(false);
 
   const userName = useMemo(() => GlobalConfig.getUsuario() || '', []);
   const companyName = useMemo(() => GlobalConfig.getNomeEmpresa() || '', []);
@@ -146,6 +161,23 @@ export function AppShellLayout() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mediaQuery = window.matchMedia('(max-width: 1024px)');
+    const syncViewport = (event?: MediaQueryListEvent) => {
+      const isMobile = event ? event.matches : mediaQuery.matches;
+      setIsMobileViewport(isMobile);
+      if (!isMobile) {
+        setMobileNavOpen(false);
+      }
+    };
+
+    syncViewport();
+    mediaQuery.addEventListener('change', syncViewport);
+    return () => mediaQuery.removeEventListener('change', syncViewport);
+  }, []);
+
   const isApontamentoProducaoRoute = location.pathname === ROUTES.pcpApontamentoProducao;
 
   const handleLogout = async () => {
@@ -173,6 +205,12 @@ export function AppShellLayout() {
   };
 
   const handleNavigateTransaction = (transactionCode: string, title: string) => {
+    if (isTipoApontamentoTransaction(transactionCode, title)) {
+      setMobileNavOpen(false);
+      setTipoApontamentoModalOpen(true);
+      return;
+    }
+
     const route = resolveRouteFromTransaction(transactionCode, title);
 
     if (route) {
@@ -248,7 +286,7 @@ export function AppShellLayout() {
         </div>
       </main>
 
-      {!mobileNavOpen ? (
+      {isMobileViewport && !mobileNavOpen ? (
         <button
           type="button"
           className="icon-button app-shell__floating-menu-trigger"
@@ -322,6 +360,25 @@ export function AppShellLayout() {
               redirectToLoginAfterSave={false}
               onSaveSuccess={() => setConfigModalOpen(false)}
             />
+          </section>,
+          document.body,
+        )
+        : null}
+
+      {tipoApontamentoModalOpen
+        ? createPortal(
+          <section
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Tipo de apontamento"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                setTipoApontamentoModalOpen(false);
+              }
+            }}
+          >
+            <TipoApontamentoPage embedded onRequestClose={() => setTipoApontamentoModalOpen(false)} />
           </section>,
           document.body,
         )

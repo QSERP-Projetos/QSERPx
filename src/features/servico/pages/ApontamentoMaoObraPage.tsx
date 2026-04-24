@@ -84,6 +84,18 @@ const parseTimeForSort = (timeValue: any) => {
 type SortField = 'os' | 'data' | 'inicio' | 'fim' | 'centroTrabalho' | 'funcionario' | 'situacao';
 type SortDirection = 'asc' | 'desc';
 
+const normalizeTipoApontamento = (value?: string) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const isCronometroTipo = (value?: string) => {
+  const normalized = normalizeTipoApontamento(value);
+  return normalized === 'apontamento cronometro' || normalized === 'apontamento por cronometro';
+};
+
 export function ApontamentoMaoObraPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -126,6 +138,7 @@ export function ApontamentoMaoObraPage() {
     horaFim: '',
     encerrarOS: false,
   });
+  const apontamentoCronometro = isCronometroTipo(GlobalConfig.getTipoApontMaoObra());
 
   const funcionarioOptions = useMemo(() => [{ value: '', label: 'Selecione' }, ...funcionarios], [funcionarios]);
   const centroTrabalhoOptions = useMemo(() => [{ value: '', label: 'Selecione' }, ...centrosTrabalho], [centrosTrabalho]);
@@ -314,8 +327,8 @@ export function ApontamentoMaoObraPage() {
 
     setSaving(true);
     try {
-      const tipo = 'Padrao';
-      const tipoApont = 1;
+      const tipo = apontamentoCronometro ? 'Cronometro' : 'Padrao';
+      const tipoApont = apontamentoCronometro ? 2 : 1;
 
       const resp = await incluirApontamentoMaoDeObraCall(baseUrl, token, tipo, {
         codigoEmpresa,
@@ -326,7 +339,7 @@ export function ApontamentoMaoObraPage() {
         codigoCTrab: form.codigoCTrab,
         dataServico: form.dataServico,
         horaInicio: form.horaInicio,
-        horaFim: form.horaFim,
+        horaFim: apontamentoCronometro ? '' : form.horaFim,
         tipoApont,
         usuarioAtual: usuario,
         id: 0,
@@ -337,7 +350,12 @@ export function ApontamentoMaoObraPage() {
         return;
       }
 
-      showToast('Apontamento incluído com sucesso.', 'success');
+      showToast(
+        apontamentoCronometro
+          ? 'Apontamento incluído em modo cronômetro com sucesso.'
+          : 'Apontamento incluído com sucesso.',
+        'success',
+      );
       setModalOpen(false);
       void carregar();
     } catch (error: any) {
@@ -421,6 +439,7 @@ export function ApontamentoMaoObraPage() {
           <div>
             <h1>Apontamento de Mão de Obra</h1>
             <p>Consulta, inclusão e conclusão de apontamentos de mão de obra.</p>
+            <p>Modo configurado: {apontamentoCronometro ? 'Cronômetro' : 'Normal'}</p>
           </div>
         </div>
       </section>
@@ -712,7 +731,7 @@ export function ApontamentoMaoObraPage() {
         <section className="modal-backdrop" role="dialog" aria-modal="true">
           <article className="modal-card modal-card--wide">
             <header className="modal-card__header">
-              <h2>Novo apontamento de mão de obra</h2>
+              <h2>Novo apontamento de mão de obra ({apontamentoCronometro ? 'Cronômetro' : 'Normal'})</h2>
               <button
                 type="button"
                 className="icon-button"
@@ -775,10 +794,17 @@ export function ApontamentoMaoObraPage() {
                 <span>Hora início *</span>
                 <CustomTimePicker value={form.horaInicio} onChange={(nextValue) => setForm((prev) => ({ ...prev, horaInicio: nextValue }))} />
               </label>
-              <label>
-                <span>Hora fim</span>
-                <CustomTimePicker value={form.horaFim} onChange={(nextValue) => setForm((prev) => ({ ...prev, horaFim: nextValue }))} />
-              </label>
+
+              {apontamentoCronometro ? (
+                <div className="form-grid-3__full">
+                  <p className="module-empty">Modo cronômetro: informe início agora e conclua depois na ação Concluir.</p>
+                </div>
+              ) : (
+                <label>
+                  <span>Hora fim</span>
+                  <CustomTimePicker value={form.horaFim} onChange={(nextValue) => setForm((prev) => ({ ...prev, horaFim: nextValue }))} />
+                </label>
+              )}
             </div>
 
             <div className="form-actions">
