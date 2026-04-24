@@ -1210,12 +1210,10 @@ export function FichaInspecaoPage({
                       <strong>{data}</strong>
                     </div>
                     <div className="module-card__row">
-                      <span>Material</span>
-                      <strong>{material}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Descrição</span>
-                      <strong>{descricao}</strong>
+                      <span>Produto</span>
+                      <strong className="module-card__product-inline">
+                        {material !== '-' && descricao !== '-' ? `${material} - ${descricao}` : material !== '-' ? material : descricao}
+                      </strong>
                     </div>
                     <div className="module-card__row">
                       <span>Lote</span>

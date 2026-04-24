@@ -3230,8 +3230,12 @@ export function PedidoVendaFormPanel({
                     >
                       <div className="module-card__row module-card__row--split">
                         <div className="module-card__row-stack">
-                          <span>Código</span>
-                          <strong>{item.Codigo_Produto || '-'}</strong>
+                          <span>Produto</span>
+                          <strong className="module-card__product-inline">
+                            {item.Codigo_Produto && item.Descricao_Produto
+                              ? `${item.Codigo_Produto} - ${item.Descricao_Produto}`
+                              : item.Codigo_Produto || item.Descricao_Produto || '-'}
+                          </strong>
                         </div>
                         <button
                           type="button"
@@ -3248,10 +3252,6 @@ export function PedidoVendaFormPanel({
                         >
                           {isExpandedCard ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
                         </button>
-                      </div>
-                      <div className="module-card__row">
-                        <span>Descrição</span>
-                        <strong>{item.Descricao_Produto || '-'}</strong>
                       </div>
                       {isExpandedCard ? (
                         <>
@@ -3814,12 +3814,10 @@ export function PedidoVendaFormPanel({
                   {tabelaPrecoRowsFiltradas.map((row, index) => (
                     <article className="module-card" key={`card-${row.codigo}-${index}`}>
                       <div className="module-card__row">
-                        <span>Código</span>
-                        <strong>{row.codigo}</strong>
-                      </div>
-                      <div className="module-card__row">
-                        <span>Descrição</span>
-                        <strong>{row.descricao}</strong>
+                        <span>Produto</span>
+                        <strong className="module-card__product-inline">
+                          {row.codigo && row.descricao ? `${row.codigo} - ${row.descricao}` : row.codigo || row.descricao || '-'}
+                        </strong>
                       </div>
                       <div className="module-card__row">
                         <span>Unidade</span>

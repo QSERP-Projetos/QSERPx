@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   IoAddOutline,
   IoArrowBack,
+  IoChevronDownOutline,
+  IoChevronForwardOutline,
   IoCheckmarkDoneOutline,
   IoCloseOutline,
   IoFilterOutline,
@@ -110,6 +112,7 @@ export function ApontamentoMaoObraPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [codigoFuncionario, setCodigoFuncionario] = useState('');
   const [apenasPendentes, setApenasPendentes] = useState(false);
+  const [expandedMaoObraCards, setExpandedMaoObraCards] = useState<Record<string, boolean>>({});
   const [filtroErrors, setFiltroErrors] = useState<FiltroErrors>({});
   const [filtrosOpen, setFiltrosOpen] = useState(false);
   const [sortField, setSortField] = useState<SortField>('os');
@@ -679,45 +682,68 @@ export function ApontamentoMaoObraPage() {
                 const fim = String(row?.hora_Fim ?? row?.horaFim ?? '-');
                 const centroTrabalho = String(row?.descricao_CTrab ?? row?.descricaoCTrab ?? '-');
                 const funcionarioNome = String(row?.nome_Func ?? row?.nomeFunc ?? '-');
+                const cardKey = `${os || `idx-${index}`}-${funcionarioNome}`;
+                const isExpandedCard = Boolean(expandedMaoObraCards[cardKey]);
 
                 return (
                   <article className="module-card" key={`card-amo-${index}`}>
-                    <div className="module-card__row">
-                      <span>OS</span>
-                      <strong>{os}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Data</span>
-                      <strong>{data}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Início</span>
-                      <strong>{inicio}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Fim</span>
-                      <strong>{fim}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Centro de Trabalho</span>
-                      <strong>{centroTrabalho}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Funcionário</span>
-                      <strong>{funcionarioNome}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Situação</span>
-                      <strong>{concluido ? 'Concluído' : 'Pendente'}</strong>
+                    <div className="module-card__row module-card__row--split">
+                      <div className="module-card__row-stack">
+                        <span>OM</span>
+                        <strong>{os}</strong>
+                      </div>
+                      <button
+                        type="button"
+                        className="module-card__expand-toggle"
+                        onClick={() =>
+                          setExpandedMaoObraCards((prev) => ({
+                            ...prev,
+                            [cardKey]: !prev[cardKey],
+                          }))
+                        }
+                        aria-label={isExpandedCard ? 'Recolher detalhes da OM' : 'Expandir detalhes da OM'}
+                        title={isExpandedCard ? 'Recolher detalhes' : 'Expandir detalhes'}
+                      >
+                        {isExpandedCard ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
+                      </button>
                     </div>
 
-                    {!concluido && (
-                      <div className="module-card__actions">
-                        <button type="button" title="Concluir" onClick={() => void abrirConcluir(row)}>
-                          <IoCheckmarkDoneOutline size={16} />
-                        </button>
-                      </div>
-                    )}
+                    {isExpandedCard ? (
+                      <>
+                        <div className="module-card__row">
+                          <span>Data</span>
+                          <strong>{data}</strong>
+                        </div>
+                        <div className="module-card__row">
+                          <span>Início</span>
+                          <strong>{inicio}</strong>
+                        </div>
+                        <div className="module-card__row">
+                          <span>Fim</span>
+                          <strong>{fim}</strong>
+                        </div>
+                        <div className="module-card__row">
+                          <span>Centro de Trabalho</span>
+                          <strong>{centroTrabalho}</strong>
+                        </div>
+                        <div className="module-card__row">
+                          <span>Funcionário</span>
+                          <strong>{funcionarioNome}</strong>
+                        </div>
+                        <div className="module-card__row">
+                          <span>Situação</span>
+                          <strong>{concluido ? 'Concluído' : 'Pendente'}</strong>
+                        </div>
+
+                        {!concluido && (
+                          <div className="module-card__actions">
+                            <button type="button" title="Concluir" onClick={() => void abrirConcluir(row)}>
+                              <IoCheckmarkDoneOutline size={16} />
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : null}
                   </article>
                 );
               })}

@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IoArrowBack, IoCloseCircleOutline, IoFilterOutline, IoRefreshOutline } from 'react-icons/io5';
+import {
+  IoArrowBack,
+  IoChevronDownOutline,
+  IoChevronForwardOutline,
+  IoCloseCircleOutline,
+  IoFilterOutline,
+  IoRefreshOutline,
+} from 'react-icons/io5';
 import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
 import { CustomDatePicker } from '../../../components/CustomDatePicker';
@@ -186,6 +193,7 @@ export function OrdensFabricacaoPage() {
   const [filtroErrors, setFiltroErrors] = useState<FiltroErrors>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filtrosOpen, setFiltrosOpen] = useState(false);
+  const [expandedOfCards, setExpandedOfCards] = useState<Record<string, boolean>>({});
   const [sortField, setSortField] = useState<SortField>('numero');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const initialLoadRef = useRef(false);
@@ -541,36 +549,60 @@ export function OrdensFabricacaoPage() {
                 const numero = getTextByKeys(row, ORDEM_KEYS);
                 const codigoProduto = getTextByKeys(row, PRODUTO_KEYS);
                 const descricao = getTextByKeys(row, DESCRICAO_KEYS);
+                const produtoLinha =
+                  codigoProduto !== '-' && descricao !== '-'
+                    ? `${codigoProduto} - ${descricao}`
+                    : codigoProduto !== '-'
+                      ? codigoProduto
+                      : descricao;
                 const data = formatDateLabel(getFirstValue(row, DATA_KEYS));
                 const quantidade = getTextByKeys(row, QUANTIDADE_KEYS);
                 const situacao = getTextByKeys(row, SITUACAO_KEYS);
+                const cardKey = `${numero || `idx-${index}`}-${codigoProduto}`;
+                const isExpandedCard = Boolean(expandedOfCards[cardKey]);
 
                 return (
                   <article className="module-card" key={`card-of-${index}`}>
-                    <div className="module-card__row">
-                      <span>Número</span>
-                      <strong>{numero}</strong>
+                    <div className="module-card__row module-card__row--split">
+                      <div className="module-card__row-stack">
+                        <span>Número</span>
+                        <strong>{numero}</strong>
+                      </div>
+                      <button
+                        type="button"
+                        className="module-card__expand-toggle"
+                        onClick={() =>
+                          setExpandedOfCards((prev) => ({
+                            ...prev,
+                            [cardKey]: !prev[cardKey],
+                          }))
+                        }
+                        aria-label={isExpandedCard ? 'Recolher detalhes da ordem' : 'Expandir detalhes da ordem'}
+                        title={isExpandedCard ? 'Recolher detalhes' : 'Expandir detalhes'}
+                      >
+                        {isExpandedCard ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
+                      </button>
                     </div>
                     <div className="module-card__row">
                       <span>Produto</span>
-                      <strong>{codigoProduto}</strong>
+                      <strong className="module-card__product-inline">{produtoLinha}</strong>
                     </div>
-                    <div className="module-card__row">
-                      <span>Descrição</span>
-                      <strong>{descricao}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Data</span>
-                      <strong>{data}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Quantidade</span>
-                      <strong>{quantidade}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Situação</span>
-                      <strong>{situacao}</strong>
-                    </div>
+                    {isExpandedCard ? (
+                      <>
+                        <div className="module-card__row">
+                          <span>Data</span>
+                          <strong>{data}</strong>
+                        </div>
+                        <div className="module-card__row">
+                          <span>Quantidade</span>
+                          <strong>{quantidade}</strong>
+                        </div>
+                        <div className="module-card__row">
+                          <span>Situação</span>
+                          <strong>{situacao}</strong>
+                        </div>
+                      </>
+                    ) : null}
                   </article>
                 );
               })}

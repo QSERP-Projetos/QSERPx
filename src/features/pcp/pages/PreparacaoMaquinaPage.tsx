@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IoAddOutline, IoArrowBack, IoCloseCircleOutline, IoCloseOutline, IoFilterOutline, IoRefreshOutline } from 'react-icons/io5';
+import {
+  IoAddOutline,
+  IoArrowBack,
+  IoChevronDownOutline,
+  IoChevronForwardOutline,
+  IoCloseCircleOutline,
+  IoCloseOutline,
+  IoFilterOutline,
+  IoRefreshOutline,
+} from 'react-icons/io5';
 import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
 import { CustomDatePicker } from '../../../components/CustomDatePicker';
@@ -229,6 +238,7 @@ export function PreparacaoMaquinaPage() {
   const [filtroErrors, setFiltroErrors] = useState<FiltroErrors>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filtrosOpen, setFiltrosOpen] = useState(false);
+  const [expandedPreparacaoCards, setExpandedPreparacaoCards] = useState<Record<string, boolean>>({});
   const [sortField, setSortField] = useState<SortField>('ordem');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const initialLoadRef = useRef(false);
@@ -782,41 +792,65 @@ export function PreparacaoMaquinaPage() {
               {rowsFiltradas.map((row, index) => {
                 const current = resolvePreparacaoListRow(row);
                 const situacao = getSituacaoApontLabel(current.situacaoCodigo);
+                const cardKey = `${current.ordem || `idx-${index}`}-${current.maquina}`;
+                const isExpandedCard = Boolean(expandedPreparacaoCards[cardKey]);
 
                 return (
                   <article className="module-card" key={`card-prep-${index}`}>
-                    <div className="module-card__row">
-                      <span>Ordem</span>
-                      <strong>{current.ordem}</strong>
+                    <div className="module-card__row module-card__row--split">
+                      <div className="module-card__row-stack">
+                        <span>Ordem</span>
+                        <strong>{current.ordem}</strong>
+                      </div>
+                      <button
+                        type="button"
+                        className="module-card__expand-toggle"
+                        onClick={() =>
+                          setExpandedPreparacaoCards((prev) => ({
+                            ...prev,
+                            [cardKey]: !prev[cardKey],
+                          }))
+                        }
+                        aria-label={isExpandedCard ? 'Recolher detalhes da preparação' : 'Expandir detalhes da preparação'}
+                        title={isExpandedCard ? 'Recolher detalhes' : 'Expandir detalhes'}
+                      >
+                        {isExpandedCard ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
+                      </button>
                     </div>
-                    <div className="module-card__row">
-                      <span>Operação</span>
-                      <strong>{current.operacao}</strong>
-                    </div>
+
                     <div className="module-card__row">
                       <span>Máquina</span>
                       <strong>{current.maquina}</strong>
                     </div>
-                    <div className="module-card__row">
-                      <span>Situação</span>
-                      <strong>{situacao}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Início</span>
-                      <strong>
-                        {current.inicioData} {current.inicioHora}
-                      </strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Fim</span>
-                      <strong>
-                        {current.fimData} {current.fimHora}
-                      </strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Usuário</span>
-                      <strong>{current.usuario}</strong>
-                    </div>
+
+                    {isExpandedCard ? (
+                      <>
+                        <div className="module-card__row">
+                          <span>Operação</span>
+                          <strong>{current.operacao}</strong>
+                        </div>
+                        <div className="module-card__row">
+                          <span>Situação</span>
+                          <strong>{situacao}</strong>
+                        </div>
+                        <div className="module-card__row">
+                          <span>Início</span>
+                          <strong>
+                            {current.inicioData} {current.inicioHora}
+                          </strong>
+                        </div>
+                        <div className="module-card__row">
+                          <span>Fim</span>
+                          <strong>
+                            {current.fimData} {current.fimHora}
+                          </strong>
+                        </div>
+                        <div className="module-card__row">
+                          <span>Usuário</span>
+                          <strong>{current.usuario}</strong>
+                        </div>
+                      </>
+                    ) : null}
                   </article>
                 );
               })}
