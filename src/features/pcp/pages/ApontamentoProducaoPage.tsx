@@ -225,28 +225,41 @@ const resolveListRow = (row: any) => {
     inicioHora: inicioDataHora.time || inicioHora,
     fimData: fimDataHora.date || fimData,
     fimHora: fimDataHora.time || fimHora,
-    qtdProduzida: getRowText(
-      row,
-      [
-        'qtd_Produzida',
-        'Qtd_Produzida',
-        'qtdProduzida',
-        'qtd_Apontada',
-        'Qtd_Apontada',
-        'qtdApontada',
-        'quantidade_Produzida',
-        'Quantidade_Produzida',
-        'quantidadeProduzida',
-        'qtd_Boa',
-        'Qtd_Boa',
-      ],
-      '0',
-    ),
-    qtdRejeitada: getRowText(
-      row,
-      ['qtd_Rejeitada', 'Qtd_Rejeitada', 'qtdRejeitada', 'quantidade_Rejeitada', 'Quantidade_Rejeitada', 'qtd_Sucata', 'Qtd_Sucata'],
-      '0',
-    ),
+    ...(() => {
+      const tipoApontamento = String(
+        getFirstFilledValue(row, ['tipo_Apontamento', 'Tipo_Apontamento', 'tipoApontamento', 'tipo_apontamento']) ?? '',
+      ).trim();
+      const isRejeicao = tipoApontamento === '2';
+      const qtdApontada = getRowText(row, ['qtd_Apontada', 'Qtd_Apontada', 'qtdApontada', 'qtd_apontada'], '0');
+      return {
+        qtdProduzida: isRejeicao
+          ? '0'
+          : getRowText(
+            row,
+            [
+              'qtd_Produzida',
+              'Qtd_Produzida',
+              'qtdProduzida',
+              'qtd_Apontada',
+              'Qtd_Apontada',
+              'qtdApontada',
+              'quantidade_Produzida',
+              'Quantidade_Produzida',
+              'quantidadeProduzida',
+              'qtd_Boa',
+              'Qtd_Boa',
+            ],
+            '0',
+          ),
+        qtdRejeitada: isRejeicao
+          ? qtdApontada
+          : getRowText(
+            row,
+            ['qtd_Rejeitada', 'Qtd_Rejeitada', 'qtdRejeitada', 'quantidade_Rejeitada', 'Quantidade_Rejeitada', 'qtd_Sucata', 'Qtd_Sucata'],
+            '0',
+          ),
+      };
+    })(),
   };
 };
 

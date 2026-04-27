@@ -252,11 +252,10 @@ const resolveLaudoItem = (item: any, index: number) => {
 
   const valorMinimo = String(getFirstFilledValue(item, ['valor_Minimo', 'valor_minimo']) ?? '').trim();
   const valorMaximo = String(getFirstFilledValue(item, ['valor_Maximo', 'valor_maximo']) ?? '').trim();
-  const aceitaMedicoes = Boolean(
-    getFirstFilledValue(item, ['aceita_Medicoes', 'aceita_medicoes', 'aceita_Medicao', 'aceita_medicao']) ||
-      valorMinimo ||
-      valorMaximo,
-  );
+  const aceitaMedicoesRaw = getFirstFilledValue(item, ['aceita_Medicoes', 'aceita_medicoes', 'aceita_Medicao', 'aceita_medicao']);
+  const aceitaMedicoes = aceitaMedicoesRaw != null
+    ? aceitaMedicoesRaw !== false && aceitaMedicoesRaw !== 'false' && aceitaMedicoesRaw !== 0 && aceitaMedicoesRaw !== '0'
+    : Boolean(valorMinimo || valorMaximo);
 
   return {
     id: `${numItem}-${index}`,
@@ -863,10 +862,10 @@ export function FichaInspecaoPage({
         tipoAcao,
         unidadeMedida: String(
           selecionado?.unidade_Medida ??
-            selecionado?.unidade_medida ??
-            selecionado?.unid_Med_Estq ??
-            selecionado?.unid_med_estq ??
-            '',
+          selecionado?.unidade_medida ??
+          selecionado?.unid_Med_Estq ??
+          selecionado?.unid_med_estq ??
+          '',
         ),
         codigoEmpresa,
         usuarioAtual: usuario,
@@ -1031,9 +1030,8 @@ export function FichaInspecaoPage({
                 }}
               />
               <small
-                className={`module-field-error ficha-inspecao-field__error-slot${
-                  filtroErrors.dataInicio ? '' : ' ficha-inspecao-field__error-slot--empty'
-                }`}
+                className={`module-field-error ficha-inspecao-field__error-slot${filtroErrors.dataInicio ? '' : ' ficha-inspecao-field__error-slot--empty'
+                  }`}
               >
                 {filtroErrors.dataInicio || ' '}
               </small>
@@ -1051,9 +1049,8 @@ export function FichaInspecaoPage({
                 }}
               />
               <small
-                className={`module-field-error ficha-inspecao-field__error-slot${
-                  filtroErrors.dataFim ? '' : ' ficha-inspecao-field__error-slot--empty'
-                }`}
+                className={`module-field-error ficha-inspecao-field__error-slot${filtroErrors.dataFim ? '' : ' ficha-inspecao-field__error-slot--empty'
+                  }`}
               >
                 {filtroErrors.dataFim || ' '}
               </small>
@@ -1085,9 +1082,8 @@ export function FichaInspecaoPage({
                 ) : null}
               </div>
               <small
-                className={`module-field-error ficha-inspecao-field__error-slot${
-                  filtroErrors.pesquisaMaterial ? '' : ' ficha-inspecao-field__error-slot--empty'
-                }`}
+                className={`module-field-error ficha-inspecao-field__error-slot${filtroErrors.pesquisaMaterial ? '' : ' ficha-inspecao-field__error-slot--empty'
+                  }`}
               >
                 {filtroErrors.pesquisaMaterial || ' '}
               </small>
@@ -1109,9 +1105,8 @@ export function FichaInspecaoPage({
                 className={filtroErrors.situacaoLaudo ? 'is-error' : undefined}
               />
               <small
-                className={`module-field-error ficha-inspecao-field__error-slot${
-                  filtroErrors.situacaoLaudo ? '' : ' ficha-inspecao-field__error-slot--empty'
-                }`}
+                className={`module-field-error ficha-inspecao-field__error-slot${filtroErrors.situacaoLaudo ? '' : ' ficha-inspecao-field__error-slot--empty'
+                  }`}
               >
                 {filtroErrors.situacaoLaudo || ' '}
               </small>
@@ -1120,45 +1115,81 @@ export function FichaInspecaoPage({
         </AdvancedFiltersPanel>
 
         <section className="module-table list-layout-table">
-        {loading ? (
-          <p className="module-empty">Carregando fichas...</p>
-        ) : rowsFiltradas.length === 0 ? (
-          <p className="module-empty">Nenhuma ficha encontrada.</p>
-        ) : (
-          <>
-            <div className="table-scroll module-table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('data')}>
-                      Data <span>{getSortIndicator('data')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('material')}>
-                      Material <span>{getSortIndicator('material')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('descricao')}>
-                      Descrição <span>{getSortIndicator('descricao')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('lote')}>
-                      Lote <span>{getSortIndicator('lote')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('situacao')}>
-                      Situação <span>{getSortIndicator('situacao')}</span>
-                    </button>
-                  </th>
-                  <th className="module-table__actions-col">Ação</th>
-                </tr>
-              </thead>
-              <tbody>
+          {loading ? (
+            <p className="module-empty">Carregando fichas...</p>
+          ) : rowsFiltradas.length === 0 ? (
+            <p className="module-empty">Nenhuma ficha encontrada.</p>
+          ) : (
+            <>
+              <div className="table-scroll module-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('data')}>
+                          Data <span>{getSortIndicator('data')}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('material')}>
+                          Material <span>{getSortIndicator('material')}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('descricao')}>
+                          Descrição <span>{getSortIndicator('descricao')}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('lote')}>
+                          Lote <span>{getSortIndicator('lote')}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('situacao')}>
+                          Situação <span>{getSortIndicator('situacao')}</span>
+                        </button>
+                      </th>
+                      <th className="module-table__actions-col">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rowsFiltradas.map((row, index) => {
+                      const data = String(row?.data_Inspecao ?? row?.data_inspecao ?? '-');
+                      const material = String(row?.codigo_Material ?? row?.codigo_material ?? '-');
+                      const descricao = String(row?.descricao_Portug ?? row?.descricao_portug ?? '-');
+                      const lote = String(row?.codigo_Lote ?? row?.codigo_lote ?? '-');
+                      const situacao = getSituacaoLaudoLabel(row?.situacao_Laudo ?? row?.situacao_laudo ?? '-');
+                      const key = String(row?.num_Laudo ?? row?.num_laudo ?? `${material}-${lote}-${index}`);
+
+                      return (
+                        <tr key={key}>
+                          <td>{data}</td>
+                          <td>{material}</td>
+                          <td>{descricao}</td>
+                          <td>{lote}</td>
+                          <td>{situacao}</td>
+                          <td>
+                            <div className="table-actions">
+                              <button
+                                type="button"
+                                className="icon-button module-action-button module-action-button--primary"
+                                onClick={() => void abrirLaudo(row)}
+                                aria-label="Abrir laudo"
+                                title="Abrir laudo"
+                              >
+                                <IoCheckmarkDoneOutline size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="module-cards">
                 {rowsFiltradas.map((row, index) => {
                   const data = String(row?.data_Inspecao ?? row?.data_inspecao ?? '-');
                   const material = String(row?.codigo_Material ?? row?.codigo_material ?? '-');
@@ -1168,78 +1199,42 @@ export function FichaInspecaoPage({
                   const key = String(row?.num_Laudo ?? row?.num_laudo ?? `${material}-${lote}-${index}`);
 
                   return (
-                    <tr key={key}>
-                      <td>{data}</td>
-                      <td>{material}</td>
-                      <td>{descricao}</td>
-                      <td>{lote}</td>
-                      <td>{situacao}</td>
-                      <td>
-                        <div className="table-actions">
-                          <button
-                            type="button"
-                            className="icon-button module-action-button module-action-button--primary"
-                            onClick={() => void abrirLaudo(row)}
-                            aria-label="Abrir laudo"
-                            title="Abrir laudo"
-                          >
-                            <IoCheckmarkDoneOutline size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                    <article key={`card-${key}`} className="module-card">
+                      <div className="module-card__row">
+                        <span>Data</span>
+                        <strong>{data}</strong>
+                      </div>
+                      <div className="module-card__row">
+                        <span>Produto</span>
+                        <strong className="module-card__product-inline">
+                          {material !== '-' && descricao !== '-' ? `${material} - ${descricao}` : material !== '-' ? material : descricao}
+                        </strong>
+                      </div>
+                      <div className="module-card__row">
+                        <span>Lote</span>
+                        <strong>{lote}</strong>
+                      </div>
+                      <div className="module-card__row">
+                        <span>Situação</span>
+                        <strong>{situacao}</strong>
+                      </div>
+
+                      <div className="module-card__actions">
+                        <button
+                          type="button"
+                          onClick={() => void abrirLaudo(row)}
+                          aria-label="Abrir laudo"
+                          title="Abrir laudo"
+                        >
+                          <IoCheckmarkDoneOutline size={16} />
+                        </button>
+                      </div>
+                    </article>
                   );
                 })}
-              </tbody>
-            </table>
-            </div>
-
-            <div className="module-cards">
-              {rowsFiltradas.map((row, index) => {
-                const data = String(row?.data_Inspecao ?? row?.data_inspecao ?? '-');
-                const material = String(row?.codigo_Material ?? row?.codigo_material ?? '-');
-                const descricao = String(row?.descricao_Portug ?? row?.descricao_portug ?? '-');
-                const lote = String(row?.codigo_Lote ?? row?.codigo_lote ?? '-');
-                const situacao = getSituacaoLaudoLabel(row?.situacao_Laudo ?? row?.situacao_laudo ?? '-');
-                const key = String(row?.num_Laudo ?? row?.num_laudo ?? `${material}-${lote}-${index}`);
-
-                return (
-                  <article key={`card-${key}`} className="module-card">
-                    <div className="module-card__row">
-                      <span>Data</span>
-                      <strong>{data}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Produto</span>
-                      <strong className="module-card__product-inline">
-                        {material !== '-' && descricao !== '-' ? `${material} - ${descricao}` : material !== '-' ? material : descricao}
-                      </strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Lote</span>
-                      <strong>{lote}</strong>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Situação</span>
-                      <strong>{situacao}</strong>
-                    </div>
-
-                    <div className="module-card__actions">
-                      <button
-                        type="button"
-                        onClick={() => void abrirLaudo(row)}
-                        aria-label="Abrir laudo"
-                        title="Abrir laudo"
-                      >
-                        <IoCheckmarkDoneOutline size={16} />
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </>
-        )}
+              </div>
+            </>
+          )}
         </section>
       </section>
 
@@ -1363,274 +1358,307 @@ export function FichaInspecaoPage({
         </section>
       )}
 
-      {laudoOpen && selecionado && (
-        <section className="modal-backdrop" role="dialog" aria-modal="true">
-          <article className="modal-card modal-card--wide ficha-inspecao-laudo-modal">
-            <header className="modal-card__header">
-              <h2>Laudo de inspeção - {tipoLaudo.toLowerCase()}</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
-                  if (saving) return;
-                  setLaudoOpen(false);
-                  setSelecionado(null);
-                  setLaudoItens([]);
-                  setItemState({});
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
-            </header>
+      {laudoOpen && selecionado && (() => {
+        const situacaoAtual = getSituacaoLaudoLabel(selecionado?.situacao_Laudo ?? selecionado?.situacao_laudo ?? '');
+        const laudoSomenteLeitura = situacaoAtual === 'Liberado';
 
-            <div className="form-grid-3">
-              <label>
-                <span>Número laudo</span>
-                <input value={String(selecionado?.num_Laudo ?? selecionado?.num_laudo ?? '-')} readOnly />
-              </label>
-              <label>
-                <span>Lote</span>
-                <input value={String(selecionado?.codigo_Lote ?? selecionado?.codigo_lote ?? '-')} readOnly />
-              </label>
-              <label>
-                <span>Material</span>
-                <input value={String(selecionado?.codigo_Material ?? selecionado?.codigo_material ?? '-')} readOnly />
-              </label>
-              <label>
-                <span>Quantidade aprovada</span>
-                <input
-                  value={laudo.qtdAprovada}
-                  onChange={(event) => setLaudo((prev) => ({ ...prev, qtdAprovada: event.target.value }))}
-                />
-              </label>
-              <label>
-                <span>Quantidade reprovada</span>
-                <input
-                  value={laudo.qtdReprovada}
-                  onChange={(event) => setLaudo((prev) => ({ ...prev, qtdReprovada: event.target.value }))}
-                />
-              </label>
-              <label>
-                <span>Quantidade destruída</span>
-                <input
-                  value={laudo.qtdDestruida}
-                  onChange={(event) => setLaudo((prev) => ({ ...prev, qtdDestruida: event.target.value }))}
-                />
-              </label>
-              <label>
-                <span>Inspetor</span>
-                <SearchableSelect
-                  value={laudo.codigoInspetor}
-                  onChange={(nextValue) => setLaudo((prev) => ({ ...prev, codigoInspetor: nextValue }))}
-                  options={inspetorOptions}
-                  ariaLabel="Inspetor"
-                  searchPlaceholder="Pesquisar inspetor"
-                />
-              </label>
+        return (
+          <section className="modal-backdrop" role="dialog" aria-modal="true">
+            <article className="modal-card modal-card--wide ficha-inspecao-laudo-modal">
+              <header className="modal-card__header">
+                <h2>Laudo de inspeção - {tipoLaudo.toLowerCase()}{laudoSomenteLeitura ? ' (somente leitura)' : ''}</h2>
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label="Fechar"
+                  onClick={() => {
+                    if (saving) return;
+                    setLaudoOpen(false);
+                    setSelecionado(null);
+                    setLaudoItens([]);
+                    setItemState({});
+                  }}
+                >
+                  <IoCloseOutline size={18} />
+                </button>
+              </header>
 
-              {tipoLaudo === 'Recebimento' ? (
-                <>
-                  <label>
-                    <span>Motivo bloqueio</span>
-                    <SearchableSelect
-                      value={laudo.motivoBloqueio}
-                      onChange={(nextValue) => setLaudo((prev) => ({ ...prev, motivoBloqueio: nextValue }))}
-                      options={motivoBloqueioOptions}
-                      ariaLabel="Motivo bloqueio"
-                      searchPlaceholder="Pesquisar motivo bloqueio"
-                    />
-                  </label>
-                  <label>
-                    <span>Motivo sucata</span>
-                    <SearchableSelect
-                      value={laudo.motivoSucata}
-                      onChange={(nextValue) => setLaudo((prev) => ({ ...prev, motivoSucata: nextValue }))}
-                      options={motivoBloqueioOptions}
-                      ariaLabel="Motivo sucata"
-                      searchPlaceholder="Pesquisar motivo sucata"
-                    />
-                  </label>
-                  <label>
-                    <span>Demerito</span>
-                    <SearchableSelect
-                      value={laudo.motivoDemerito}
-                      onChange={(nextValue) => setLaudo((prev) => ({ ...prev, motivoDemerito: nextValue }))}
-                      options={motivoDemeritoOptions}
-                      ariaLabel="Demerito"
-                      searchPlaceholder="Pesquisar demérito"
-                    />
-                  </label>
-                </>
+              <div className="form-grid-3">
+                <label>
+                  <span>Número laudo</span>
+                  <input value={String(selecionado?.num_Laudo ?? selecionado?.num_laudo ?? '-')} readOnly />
+                </label>
+                <label>
+                  <span>Lote</span>
+                  <input value={String(selecionado?.codigo_Lote ?? selecionado?.codigo_lote ?? '-')} readOnly />
+                </label>
+                <label>
+                  <span>Material</span>
+                  <input value={String(selecionado?.codigo_Material ?? selecionado?.codigo_material ?? '-')} readOnly />
+                </label>
+                <label>
+                  <span>Qtd. laudo</span>
+                  <input value={String(selecionado?.qtd_Laudo ?? selecionado?.qtd_laudo ?? '-')} readOnly />
+                </label>
+                <label>
+                  <span>Quantidade aprovada</span>
+                  <input
+                    value={laudo.qtdAprovada}
+                    readOnly={laudoSomenteLeitura}
+                    onChange={laudoSomenteLeitura ? undefined : (event) => setLaudo((prev) => ({ ...prev, qtdAprovada: event.target.value }))}
+                  />
+                </label>
+                <label>
+                  <span>Quantidade reprovada</span>
+                  <input
+                    value={laudo.qtdReprovada}
+                    readOnly={laudoSomenteLeitura}
+                    onChange={laudoSomenteLeitura ? undefined : (event) => setLaudo((prev) => ({ ...prev, qtdReprovada: event.target.value }))}
+                  />
+                </label>
+                <label>
+                  <span>Quantidade destruída</span>
+                  <input
+                    value={laudo.qtdDestruida}
+                    readOnly={laudoSomenteLeitura}
+                    onChange={laudoSomenteLeitura ? undefined : (event) => setLaudo((prev) => ({ ...prev, qtdDestruida: event.target.value }))}
+                  />
+                </label>
+                <label>
+                  <span>Inspetor</span>
+                  <SearchableSelect
+                    value={laudo.codigoInspetor}
+                    onChange={(nextValue) => setLaudo((prev) => ({ ...prev, codigoInspetor: nextValue }))}
+                    options={inspetorOptions}
+                    ariaLabel="Inspetor"
+                    searchPlaceholder="Pesquisar inspetor"
+                    disabled={laudoSomenteLeitura}
+                  />
+                </label>
+
+                {tipoLaudo === 'Recebimento' ? (
+                  <>
+                    <label>
+                      <span>Motivo bloqueio</span>
+                      <SearchableSelect
+                        value={laudo.motivoBloqueio}
+                        onChange={(nextValue) => setLaudo((prev) => ({ ...prev, motivoBloqueio: nextValue }))}
+                        options={motivoBloqueioOptions}
+                        ariaLabel="Motivo bloqueio"
+                        searchPlaceholder="Pesquisar motivo bloqueio"
+                        disabled={laudoSomenteLeitura}
+                      />
+                    </label>
+                    <label>
+                      <span>Motivo sucata</span>
+                      <SearchableSelect
+                        value={laudo.motivoSucata}
+                        onChange={(nextValue) => setLaudo((prev) => ({ ...prev, motivoSucata: nextValue }))}
+                        options={motivoBloqueioOptions}
+                        ariaLabel="Motivo sucata"
+                        searchPlaceholder="Pesquisar motivo sucata"
+                        disabled={laudoSomenteLeitura}
+                      />
+                    </label>
+                    <label>
+                      <span>Demerito</span>
+                      <SearchableSelect
+                        value={laudo.motivoDemerito}
+                        onChange={(nextValue) => setLaudo((prev) => ({ ...prev, motivoDemerito: nextValue }))}
+                        options={motivoDemeritoOptions}
+                        ariaLabel="Demerito"
+                        searchPlaceholder="Pesquisar demérito"
+                        disabled={laudoSomenteLeitura}
+                      />
+                    </label>
+                  </>
+                ) : null}
+
+                <div className="form-grid-3__full">
+                  <span>Itens para apontamento</span>
+                  {laudoItensLoading ? (
+                    <p className="module-empty">Carregando itens...</p>
+                  ) : laudoItens.length === 0 ? (
+                    <p className="module-empty">Nenhum item de apontamento encontrado para este laudo.</p>
+                  ) : (
+                    <div className="pedido-liberacao-itens-list ficha-inspecao-laudo-itens-list">
+                      {laudoItens.map((item, index) => {
+                        const state = itemState[String(item.numItem)] || { equipamento: '', resultado: 0 };
+                        return (
+                          <article className="pedido-liberacao-item-card ficha-inspecao-laudo-item-card" key={item.id || `laudo-item-${index}`}>
+                            <div className="pedido-liberacao-item-row ficha-inspecao-laudo-item-card__header">
+                              <h3 className="ficha-inspecao-laudo-item-card__title">
+                                Item {item.numItemExib || item.numItem}
+                                <span className="ficha-inspecao-laudo-item-card__result-icon">{getResultadoIcon(state.resultado)}</span>
+                              </h3>
+                              <button
+                                type="button"
+                                className="secondary-button ficha-inspecao-laudo-item-card__measure-button"
+                                onClick={() => void abrirMedicoes(item)}
+                                disabled={!item.aceitaMedicoes}
+                              >
+                                <IoAddCircleOutline size={16} /> Medições
+                              </button>
+                            </div>
+
+                            <p className="ficha-inspecao-laudo-item-card__description">{item.descricao}</p>
+
+                            <div className="pedido-liberacao-item-row ficha-inspecao-laudo-item-card__fields">
+                              <label className="ficha-inspecao-laudo-item-card__field">
+                                <span>Equipamento</span>
+                                <input
+                                  value={state.equipamento}
+                                  readOnly={laudoSomenteLeitura}
+                                  onChange={laudoSomenteLeitura ? undefined : (event) => updateItemField(item.numItem, 'equipamento', event.target.value)}
+                                  placeholder="Equipamento"
+                                />
+                              </label>
+
+                              <label className="ficha-inspecao-laudo-item-card__field">
+                                <span>Resultado</span>
+                                <SearchableSelect
+                                  value={String(state.resultado)}
+                                  onChange={(nextValue) => updateItemField(item.numItem, 'resultado', Number(nextValue || '0'))}
+                                  options={RESULTADO_OPTIONS}
+                                  ariaLabel={`Resultado item ${item.numItemExib || item.numItem}`}
+                                  searchPlaceholder="Pesquisar resultado"
+                                  disabled={laudoSomenteLeitura}
+                                />
+                              </label>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="form-actions">
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => {
+                    if (saving) return;
+                    setLaudoOpen(false);
+                    setSelecionado(null);
+                    setLaudoItens([]);
+                    setItemState({});
+                  }}
+                  disabled={saving}
+                >
+                  {laudoSomenteLeitura ? 'Fechar' : 'Cancelar'}
+                </button>
+                {!laudoSomenteLeitura ? (
+                  <>
+                    <button className="secondary-button" type="button" onClick={() => void salvarLaudo('Salvar')} disabled={saving}>
+                      {saving ? 'Salvando...' : 'Salvar'}
+                    </button>
+                    <button className="primary-button" type="button" onClick={() => void salvarLaudo('Confirmar')} disabled={saving}>
+                      {saving ? 'Confirmando...' : 'Confirmar'}
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            </article>
+          </section>
+        );
+      })()}
+
+      {medicoesOpen && medicoesItem ? (() => {
+        const medicoesSomenteLeitura = getSituacaoLaudoLabel(selecionado?.situacao_Laudo ?? selecionado?.situacao_laudo ?? '') === 'Liberado';
+
+        return (
+          <section className="modal-backdrop" role="dialog" aria-modal="true">
+            <article className="modal-card ficha-inspecao-medicoes-modal">
+              <header className="modal-card__header">
+                <h2>Medições do item {medicoesItem.numItemExib || medicoesItem.numItem}{medicoesSomenteLeitura ? ' (somente leitura)' : ''}</h2>
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label="Fechar"
+                  onClick={() => {
+                    if (savingMedicoes) return;
+                    setMedicoesOpen(false);
+                    setMedicoesItem(null);
+                  }}
+                >
+                  <IoCloseOutline size={18} />
+                </button>
+              </header>
+
+              {!medicoesSomenteLeitura ? (
+                <div className="ficha-inspecao-medicoes-modal__input-row">
+                  <input
+                    className="ficha-inspecao-medicoes-modal__value-input"
+                    value={medicaoAtual}
+                    onChange={(event) => setMedicaoAtual(event.target.value)}
+                    placeholder="Valor"
+                  />
+                  <button
+                    className="secondary-button ficha-inspecao-medicoes-modal__add-button"
+                    type="button"
+                    onClick={() => {
+                      const value = medicaoAtual.trim();
+                      if (!value) return;
+                      setMedicoesValores((prev) => [...prev, value]);
+                      setMedicaoAtual('');
+                    }}
+                  >
+                    Adicionar
+                  </button>
+                </div>
               ) : null}
 
-              <div className="form-grid-3__full">
-                <span>Itens para apontamento</span>
-                {laudoItensLoading ? (
-                  <p className="module-empty">Carregando itens...</p>
-                ) : laudoItens.length === 0 ? (
-                  <p className="module-empty">Nenhum item de apontamento encontrado para este laudo.</p>
-                ) : (
-                  <div className="pedido-liberacao-itens-list ficha-inspecao-laudo-itens-list">
-                    {laudoItens.map((item, index) => {
-                      const state = itemState[String(item.numItem)] || { equipamento: '', resultado: 0 };
-                      return (
-                        <article className="pedido-liberacao-item-card ficha-inspecao-laudo-item-card" key={item.id || `laudo-item-${index}`}>
-                          <div className="pedido-liberacao-item-row ficha-inspecao-laudo-item-card__header">
-                            <h3 className="ficha-inspecao-laudo-item-card__title">Item {item.numItemExib || item.numItem}</h3>
-                            <button
-                              type="button"
-                              className="secondary-button ficha-inspecao-laudo-item-card__measure-button"
-                              onClick={() => void abrirMedicoes(item)}
-                              disabled={!item.aceitaMedicoes}
-                            >
-                              <IoAddCircleOutline size={16} /> Medições
-                            </button>
-                          </div>
-
-                          <p className="ficha-inspecao-laudo-item-card__description">{item.descricao}</p>
-
-                          <div className="pedido-liberacao-item-row ficha-inspecao-laudo-item-card__fields">
-                            <label className="ficha-inspecao-laudo-item-card__field">
-                              <span>Equipamento</span>
-                              <input
-                                value={state.equipamento}
-                                onChange={(event) => updateItemField(item.numItem, 'equipamento', event.target.value)}
-                                placeholder="Equipamento"
-                              />
-                            </label>
-
-                            <label className="ficha-inspecao-laudo-item-card__field">
-                              <span>Resultado</span>
-                              <SearchableSelect
-                                value={String(state.resultado)}
-                                onChange={(nextValue) => updateItemField(item.numItem, 'resultado', Number(nextValue || '0'))}
-                                options={RESULTADO_OPTIONS}
-                                ariaLabel={`Resultado item ${item.numItemExib || item.numItem}`}
-                                searchPlaceholder="Pesquisar resultado"
-                              />
-                            </label>
-
-                            <div className="ficha-inspecao-laudo-item-card__result-icon">{getResultadoIcon(state.resultado)}</div>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                )}
+              <div className="ficha-inspecao-medicoes-modal__list-wrapper">
+                <strong className="ficha-inspecao-medicoes-modal__list-title">Valores adicionados</strong>
+                <div className="pedido-liberacao-itens-list ficha-inspecao-medicoes-modal__list">
+                  {medicoesValores.length === 0 ? (
+                    <p className="module-empty">Nenhuma medição informada.</p>
+                  ) : (
+                    medicoesValores.map((valor, index) => (
+                      <div className="ficha-inspecao-medicoes-modal__chip" key={`medicao-${index}`}>
+                        <strong>{valor}</strong>
+                        {!medicoesSomenteLeitura ? (
+                          <button
+                            type="button"
+                            className="icon-button ficha-inspecao-medicoes-modal__chip-remove"
+                            aria-label="Remover medição"
+                            onClick={() => setMedicoesValores((prev) => prev.filter((_, idx) => idx !== index))}
+                          >
+                            <IoCloseCircleOutline size={18} />
+                          </button>
+                        ) : null}
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div className="form-actions">
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={() => {
-                  if (saving) return;
-                  setLaudoOpen(false);
-                  setSelecionado(null);
-                  setLaudoItens([]);
-                  setItemState({});
-                }}
-                disabled={saving}
-              >
-                Cancelar
-              </button>
-              <button className="secondary-button" type="button" onClick={() => void salvarLaudo('Salvar')} disabled={saving}>
-                {saving ? 'Salvando...' : 'Salvar'}
-              </button>
-              <button className="primary-button" type="button" onClick={() => void salvarLaudo('Confirmar')} disabled={saving}>
-                {saving ? 'Confirmando...' : 'Confirmar'}
-              </button>
-            </div>
-          </article>
-        </section>
-      )}
-
-      {medicoesOpen && medicoesItem ? (
-        <section className="modal-backdrop" role="dialog" aria-modal="true">
-          <article className="modal-card ficha-inspecao-medicoes-modal">
-            <header className="modal-card__header">
-              <h2>Medições do item {medicoesItem.numItemExib || medicoesItem.numItem}</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
-                  if (savingMedicoes) return;
-                  setMedicoesOpen(false);
-                  setMedicoesItem(null);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
-            </header>
-
-            <div className="ficha-inspecao-medicoes-modal__input-row">
-              <input
-                className="ficha-inspecao-medicoes-modal__value-input"
-                value={medicaoAtual}
-                onChange={(event) => setMedicaoAtual(event.target.value)}
-                placeholder="Valor"
-              />
-              <button
-                className="secondary-button ficha-inspecao-medicoes-modal__add-button"
-                type="button"
-                onClick={() => {
-                  const value = medicaoAtual.trim();
-                  if (!value) return;
-                  setMedicoesValores((prev) => [...prev, value]);
-                  setMedicaoAtual('');
-                }}
-              >
-                Adicionar
-              </button>
-            </div>
-
-            <div className="ficha-inspecao-medicoes-modal__list-wrapper">
-              <strong className="ficha-inspecao-medicoes-modal__list-title">Valores adicionados</strong>
-              <div className="pedido-liberacao-itens-list ficha-inspecao-medicoes-modal__list">
-              {medicoesValores.length === 0 ? (
-                <p className="module-empty">Nenhuma medição informada.</p>
-              ) : (
-                medicoesValores.map((valor, index) => (
-                  <div className="ficha-inspecao-medicoes-modal__chip" key={`medicao-${index}`}>
-                    <strong>{valor}</strong>
-                    <button
-                      type="button"
-                      className="icon-button ficha-inspecao-medicoes-modal__chip-remove"
-                      aria-label="Remover medição"
-                      onClick={() => setMedicoesValores((prev) => prev.filter((_, idx) => idx !== index))}
-                    >
-                      <IoCloseCircleOutline size={18} />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-            </div>
-
-            <div className="form-actions ficha-inspecao-medicoes-modal__actions">
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={() => {
-                  if (savingMedicoes) return;
-                  setMedicoesOpen(false);
-                  setMedicoesItem(null);
-                  setMedicoesValores(medicoesInicial);
-                }}
-                disabled={savingMedicoes}
-              >
-                Cancelar
-              </button>
-              <button className="primary-button" type="button" onClick={() => void salvarMedicoes()} disabled={savingMedicoes}>
-                {savingMedicoes ? 'Salvando...' : 'Salvar medições'}
-              </button>
-            </div>
-          </article>
-        </section>
-      ) : null}
+              <div className="form-actions ficha-inspecao-medicoes-modal__actions">
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => {
+                    if (savingMedicoes) return;
+                    setMedicoesOpen(false);
+                    setMedicoesItem(null);
+                    setMedicoesValores(medicoesInicial);
+                  }}
+                  disabled={savingMedicoes}
+                >
+                  {medicoesSomenteLeitura ? 'Fechar' : 'Cancelar'}
+                </button>
+                {!medicoesSomenteLeitura ? (
+                  <button className="primary-button" type="button" onClick={() => void salvarMedicoes()} disabled={savingMedicoes}>
+                    {savingMedicoes ? 'Salvando...' : 'Salvar medições'}
+                  </button>
+                ) : null}
+              </div>
+            </article>
+          </section>
+        );
+      })() : null}
     </main>
   );
 }
