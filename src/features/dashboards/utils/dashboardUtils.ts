@@ -88,6 +88,15 @@ export const monthStartPtBr = () => {
   return `${day}/${month}/${year}`;
 };
 
+export const monthEndPtBr = () => {
+  const now = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const day = String(lastDay).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const year = String(now.getFullYear());
+  return `${day}/${month}/${year}`;
+};
+
 export const sortRows = (rows: DashboardRow[], measureKey?: string) => {
   return [...rows].sort((a, b) => {
     const orderA = Number(a.order ?? 0);

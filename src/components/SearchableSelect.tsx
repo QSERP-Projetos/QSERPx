@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { IoChevronDownOutline, IoChevronUpOutline } from 'react-icons/io5';
 
 export type SearchableSelectOption = {
@@ -43,8 +44,10 @@ export function SearchableSelect({
   const [query, setQuery] = useState('');
 
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const listboxId = useId();
+  const [popoverStyle, setPopoverStyle] = useState<{ top: number; left: number; width: number; maxHeight: number; renderUp: boolean } | null>(null);
 
   const selectedOption = useMemo(() => options.find((option) => option.value === value) ?? null, [options, value]);
 
@@ -66,6 +69,7 @@ export function SearchableSelect({
       const target = event.target;
       if (!(target instanceof Node)) return;
       if (rootRef.current?.contains(target)) return;
+      if (popoverRef.current?.contains(target)) return;
       setIsOpen(false);
       setQuery('');
     };
@@ -84,6 +88,41 @@ export function SearchableSelect({
 
     return () => window.clearTimeout(timer);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const updatePopoverPosition = () => {
+      const trigger = rootRef.current;
+      if (!trigger) return;
+
+      const rect = trigger.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
+      const horizontalPadding = 12;
+
+      const width = Math.min(rect.width, viewportWidth - horizontalPadding * 2);
+      const left = Math.max(horizontalPadding, Math.min(rect.left, viewportWidth - width - horizontalPadding));
+
+      const spaceBelow = Math.max(160, viewportHeight - rect.bottom - 14);
+      const spaceAbove = Math.max(160, rect.top - 14);
+      const shouldDropUp = dropUp || spaceBelow < 220;
+
+      const maxHeight = Math.max(160, shouldDropUp ? spaceAbove : spaceBelow);
+      const top = shouldDropUp ? rect.top - 6 : rect.bottom + 6;
+
+      setPopoverStyle({ top, left, width, maxHeight, renderUp: shouldDropUp });
+    };
+
+    updatePopoverPosition();
+    window.addEventListener('resize', updatePopoverPosition);
+    window.addEventListener('scroll', updatePopoverPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePopoverPosition);
+      window.removeEventListener('scroll', updatePopoverPosition, true);
+    };
+  }, [dropUp, isOpen]);
 
   const close = () => {
     setIsOpen(false);
@@ -118,7 +157,68 @@ export function SearchableSelect({
 
   const wrapperClassName = className ? `searchable-select ${className}` : 'searchable-select';
   const controlClassName = `searchable-select__control${isOpen ? ' is-open' : ''}`;
-  const popoverClassName = `searchable-select__popover${dropUp ? ' searchable-select__popover--drop-up' : ''}`;
+  const popoverClassName = `searchable-select__popover searchable-select__popover--portal${dropUp ? ' searchable-select__popover--drop-up' : ''}`;
+
+  const shouldRenderPortal = isOpen && typeof document !== 'undefined';
+
+  const popoverNode = (
+    <div
+      ref={popoverRef}
+      className={popoverClassName}
+      style={
+        popoverStyle
+          ? {
+              position: 'fixed',
+              left: `${popoverStyle.left}px`,
+              width: `${popoverStyle.width}px`,
+              top: popoverStyle.renderUp ? undefined : `${popoverStyle.top}px`,
+              bottom: popoverStyle.renderUp ? `${Math.max(12, window.innerHeight - popoverStyle.top)}px` : undefined,
+            }
+          : undefined
+      }
+    >
+      <input
+        ref={searchInputRef}
+        className="search-input"
+        type="search"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        onKeyDown={handleSearchKeyDown}
+        placeholder={searchPlaceholder}
+        aria-label={searchPlaceholder}
+      />
+
+      <ul
+        className="searchable-select__list"
+        role="listbox"
+        id={listboxId}
+        aria-label={ariaLabel || 'Opcoes'}
+        style={popoverStyle ? { maxHeight: `${Math.max(120, popoverStyle.maxHeight - 70)}px` } : undefined}
+      >
+        {filteredOptions.length === 0 ? (
+          <li className="searchable-select__empty">{emptyText}</li>
+        ) : (
+          filteredOptions.map((option) => {
+            const isActive = option.value === value;
+
+            return (
+              <li key={`${option.value}-${option.label}`}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={isActive}
+                  className={`searchable-select__option${isActive ? ' active' : ''}`}
+                  onClick={() => handleSelectValue(option.value)}
+                >
+                  {option.label}
+                </button>
+              </li>
+            );
+          })
+        )}
+      </ul>
+    </div>
+  );
 
   return (
     <div className={wrapperClassName} ref={rootRef}>
@@ -161,44 +261,7 @@ export function SearchableSelect({
         </span>
       </button>
 
-      {isOpen && (
-        <div className={popoverClassName}>
-          <input
-            ref={searchInputRef}
-            className="search-input"
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={handleSearchKeyDown}
-            placeholder={searchPlaceholder}
-            aria-label={searchPlaceholder}
-          />
-
-          <ul className="searchable-select__list" role="listbox" id={listboxId} aria-label={ariaLabel || 'Opcoes'}>
-            {filteredOptions.length === 0 ? (
-              <li className="searchable-select__empty">{emptyText}</li>
-            ) : (
-              filteredOptions.map((option) => {
-                const isActive = option.value === value;
-
-                return (
-                  <li key={`${option.value}-${option.label}`}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={isActive}
-                      className={`searchable-select__option${isActive ? ' active' : ''}`}
-                      onClick={() => handleSelectValue(option.value)}
-                    >
-                      {option.label}
-                    </button>
-                  </li>
-                );
-              })
-            )}
-          </ul>
-        </div>
-      )}
+      {shouldRenderPortal ? createPortal(popoverNode, document.body) : null}
     </div>
   );
 }

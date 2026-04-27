@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   IoAlertCircleOutline,
   IoArrowBack,
+  IoChevronDownOutline,
+  IoChevronUpOutline,
   IoFilterOutline,
   IoRefreshOutline,
   IoStatsChartOutline,
@@ -26,7 +28,17 @@ import type {
   DashboardTableColumn,
   Option,
 } from '../types';
-import { groupSum, limitRowsForPie, normalizeText, parseDateStrict, sortRows, toApiDate, toNumber, todayPtBr } from '../utils/dashboardUtils';
+import {
+  groupSum,
+  limitRowsForPie,
+  monthEndPtBr,
+  monthStartPtBr,
+  normalizeText,
+  parseDateStrict,
+  sortRows,
+  toApiDate,
+  toNumber,
+} from '../utils/dashboardUtils';
 
 type FinanceiroBase = 'receitas' | 'despesas' | 'comparativo';
 type FinanceiroGroup = 'mes' | 'banco' | 'pessoa' | 'tipo' | 'lancamento' | 'vendedor' | 'cliente' | 'regiao';
@@ -310,18 +322,20 @@ export function DashboardFinanceiroPage() {
 
   const codigoEmpresa = useMemo(() => String(GlobalConfig.getCodEmpresa() ?? ''), []);
 
-  const [appliedDataDe, setAppliedDataDe] = useState(todayPtBr());
-  const [appliedDataAte, setAppliedDataAte] = useState(todayPtBr());
-  const [draftDataDe, setDraftDataDe] = useState(todayPtBr());
-  const [draftDataAte, setDraftDataAte] = useState(todayPtBr());
+  const [appliedDataDe, setAppliedDataDe] = useState(monthStartPtBr());
+  const [appliedDataAte, setAppliedDataAte] = useState(monthEndPtBr());
+  const [draftDataDe, setDraftDataDe] = useState(monthStartPtBr());
+  const [draftDataAte, setDraftDataAte] = useState(monthEndPtBr());
   const [errors, setErrors] = useState<DashboardDateErrors>({});
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [chartType, setChartType] = useState<DashboardChartType>('bar');
+  const [chartType, setChartType] = useState<DashboardChartType>('pie');
   const [selectedData, setSelectedData] = useState<FinanceiroBase>('comparativo');
   const [groupBy, setGroupBy] = useState<FinanceiroGroup>('mes');
   const [dependentValue, setDependentValue] = useState('todos');
   const [metric, setMetric] = useState<FinanceiroMetric>('saldo');
+  const [mainChartCollapsed, setMainChartCollapsed] = useState(false);
+  const [topChartCollapsed, setTopChartCollapsed] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
@@ -332,6 +346,7 @@ export function DashboardFinanceiroPage() {
     FluxoCaixaDespesas: [],
   });
 
+  const initialFetchRef = useRef(false);
   const requestIdRef = useRef(0);
 
   const groupOptions = useMemo<Option[]>(() => {
@@ -458,6 +473,14 @@ export function DashboardFinanceiroPage() {
     },
     [codigoEmpresa, showToast],
   );
+
+  useEffect(() => {
+    if (initialFetchRef.current) return;
+    if (!appliedDataDe || !appliedDataAte) return;
+
+    initialFetchRef.current = true;
+    void fetchDashboard({ dataDe: appliedDataDe, dataAte: appliedDataAte });
+  }, [appliedDataAte, appliedDataDe, fetchDashboard]);
 
   const filteredPayload = useMemo<DashboardFinanceiroResponse>(() => {
     const receitas = filterByDependent(payload.FluxoCaixaReceitas ?? [], groupBy, dependentValue);
@@ -656,6 +679,8 @@ export function DashboardFinanceiroPage() {
           </button>
         </div>
 
+        <p className="dashboard-period-range">Período: {appliedDataDe} - {appliedDataAte}</p>
+
         {errorMessage ? <p className="status-box status-box--error">{errorMessage}</p> : null}
         {loading ? <p className="module-empty">Carregando dashboard financeiro...</p> : null}
 
@@ -679,19 +704,43 @@ export function DashboardFinanceiroPage() {
 
             <section className="dashboard-chart-grid">
               <article className="card dashboard-chart-card">
-                <header className="dashboard-section-header">
-                  <h2>Visualização principal</h2>
-                  <p>Os gráficos reagem ao tipo de visualização, agrupamento e filtro selecionado.</p>
+                <header className="dashboard-section-header dashboard-section-header--collapsible">
+                  <div>
+                    <h2>Visualização principal</h2>
+                    <p>Os gráficos reagem ao tipo de visualização, agrupamento e filtro selecionado.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="home-dashboard-card__collapse"
+                    onClick={() => setMainChartCollapsed((prev) => !prev)}
+                    aria-label={mainChartCollapsed ? 'Expandir visualização principal' : 'Encolher visualização principal'}
+                    title={mainChartCollapsed ? 'Expandir visualização principal' : 'Encolher visualização principal'}
+                  >
+                    {mainChartCollapsed ? <IoChevronDownOutline size={18} /> : <IoChevronUpOutline size={18} />}
+                  </button>
                 </header>
-                <DashboardChart chartType={chartType} rows={chartRows} series={processed.series} xKey="label" />
+                {!mainChartCollapsed ? <DashboardChart chartType={chartType} rows={chartRows} series={processed.series} xKey="label" /> : null}
               </article>
 
               <article className="card dashboard-chart-card">
-                <header className="dashboard-section-header">
-                  <h2>Top agrupamentos</h2>
-                  <p>Resumo dos maiores valores do agrupamento atual.</p>
+                <header className="dashboard-section-header dashboard-section-header--collapsible">
+                  <div>
+                    <h2>Top agrupamentos</h2>
+                    <p>Resumo dos maiores valores do agrupamento atual.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="home-dashboard-card__collapse"
+                    onClick={() => setTopChartCollapsed((prev) => !prev)}
+                    aria-label={topChartCollapsed ? 'Expandir top agrupamentos' : 'Encolher top agrupamentos'}
+                    title={topChartCollapsed ? 'Expandir top agrupamentos' : 'Encolher top agrupamentos'}
+                  >
+                    {topChartCollapsed ? <IoChevronDownOutline size={18} /> : <IoChevronUpOutline size={18} />}
+                  </button>
                 </header>
-                <DashboardChart chartType="bar-horizontal" rows={secondaryChartRows} series={processed.series} xKey="label" />
+                {!topChartCollapsed ? (
+                  <DashboardChart chartType="bar-horizontal" rows={secondaryChartRows} series={processed.series} xKey="label" />
+                ) : null}
               </article>
             </section>
 

@@ -20,10 +20,11 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
+  const isDashboardCode = normalizedCode.startsWith('DSB');
 
   const codeRouteMap: Record<string, string> = {
-    DSB001: ROUTES.dashboardFinanceiro,
-    DSB002: ROUTES.dashboardVendas,
+    DSB002: ROUTES.dashboardFinanceiro,
+    DSB003: ROUTES.dashboardVendas,
     VEN001: ROUTES.pedidoVendaRepresentantes,
     VEN002: ROUTES.pedidoVenda,
     VEN003: ROUTES.pedidoVenda,
@@ -41,6 +42,13 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
     SER003: ROUTES.servicoOrdens,
     MAN001: ROUTES.manutencaoOrdens,
   };
+
+  const dashboardRouteByTitle =
+    isDashboardCode && normalizedTitle.includes('finance')
+      ? ROUTES.dashboardFinanceiro
+      : isDashboardCode && normalizedTitle.includes('venda')
+        ? ROUTES.dashboardVendas
+        : undefined;
 
   const routeByCode = codeRouteMap[normalizedCode];
   const routeByTitle =
@@ -77,7 +85,7 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
       ? ROUTES.qualidadeFichaRecebimento
       : undefined);
 
-  return routeByCode || routeByTitle;
+  return dashboardRouteByTitle || routeByTitle || routeByCode;
 };
 
 const isTipoApontamentoTransaction = (transactionCode: string, title: string) => {
@@ -205,9 +213,26 @@ export function AppShellLayout() {
   };
 
   const handleNavigateTransaction = (transactionCode: string, title: string) => {
+    const normalizedCode = String(transactionCode || '').toUpperCase();
+    const normalizedTitle = String(title || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    const isDashboardCode = normalizedCode.startsWith('DSB');
+
     if (isTipoApontamentoTransaction(transactionCode, title)) {
       setMobileNavOpen(false);
       setTipoApontamentoModalOpen(true);
+      return;
+    }
+
+    if (
+      (isDashboardCode && normalizedTitle.includes('compr')) ||
+      (isDashboardCode && normalizedTitle.includes('pcp')) ||
+      normalizedCode === 'DSB001'
+    ) {
+      setMobileNavOpen(false);
+      showToast('Este dashboard ainda não existe na web.', 'info');
       return;
     }
 

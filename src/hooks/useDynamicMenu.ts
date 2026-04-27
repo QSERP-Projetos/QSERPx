@@ -21,6 +21,16 @@ const menuConfigs = [
   { id: 'seguranca', title: 'Segurança', icon: 'shield-checkmark-outline', code: 'SEG' },
 ];
 
+const normalizeDashboardTitle = (rawTitle: string) => {
+  const sanitized = String(rawTitle || '')
+    .replace(/^\s*dashboard\s*[-:/]?\s*/i, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  if (!sanitized) return 'Dashboard';
+  return sanitized;
+};
+
 export const useDynamicMenu = () => {
   const [menus, setMenus] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,12 +62,14 @@ export const useDynamicMenu = () => {
                   it?.nome_Formulario ?? it?.Nome_Formulario ?? it?.nome_formulario ?? transactionCode,
                 ).trim();
                 const normalizedTitle = rawTitle.toLowerCase();
-                const title =
+                const baseTitle =
                   transactionCode.toUpperCase() === 'CFG008' ||
                   normalizedTitle === 'sessoes qserpx' ||
                   normalizedTitle === 'sessões qserpx'
                     ? 'Sessões'
                     : rawTitle;
+
+                const title = cfg.code === 'DSB' ? normalizeDashboardTitle(baseTitle) : baseTitle;
 
                 return { title, transactionCode };
               });

@@ -3,291 +3,183 @@ import { useNavigate } from 'react-router-dom';
 import {
   IoAlertCircleOutline,
   IoArrowBack,
+  IoChevronDownOutline,
+  IoChevronUpOutline,
+  IoDownloadOutline,
   IoFilterOutline,
   IoRefreshOutline,
   IoStatsChartOutline,
 } from 'react-icons/io5';
+import * as XLSX from 'xlsx';
 import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
 import { GlobalConfig } from '../../../services/globalConfig';
 import { CustomDatePicker } from '../../../components/CustomDatePicker';
-import { SearchableSelect } from '../../../components/SearchableSelect';
 import { AdvancedFiltersPanel } from '../../../components/AdvancedFiltersPanel';
-import { DashboardChart } from '../components/DashboardChartPanel';
 import { DashboardKpiCards } from '../components/DashboardKpiCards';
 import { DashboardSummaryTable } from '../components/DashboardSummaryTable';
 import { getDashboardVendas, type DashboardVendasResponse } from '../services/dashboardApi';
-import type {
-  DashboardChartType,
-  DashboardDateErrors,
-  DashboardKpiCard,
-  DashboardRow,
-  DashboardSeries,
-  DashboardTableColumn,
-  Option,
-} from '../types';
-import {
-  groupSum,
-  limitRowsForPie,
-  normalizeText,
-  parseDateStrict,
-  sortRows,
-  toApiDate,
-  toNumber,
-} from '../utils/dashboardUtils';
+import type { DashboardDateErrors, DashboardKpiCard, DashboardRow, DashboardTableColumn } from '../types';
+import { chartPalette, formatCurrencyBRL, monthEndPtBr, monthStartPtBr, normalizeText, parseDateStrict, toApiDate, toNumber } from '../utils/dashboardUtils';
 
-type VendasBase = 'faturamento' | 'atraso' | 'forecast' | 'consolidado';
-type VendasGroup = 'mes' | 'vendedor' | 'regiao' | 'tipoDestinatario' | 'cliente' | 'destino' | 'resumo';
-type VendasMetric =
-  | 'valorTotal'
-  | 'valorMercadoria'
-  | 'valorImpostos'
-  | 'quantidadeRegistros'
-  | 'valorAtraso'
-  | 'clientesAtraso'
-  | 'valorPrevisto'
-  | 'comparativoFatForecast'
-  | 'comparativoAtrasoForecast';
-
-const chartTypeOptions: Option[] = [
-  { value: 'bar', label: 'Barra' },
-  { value: 'line', label: 'Linha' },
-  { value: 'pie', label: 'Pizza' },
-  { value: 'donut', label: 'Rosca' },
-  { value: 'area', label: 'Área' },
-  { value: 'bar-horizontal', label: 'Barra horizontal' },
-  { value: 'cards', label: 'Cards de indicadores' },
-  { value: 'table', label: 'Tabela resumida' },
-];
-
-const dataOptions: Option[] = [
-  { value: 'faturamento', label: 'Bloco: Faturamento' },
-  { value: 'atraso', label: 'Bloco: Atraso' },
-  { value: 'forecast', label: 'Bloco: Forecast' },
-  { value: 'consolidado', label: 'Bloco: Visão consolidada' },
-];
-
-const agrupamentoPrincipalOptions: Option[] = [
-  { value: 'vendedor', label: 'Vendedor' },
-  { value: 'regiao', label: 'Região' },
-  { value: 'cliente', label: 'Cliente' },
-];
-
-const metricOptionsByBase: Record<VendasBase, Option[]> = {
-  faturamento: [
-    { value: 'valorTotal', label: 'Faturamento total' },
-    { value: 'valorMercadoria', label: 'Mercadoria' },
-    { value: 'valorImpostos', label: 'Impostos/adicionais' },
-    { value: 'quantidadeRegistros', label: 'Quantidade de registros' },
-  ],
-  atraso: [
-    { value: 'valorAtraso', label: 'Total em atraso' },
-    { value: 'clientesAtraso', label: 'Clientes com atraso (qtd registros)' },
-  ],
-  forecast: [{ value: 'valorPrevisto', label: 'Valor previsto no forecast' }],
-  consolidado: [
-    { value: 'comparativoFatForecast', label: 'Comparação faturamento x forecast' },
-    { value: 'comparativoAtrasoForecast', label: 'Comparação atraso x forecast' },
-  ],
+type RegionSlice = {
+  key: string;
+  label: string;
+  total: number;
+  topClients: Array<{ label: string; total: number }>;
 };
 
-const getMesInfo = (item: Record<string, any>, prefix: 'faturamento' | 'forecast') => {
-  if (prefix === 'faturamento') {
-    const label = String(item?.Mes_Faturamento ?? item?.mes_Faturamento ?? item?.mesFaturamento ?? '-').trim() || '-';
-    return {
-      key: normalizeText(label) || '-',
-      label,
-      order: toNumber(item?.Ordenacao_Mes_Ano ?? item?.ordenacao_Mes_Ano ?? 0),
-    };
-  }
-
-  const label = String(item?.Mes_Ano_Entrega ?? item?.mes_Ano_Entrega ?? item?.mesAnoEntrega ?? '-').trim() || '-';
-  return {
-    key: normalizeText(label) || '-',
-    label,
-    order: toNumber(item?.Ordenacao_Mes_Ano_Entrega ?? item?.ordenacao_Mes_Ano_Entrega ?? 0),
-  };
+type ClientItemTop = {
+  key: string;
+  label: string;
+  total: number;
 };
 
-const buildVendasRows = (
-  base: VendasBase,
-  groupBy: VendasGroup,
-  metric: VendasMetric,
-  payload: DashboardVendasResponse,
-): {
-  rows: DashboardRow[];
-  series: DashboardSeries[];
-  columns: DashboardTableColumn[];
-} => {
-  const faturamento = payload.Faturamento ?? [];
-  const atraso = payload.Atraso ?? [];
-  const forecast = payload.Forecast ?? [];
+type TopClientByBillingType = {
+  key: string;
+  client: string;
+  billingType: string;
+  total: number;
+  topItems: ClientItemTop[];
+};
 
-  if (base === 'faturamento') {
-    const rows = groupSum(
-      faturamento,
-      (item) => {
-        if (groupBy === 'mes') return getMesInfo(item, 'faturamento').key;
-        if (groupBy === 'vendedor') return normalizeText(item?.Nome_Vendedor ?? item?.nome_Vendedor ?? 'sem-vendedor') || 'sem-vendedor';
-        if (groupBy === 'regiao') return normalizeText(item?.Nome_Regiao ?? item?.nome_Regiao ?? 'sem-regiao') || 'sem-regiao';
-        if (groupBy === 'cliente') return normalizeText(item?.Nome_Fantasia ?? item?.nome_Fantasia ?? 'sem-cliente') || 'sem-cliente';
-        return normalizeText(item?.Tipo_Destinatario ?? item?.tipo_Destinatario ?? 'sem-tipo') || 'sem-tipo';
-      },
-      (item) => {
-        if (groupBy === 'mes') return getMesInfo(item, 'faturamento').label;
-        if (groupBy === 'vendedor') return String(item?.Nome_Vendedor ?? item?.nome_Vendedor ?? 'Sem vendedor').trim() || 'Sem vendedor';
-        if (groupBy === 'regiao') return String(item?.Nome_Regiao ?? item?.nome_Regiao ?? 'Sem região').trim() || 'Sem região';
-        if (groupBy === 'cliente') return String(item?.Nome_Fantasia ?? item?.nome_Fantasia ?? 'Sem cliente').trim() || 'Sem cliente';
-        return String(item?.Tipo_Destinatario ?? item?.tipo_Destinatario ?? 'Sem tipo').trim() || 'Sem tipo';
-      },
-      (item) => (groupBy === 'mes' ? getMesInfo(item, 'faturamento').order : 0),
-      {
-        valorTotal: (item) => toNumber(item?.Valor_Total ?? item?.valor_Total ?? item?.valorTotal ?? 0),
-        valorMercadoria: (item) => toNumber(item?.Valor_Mercadoria ?? item?.valor_Mercadoria ?? item?.valorMercadoria ?? 0),
-        valorImpostos: (item) =>
-          toNumber(item?.Valor_Impostos_E_Adicionais ?? item?.valor_Impostos_E_Adicionais ?? item?.valorImpostosEAdicionais ?? 0),
-        quantidadeRegistros: () => 1,
-      },
-    );
+const getText = (value: unknown) => String(value ?? '').trim();
 
-    const format = metric === 'quantidadeRegistros' ? 'number' : 'currency';
-    const metricLabel = metricOptionsByBase.faturamento.find((item) => item.value === metric)?.label || 'Valor';
-
-    return {
-      rows: sortRows(rows, metric),
-      series: [{ key: metric, label: metricLabel, color: '#2563eb', format }],
-      columns: [
-        { key: 'label', label: 'Agrupamento', format: 'text' },
-        { key: metric, label: metricLabel, format },
-      ],
-    };
+const pickFirstText = (item: Record<string, any>, keys: string[], fallback = '') => {
+  for (const key of keys) {
+    const value = getText(item?.[key]);
+    if (value) return value;
   }
+  return fallback;
+};
 
-  if (base === 'atraso') {
-    const rows = groupSum(
-      atraso,
-      (item) => {
-        if (groupBy === 'cliente') return normalizeText(item?.Nome_Fantasia ?? item?.nome_Fantasia ?? 'sem-cliente') || 'sem-cliente';
-        if (groupBy === 'regiao') return normalizeText(item?.Nome_Regiao ?? item?.nome_Regiao ?? 'sem-regiao') || 'sem-regiao';
-        if (groupBy === 'vendedor') return normalizeText(item?.Nome_Vendedor ?? item?.nome_Vendedor ?? 'sem-vendedor') || 'sem-vendedor';
-        if (groupBy === 'destino') return normalizeText(item?.Destino_Pedido ?? item?.destino_Pedido ?? 'sem-destino') || 'sem-destino';
-        return normalizeText(item?.Tipo_Pedido ?? item?.tipo_Pedido ?? 'sem-tipo') || 'sem-tipo';
-      },
-      (item) => {
-        if (groupBy === 'cliente') return String(item?.Nome_Fantasia ?? item?.nome_Fantasia ?? 'Sem cliente').trim() || 'Sem cliente';
-        if (groupBy === 'regiao') return String(item?.Nome_Regiao ?? item?.nome_Regiao ?? 'Sem região').trim() || 'Sem região';
-        if (groupBy === 'vendedor') return String(item?.Nome_Vendedor ?? item?.nome_Vendedor ?? 'Sem vendedor').trim() || 'Sem vendedor';
-        if (groupBy === 'destino') return String(item?.Destino_Pedido ?? item?.destino_Pedido ?? 'Sem destino').trim() || 'Sem destino';
-        return String(item?.Tipo_Pedido ?? item?.tipo_Pedido ?? 'Sem tipo').trim() || 'Sem tipo';
-      },
-      () => 0,
-      {
-        valorAtraso: (item) => toNumber(item?.Valor_Atraso_Periodo ?? item?.valor_Atraso_Periodo ?? item?.valorAtrasoPeriodo ?? 0),
-        clientesAtraso: () => 1,
-      },
-    );
+const getRegionLabel = (item: Record<string, any>) =>
+  pickFirstText(item, ['Nome_Regiao', 'nome_Regiao', 'nomeRegiao', 'Regiao', 'regiao'], 'Sem região');
 
-    const format = metric === 'clientesAtraso' ? 'number' : 'currency';
-    const metricLabel = metricOptionsByBase.atraso.find((item) => item.value === metric)?.label || 'Valor';
-
-    return {
-      rows: sortRows(rows, metric),
-      series: [{ key: metric, label: metricLabel, color: '#ef4444', format }],
-      columns: [
-        { key: 'label', label: 'Agrupamento', format: 'text' },
-        { key: metric, label: metricLabel, format },
-      ],
-    };
-  }
-
-  if (base === 'forecast') {
-    const rows = groupSum(
-      forecast,
-      (item) => getMesInfo(item, 'forecast').key,
-      (item) => getMesInfo(item, 'forecast').label,
-      (item) => getMesInfo(item, 'forecast').order,
-      {
-        valorPrevisto: (item) => toNumber(item?.Valor_Previsto_Periodo ?? item?.valor_Previsto_Periodo ?? item?.valorPrevistoPeriodo ?? 0),
-      },
-    );
-
-    return {
-      rows: sortRows(rows, 'valorPrevisto'),
-      series: [{ key: 'valorPrevisto', label: 'Valor previsto', color: '#0ea5e9', format: 'currency' }],
-      columns: [
-        { key: 'label', label: 'Mês', format: 'text' },
-        { key: 'valorPrevisto', label: 'Valor previsto', format: 'currency' },
-      ],
-    };
-  }
-
-  if (groupBy === 'mes' && metric === 'comparativoFatForecast') {
-    const grouped = new Map<string, DashboardRow>();
-
-    for (const item of faturamento) {
-      const info = getMesInfo(item, 'faturamento');
-      const row = grouped.get(info.key) || { key: info.key, label: info.label, order: info.order, faturamento: 0, forecast: 0 };
-      row.faturamento = Number(row.faturamento ?? 0) + toNumber(item?.Valor_Total ?? item?.valor_Total ?? item?.valorTotal ?? 0);
-      if (!row.order && info.order) row.order = info.order;
-      grouped.set(info.key, row);
-    }
-
-    for (const item of forecast) {
-      const info = getMesInfo(item, 'forecast');
-      const row = grouped.get(info.key) || { key: info.key, label: info.label, order: info.order, faturamento: 0, forecast: 0 };
-      row.forecast = Number(row.forecast ?? 0) + toNumber(item?.Valor_Previsto_Periodo ?? item?.valor_Previsto_Periodo ?? 0);
-      if (!row.order && info.order) row.order = info.order;
-      grouped.set(info.key, row);
-    }
-
-    const rows = sortRows(Array.from(grouped.values()), 'faturamento');
-
-    return {
-      rows,
-      series: [
-        { key: 'faturamento', label: 'Faturamento', color: '#2563eb', format: 'currency' },
-        { key: 'forecast', label: 'Forecast', color: '#0ea5e9', format: 'currency' },
-      ],
-      columns: [
-        { key: 'label', label: 'Mês', format: 'text' },
-        { key: 'faturamento', label: 'Faturamento', format: 'currency' },
-        { key: 'forecast', label: 'Forecast', format: 'currency' },
-      ],
-    };
-  }
-
-  const totalFaturamento = faturamento.reduce(
-    (acc, item) => acc + toNumber(item?.Valor_Total ?? item?.valor_Total ?? item?.valorTotal ?? 0),
-    0,
-  );
-  const totalAtraso = atraso.reduce(
-    (acc, item) => acc + toNumber(item?.Valor_Atraso_Periodo ?? item?.valor_Atraso_Periodo ?? item?.valorAtrasoPeriodo ?? 0),
-    0,
-  );
-  const totalForecast = forecast.reduce(
-    (acc, item) => acc + toNumber(item?.Valor_Previsto_Periodo ?? item?.valor_Previsto_Periodo ?? item?.valorPrevistoPeriodo ?? 0),
-    0,
-  );
-
-  const rows: DashboardRow[] =
-    metric === 'comparativoAtrasoForecast'
-      ? [
-          { key: 'atraso', label: 'Atraso', valor: totalAtraso },
-          { key: 'forecast', label: 'Forecast', valor: totalForecast },
-        ]
-      : [
-          { key: 'faturamento', label: 'Faturamento', valor: totalFaturamento },
-          { key: 'forecast', label: 'Forecast', valor: totalForecast },
-        ];
-
-  return {
-    rows,
-    series: [{ key: 'valor', label: 'Valor', color: '#2563eb', format: 'currency' }],
-    columns: [
-      { key: 'label', label: 'Indicador', format: 'text' },
-      { key: 'valor', label: 'Valor', format: 'currency' },
+const getClientLabel = (item: Record<string, any>) =>
+  pickFirstText(
+    item,
+    [
+      'Nome_Destinatario',
+      'nome_Destinatario',
+      'nomeDestinatario',
+      'Nome_Fantasia',
+      'nome_Fantasia',
+      'nomeFantasia',
+      'Razao_Social',
+      'razao_Social',
     ],
-  };
+    'Sem cliente',
+  );
+
+const getBillingTypeLabel = (item: Record<string, any>) =>
+  pickFirstText(
+    item,
+    [
+      'Tipo_Faturamento',
+      'tipo_Faturamento',
+      'tipoFaturamento',
+      'Tipo_Destinatario',
+      'tipo_Destinatario',
+      'tipoDestinatario',
+      'Tipo_Cliente',
+      'tipo_Cliente',
+      'tipoCliente',
+    ],
+    'Sem tipo',
+  );
+
+const formatBillingTypeDisplay = (value: string) => {
+  const normalized = normalizeText(value);
+
+  if (normalized === 'c' || normalized === 'cliente' || normalized.startsWith('c ') || normalized.startsWith('cliente')) {
+    return 'Cliente';
+  }
+
+  if (normalized === 'f' || normalized === 'fornecedor' || normalized.startsWith('f ') || normalized.startsWith('fornecedor')) {
+    return 'Fornecedor';
+  }
+
+  return value || 'Sem tipo';
+};
+
+const getAtrasoValue = (item: Record<string, any>) =>
+  toNumber(
+    item?.Valor_Atraso_Periodo ??
+      item?.valor_Atraso_Periodo ??
+      item?.valorAtrasoPeriodo ??
+      item?.Valor_Atraso ??
+      item?.valor_Atraso ??
+      item?.valorAtraso ??
+      item?.Valor_Total ??
+      item?.valor_Total ??
+      item?.valorTotal ??
+      0,
+  );
+
+const getForecastValue = (item: Record<string, any>) =>
+  toNumber(
+    item?.Valor_Previsto_Periodo ??
+      item?.valor_Previsto_Periodo ??
+      item?.valorPrevistoPeriodo ??
+      item?.Valor_Forecast ??
+      item?.valor_Forecast ??
+      item?.valorForecast ??
+      item?.Valor_Total ??
+      item?.valor_Total ??
+      item?.valorTotal ??
+      0,
+  );
+
+const getMaterials = (item: Record<string, any>) => {
+  const value = item?.Materiais ?? item?.materiais;
+  return Array.isArray(value) ? value : [];
+};
+
+const readImpostosAdicionais = (item: Record<string, any>) => {
+  const directValue =
+    item?.Valor_Impostos_E_Adicionais ??
+    item?.valor_Impostos_E_Adicionais ??
+    item?.valor_Impostos_e_Adicionais ??
+    item?.valor_impostos_e_adicionais ??
+    item?.valorImpostosEAdicionais;
+
+  if (directValue !== undefined && directValue !== null && String(directValue).trim() !== '') {
+    return toNumber(directValue);
+  }
+
+  for (const [key, rawValue] of Object.entries(item ?? {})) {
+    const normalizedKey = normalizeText(key).replace(/[^a-z0-9]/g, '');
+    if (normalizedKey.includes('imposto') && normalizedKey.includes('adicion')) {
+      return toNumber(rawValue);
+    }
+  }
+
+  return 0;
+};
+
+const getProductLabel = (item: Record<string, any>) => {
+  const codigo = pickFirstText(item, ['Codigo_Material', 'codigo_Material', 'codigoMaterial', 'Codigo_Produto', 'codigo_Produto', 'codigoProduto']);
+  const descricao = pickFirstText(
+    item,
+    [
+      'Descricao_Material',
+      'descricao_Material',
+      'descricaoMaterial',
+      'Descricao_Produto',
+      'descricao_Produto',
+      'descricaoProduto',
+      'Nome_Produto',
+      'nome_Produto',
+      'nomeProduto',
+    ],
+  );
+
+  if (codigo && descricao) return `${codigo} - ${descricao}`;
+  if (descricao) return descricao;
+  if (codigo) return codigo;
+
+  return pickFirstText(item, ['Produto', 'produto'], 'Sem produto');
 };
 
 export function DashboardVendasPage() {
@@ -296,18 +188,17 @@ export function DashboardVendasPage() {
 
   const codigoEmpresa = useMemo(() => String(GlobalConfig.getCodEmpresa() ?? ''), []);
 
-  const [appliedDataDe, setAppliedDataDe] = useState('');
-  const [appliedDataAte, setAppliedDataAte] = useState('');
-  const [draftDataDe, setDraftDataDe] = useState('');
-  const [draftDataAte, setDraftDataAte] = useState('');
+  const [appliedDataDe, setAppliedDataDe] = useState(monthStartPtBr());
+  const [appliedDataAte, setAppliedDataAte] = useState(monthEndPtBr());
+  const [draftDataDe, setDraftDataDe] = useState(monthStartPtBr());
+  const [draftDataAte, setDraftDataAte] = useState(monthEndPtBr());
   const [errors, setErrors] = useState<DashboardDateErrors>({});
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [chartType, setChartType] = useState<DashboardChartType>('bar');
-  const [selectedData, setSelectedData] = useState<VendasBase>('consolidado');
-  const [groupBy, setGroupBy] = useState<VendasGroup>('vendedor');
-  const [metric, setMetric] = useState<VendasMetric>('comparativoFatForecast');
-  const [filtroDependente, setFiltroDependente] = useState('todos');
+  const [mainChartCollapsed, setMainChartCollapsed] = useState(false);
+  const [topChartCollapsed, setTopChartCollapsed] = useState(false);
+  const [activeRegionKey, setActiveRegionKey] = useState<string | null>(null);
+  const [expandedTopClients, setExpandedTopClients] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
@@ -318,73 +209,9 @@ export function DashboardVendasPage() {
     Atraso: [],
     Forecast: [],
   });
+
+  const initialFetchRef = useRef(false);
   const requestIdRef = useRef(0);
-
-  const groupOptions = useMemo(() => agrupamentoPrincipalOptions, []);
-  const metricOptions = useMemo(() => metricOptionsByBase[selectedData], [selectedData]);
-
-  const filtroDependenteMeta = useMemo(
-    () => ({
-      label: groupBy === 'regiao' ? 'Região' : groupBy === 'cliente' ? 'Cliente' : 'Vendedor',
-      allLabel: groupBy === 'regiao' ? 'Todas' : 'Todos',
-      placeholder: groupBy === 'regiao' ? 'Pesquisar região' : groupBy === 'cliente' ? 'Pesquisar cliente' : 'Pesquisar vendedor',
-    }),
-    [groupBy],
-  );
-
-  const filtroDependenteOptions = useMemo<Option[]>(() => {
-    const labels = new Set<string>();
-
-    if (groupBy === 'cliente') {
-      for (const item of payload.Atraso) {
-        const label = String(item?.Nome_Fantasia ?? item?.nome_Fantasia ?? '').trim();
-        if (label) labels.add(label);
-      }
-    } else if (groupBy === 'regiao') {
-      for (const item of payload.Faturamento) {
-        const label = String(item?.Nome_Regiao ?? item?.nome_Regiao ?? '').trim();
-        if (label) labels.add(label);
-      }
-    } else {
-      for (const item of payload.Faturamento) {
-        const label = String(item?.Nome_Vendedor ?? item?.nome_Vendedor ?? '').trim();
-        if (label) labels.add(label);
-      }
-    }
-
-    return [
-      { value: 'todos', label: filtroDependenteMeta.allLabel },
-      ...Array.from(labels)
-        .sort((a, b) => a.localeCompare(b, 'pt-BR'))
-        .map((label) => ({ value: label, label })),
-    ];
-  }, [filtroDependenteMeta.allLabel, groupBy, payload.Atraso, payload.Faturamento]);
-
-  useEffect(() => {
-    if (!metricOptions.some((item) => item.value === metric)) {
-      setMetric(metricOptions[0].value as VendasMetric);
-    }
-  }, [metric, metricOptions]);
-
-  useEffect(() => {
-    if (groupBy === 'cliente' && selectedData !== 'atraso') {
-      setSelectedData('atraso');
-    }
-  }, [groupBy, selectedData]);
-
-  useEffect(() => {
-    if (!filtroDependenteOptions.some((item) => item.value === filtroDependente)) {
-      setFiltroDependente('todos');
-    }
-  }, [filtroDependente, filtroDependenteOptions]);
-
-  useEffect(() => {
-    if (!advancedOpen) return;
-
-    setDraftDataDe(appliedDataDe);
-    setDraftDataAte(appliedDataAte);
-    setErrors({});
-  }, [advancedOpen, appliedDataAte, appliedDataDe]);
 
   const validateFilters = useCallback(() => {
     const nextErrors: DashboardDateErrors = {};
@@ -462,108 +289,291 @@ export function DashboardVendasPage() {
     }
   }, [codigoEmpresa, showToast]);
 
+  useEffect(() => {
+    if (initialFetchRef.current) return;
+    if (!appliedDataDe || !appliedDataAte) return;
+
+    initialFetchRef.current = true;
+    void fetchDashboard({ dataDe: appliedDataDe, dataAte: appliedDataAte });
+  }, [appliedDataAte, appliedDataDe, fetchDashboard]);
+
   const kpis = useMemo<DashboardKpiCard[]>(() => {
-    const matchesFilter = (value: string, selected: string) => {
-      const selectedNormalized = normalizeText(selected);
-      if (!selectedNormalized || selectedNormalized === 'todos') return true;
-      return normalizeText(value) === selectedNormalized;
-    };
+    const faturamento = payload.Faturamento ?? [];
+    const atraso = payload.Atraso ?? [];
+    const forecast = payload.Forecast ?? [];
 
-    const filteredFaturamento = payload.Faturamento.filter((item) => {
-      if (groupBy === 'cliente') return true;
-      const target = groupBy === 'regiao' ? String(item?.Nome_Regiao ?? item?.nome_Regiao ?? '').trim() : String(item?.Nome_Vendedor ?? item?.nome_Vendedor ?? '').trim();
-      return matchesFilter(target, filtroDependente);
-    });
-
-    const filteredAtraso = payload.Atraso.filter((item) => {
-      if (groupBy !== 'cliente') return true;
-      const cliente = String(item?.Nome_Fantasia ?? item?.nome_Fantasia ?? '').trim();
-      return matchesFilter(cliente, filtroDependente);
-    });
-
-    const totalFaturamento = filteredFaturamento.reduce(
+    const totalFaturamento = faturamento.reduce(
       (acc, item) => acc + toNumber(item?.Valor_Total ?? item?.valor_Total ?? item?.valorTotal ?? 0),
       0,
     );
 
-    const totalAtraso = filteredAtraso.reduce(
+    const totalAtraso = atraso.reduce(
       (acc, item) => acc + toNumber(item?.Valor_Atraso_Periodo ?? item?.valor_Atraso_Periodo ?? item?.valorAtrasoPeriodo ?? 0),
       0,
     );
 
-    const totalForecast = payload.Forecast.reduce(
+    const totalForecast = forecast.reduce(
       (acc, item) => acc + toNumber(item?.Valor_Previsto_Periodo ?? item?.valor_Previsto_Periodo ?? item?.valorPrevistoPeriodo ?? 0),
       0,
     );
 
-    const vendedores = new Set(
-      filteredFaturamento.map((item) => String(item?.Codigo_Vendedor ?? item?.codigo_Vendedor ?? item?.codigoVendedor ?? '').trim()),
+    const totalPorProduto = faturamento.reduce(
+      (acc, item) =>
+        acc +
+        toNumber(
+          item?.Valor_Mercadoria ??
+            item?.valor_Mercadoria ??
+            item?.valorMercadoria ??
+            item?.Valor_Produto ??
+            item?.valor_Produto ??
+            item?.valorProduto ??
+            0,
+        ),
+      0,
     );
 
-    const regioes = new Set(filteredFaturamento.map((item) => String(item?.Nome_Regiao ?? item?.nome_Regiao ?? '').trim()));
-    const clientesAtraso = new Set(filteredAtraso.map((item) => String(item?.Codigo_Cliente ?? item?.codigo_Cliente ?? '').trim()));
+    const totalImpostos = faturamento.reduce((acc, rawItem) => {
+      const item = (rawItem ?? {}) as Record<string, any>;
+      const impostosLinha = readImpostosAdicionais(item);
+
+      if (impostosLinha !== 0) {
+        return acc + impostosLinha;
+      }
+
+      const materiais = getMaterials(item);
+      if (!materiais.length) return acc;
+
+      const impostosMateriais = materiais.reduce((materialAcc, materialRaw) => {
+        const material = (materialRaw ?? {}) as Record<string, any>;
+        return materialAcc + readImpostosAdicionais(material);
+      }, 0);
+
+      return acc + impostosMateriais;
+    }, 0);
+
+    const clientesFaturados = new Set(
+      faturamento.map((item) => getClientLabel(item)).filter((label) => normalizeText(label) !== normalizeText('Sem cliente')),
+    );
 
     return [
       { key: 'total-faturamento', label: 'Faturamento total', value: totalFaturamento, format: 'currency' },
+      { key: 'total-por-produto', label: 'Total por produto', value: totalPorProduto, format: 'currency' },
+      { key: 'total-impostos', label: 'Total de impostos', value: totalImpostos, format: 'currency' },
       { key: 'total-atraso', label: 'Total em atraso', value: totalAtraso, format: 'currency' },
       { key: 'total-forecast', label: 'Total previsto (forecast)', value: totalForecast, format: 'currency' },
-      { key: 'qtd-vendedores', label: 'Quantidade de vendedores', value: vendedores.size, format: 'number' },
-      { key: 'qtd-regioes', label: 'Quantidade de regiões', value: regioes.size, format: 'number' },
-      { key: 'qtd-clientes-atraso', label: 'Clientes com atraso', value: clientesAtraso.size, format: 'number' },
+      { key: 'qtd-clientes-faturados', label: 'Clientes faturados', value: clientesFaturados.size, format: 'number' },
     ];
-  }, [filtroDependente, groupBy, payload]);
+  }, [payload]);
 
-  const filteredPayload = useMemo<DashboardVendasResponse>(() => {
-    const matchesFilter = (value: string, selected: string) => {
-      const selectedNormalized = normalizeText(selected);
-      if (!selectedNormalized || selectedNormalized === 'todos') return true;
-      return normalizeText(value) === selectedNormalized;
-    };
+  const regionSlices = useMemo<RegionSlice[]>(() => {
+    const regionMap = new Map<string, { label: string; total: number; clients: Map<string, number> }>();
 
-    const filteredFaturamento = payload.Faturamento.filter((item) => {
-      if (groupBy === 'cliente') return true;
-      const target = groupBy === 'regiao' ? String(item?.Nome_Regiao ?? item?.nome_Regiao ?? '').trim() : String(item?.Nome_Vendedor ?? item?.nome_Vendedor ?? '').trim();
-      return matchesFilter(target, filtroDependente);
-    });
+    for (const rawItem of payload.Faturamento ?? []) {
+      const item = (rawItem ?? {}) as Record<string, any>;
+      const regionLabel = getRegionLabel(item);
+      const clientLabel = getClientLabel(item);
+      const value = toNumber(item?.Valor_Total ?? item?.valor_Total ?? item?.valorTotal ?? 0);
+      const regionKey = normalizeText(regionLabel) || 'sem-regiao';
 
-    const filteredAtraso = payload.Atraso.filter((item) => {
-      if (groupBy !== 'cliente') return true;
-      const cliente = String(item?.Nome_Fantasia ?? item?.nome_Fantasia ?? '').trim();
-      return matchesFilter(cliente, filtroDependente);
-    });
-
-    return {
-      ...payload,
-      Faturamento: filteredFaturamento,
-      Atraso: filteredAtraso,
-    };
-  }, [filtroDependente, groupBy, payload]);
-
-  const processed = useMemo(
-    () => buildVendasRows(selectedData, groupBy, metric, filteredPayload),
-    [filteredPayload, groupBy, metric, selectedData],
-  );
-
-  const displayedRows = processed.rows;
-
-  const chartRows = useMemo(() => {
-    if ((chartType === 'pie' || chartType === 'donut') && processed.series[0]) {
-      return limitRowsForPie(displayedRows, processed.series[0].key, 8);
+      const region = regionMap.get(regionKey) || { label: regionLabel, total: 0, clients: new Map<string, number>() };
+      region.total += value;
+      region.clients.set(clientLabel, (region.clients.get(clientLabel) ?? 0) + value);
+      regionMap.set(regionKey, region);
     }
 
-    return displayedRows;
-  }, [chartType, displayedRows, processed.series]);
+    return Array.from(regionMap.entries())
+      .map(([key, region]) => ({
+        key,
+        label: region.label,
+        total: region.total,
+        topClients: Array.from(region.clients.entries())
+          .map(([label, total]) => ({ label, total }))
+          .sort((a, b) => b.total - a.total)
+          .slice(0, 3),
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [payload.Faturamento]);
 
-  const secondaryChartRows = useMemo(() => {
-    if (!processed.series[0]) return [] as DashboardRow[];
-    const metricKey = processed.series[0].key;
-    return [...displayedRows]
-      .sort((a, b) => Number(b[metricKey] ?? 0) - Number(a[metricKey] ?? 0))
-      .slice(0, 8);
-  }, [displayedRows, processed.series]);
+  const topClientsByBillingType = useMemo<TopClientByBillingType[]>(() => {
+    const topClientMap = new Map<string, { client: string; billingType: string; total: number; topItems: Map<string, { label: string; total: number }> }>();
 
-  const hasAnyData = filteredPayload.Faturamento.length > 0 || filteredPayload.Atraso.length > 0 || filteredPayload.Forecast.length > 0;
-  const hasDataAfterSearch = displayedRows.length > 0;
+    for (const rawItem of payload.Faturamento ?? []) {
+      const faturamentoItem = (rawItem ?? {}) as Record<string, any>;
+      const client = getClientLabel(faturamentoItem);
+      const billingType = getBillingTypeLabel(faturamentoItem);
+      const rowValue = toNumber(faturamentoItem?.Valor_Total ?? faturamentoItem?.valor_Total ?? faturamentoItem?.valorTotal ?? 0);
+      const rowKey = `${normalizeText(billingType) || 'sem-tipo'}::${normalizeText(client) || 'sem-cliente'}`;
+      const rowCurrent =
+        topClientMap.get(rowKey) || {
+          client,
+          billingType,
+          total: 0,
+          topItems: new Map<string, { label: string; total: number }>(),
+        };
+
+      rowCurrent.total += rowValue;
+
+      const materiais = getMaterials(faturamentoItem);
+
+      if (materiais.length > 0) {
+        for (const materialRaw of materiais) {
+          const materialItem = (materialRaw ?? {}) as Record<string, any>;
+          const label = getProductLabel(materialItem);
+          const key = normalizeText(label) || 'sem-produto';
+          const value = toNumber(
+            materialItem?.Valor_Total ?? materialItem?.valor_Total ?? materialItem?.valorTotal ?? materialItem?.Valor_Mercadoria ?? materialItem?.valor_Mercadoria ?? 0,
+          );
+
+          const topItemCurrent = rowCurrent.topItems.get(key) || { label, total: 0 };
+          topItemCurrent.total += value;
+          rowCurrent.topItems.set(key, topItemCurrent);
+        }
+        topClientMap.set(rowKey, rowCurrent);
+        continue;
+      }
+
+      const fallbackLabel = getProductLabel(faturamentoItem);
+      const fallbackKey = normalizeText(fallbackLabel) || 'sem-produto';
+      const fallbackValue = toNumber(
+        faturamentoItem?.Valor_Total ?? faturamentoItem?.valor_Total ?? faturamentoItem?.valorTotal ?? faturamentoItem?.Valor_Mercadoria ?? faturamentoItem?.valor_Mercadoria ?? 0,
+      );
+
+      const topItemCurrent = rowCurrent.topItems.get(fallbackKey) || { label: fallbackLabel, total: 0 };
+      topItemCurrent.total += fallbackValue;
+      rowCurrent.topItems.set(fallbackKey, topItemCurrent);
+
+      topClientMap.set(rowKey, rowCurrent);
+    }
+
+    return Array.from(topClientMap.entries())
+      .map(([key, item]) => ({
+        key,
+        client: item.client,
+        billingType: item.billingType,
+        total: item.total,
+        topItems: Array.from(item.topItems.entries())
+          .map(([itemKey, topItem]) => ({ key: itemKey, label: topItem.label, total: topItem.total }))
+          .sort((a, b) => b.total - a.total)
+          .slice(0, 5),
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10);
+  }, [payload.Faturamento]);
+
+  useEffect(() => {
+    setExpandedTopClients((prev) => prev.filter((key) => topClientsByBillingType.some((item) => item.key === key)));
+  }, [topClientsByBillingType]);
+
+  const summaryRows = useMemo<DashboardRow[]>(() => {
+    const clientMap = new Map<string, { cliente: string; faturado: number; regiaoPrincipal: string; atrasoTotal: number; forecastTotal: number; regioes: Map<string, number> }>();
+    const atrasoByClient = new Map<string, number>();
+    const forecastByClient = new Map<string, number>();
+
+    for (const rawItem of payload.Atraso ?? []) {
+      const item = (rawItem ?? {}) as Record<string, any>;
+      const client = getClientLabel(item);
+      const key = normalizeText(client) || 'sem-cliente';
+      atrasoByClient.set(key, (atrasoByClient.get(key) ?? 0) + getAtrasoValue(item));
+    }
+
+    for (const rawItem of payload.Forecast ?? []) {
+      const item = (rawItem ?? {}) as Record<string, any>;
+      const client = getClientLabel(item);
+      const key = normalizeText(client) || 'sem-cliente';
+      forecastByClient.set(key, (forecastByClient.get(key) ?? 0) + getForecastValue(item));
+    }
+
+    for (const rawItem of payload.Faturamento ?? []) {
+      const item = (rawItem ?? {}) as Record<string, any>;
+      const cliente = getClientLabel(item);
+      const regiao = getRegionLabel(item);
+      const valor = toNumber(item?.Valor_Total ?? item?.valor_Total ?? item?.valorTotal ?? 0);
+      const key = normalizeText(cliente) || 'sem-cliente';
+
+      const current = clientMap.get(key) || {
+        cliente,
+        faturado: 0,
+        regiaoPrincipal: '-',
+        atrasoTotal: atrasoByClient.get(key) ?? 0,
+        forecastTotal: forecastByClient.get(key) ?? 0,
+        regioes: new Map<string, number>(),
+      };
+
+      current.faturado += valor;
+      current.regioes.set(regiao, (current.regioes.get(regiao) ?? 0) + valor);
+      clientMap.set(key, current);
+    }
+
+    return Array.from(clientMap.entries())
+      .map(([key, item]) => {
+        const regiaoPrincipal = Array.from(item.regioes.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '-';
+
+        return {
+          key: `cliente-${key}`,
+          label: item.cliente,
+          cliente: item.cliente,
+          regiao: regiaoPrincipal,
+          faturado: item.faturado,
+          totalAtraso: item.atrasoTotal,
+          totalForecast: item.forecastTotal,
+        } as DashboardRow;
+      })
+      .sort((a, b) => Number(b.faturado ?? 0) - Number(a.faturado ?? 0));
+  }, [payload.Atraso, payload.Faturamento, payload.Forecast]);
+
+  const summaryColumns = useMemo<DashboardTableColumn[]>(() => {
+    return [
+      { key: 'cliente', label: 'Cliente', format: 'text' },
+      { key: 'regiao', label: 'Região principal', format: 'text' },
+      { key: 'faturado', label: 'Total faturado', format: 'currency' },
+      { key: 'totalAtraso', label: 'Total em atraso', format: 'currency' },
+      { key: 'totalForecast', label: 'Total forecast', format: 'currency' },
+    ];
+  }, []);
+
+  const totalRegiao = useMemo(() => {
+    return Math.max(1, regionSlices.reduce((acc, item) => acc + Math.max(0, item.total), 0));
+  }, [regionSlices]);
+
+  const activeRegion = useMemo(() => {
+    if (!regionSlices.length) return null;
+    const byActive = regionSlices.find((item) => item.key === activeRegionKey);
+    return byActive ?? regionSlices[0];
+  }, [activeRegionKey, regionSlices]);
+
+  const hasAnyData = (payload.Faturamento?.length ?? 0) > 0 || (payload.Atraso?.length ?? 0) > 0 || (payload.Forecast?.length ?? 0) > 0;
+
+  const toggleTopClient = (key: string) => {
+    setExpandedTopClients((prev) => (prev.includes(key) ? prev.filter((currentKey) => currentKey !== key) : [...prev, key]));
+  };
+
+  const handleExportExcel = () => {
+    if (!summaryRows.length) {
+      showToast('Sem dados para exportar.', 'info');
+      return;
+    }
+
+    try {
+      const exportRows = summaryRows.map((row) => ({
+        Cliente: String(row.cliente ?? '-'),
+        Regiao_Principal: String(row.regiao ?? '-'),
+        Total_Faturado: Number(row.faturado ?? 0),
+        Total_Em_Atraso: Number(row.totalAtraso ?? 0),
+        Total_Forecast: Number(row.totalForecast ?? 0),
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Faturados por Cliente');
+
+      const fileDateDe = String(appliedDataDe || '').replace(/\//g, '-');
+      const fileDateAte = String(appliedDataAte || '').replace(/\//g, '-');
+      XLSX.writeFile(workbook, `dashboard-vendas-${fileDateDe}-a-${fileDateAte}.xlsx`);
+      showToast('Arquivo Excel exportado com sucesso.', 'success');
+    } catch (error: any) {
+      showToast(String(error?.message || 'Falha ao exportar Excel.'), 'error');
+    }
+  };
 
   return (
     <main className="clientes-page list-layout-page dashboard-page dashboard-vendas-page">
@@ -575,7 +585,7 @@ export function DashboardVendasPage() {
 
           <div>
             <h1>Dashboard - Vendas</h1>
-            <p>Visão dinâmica de faturamento, atraso e forecast com visualizações configuráveis.</p>
+            <p>Faturamento por região, top clientes por tipo e consolidado por cliente faturado.</p>
           </div>
         </div>
       </section>
@@ -595,7 +605,7 @@ export function DashboardVendasPage() {
         applyLabel="Aplicar"
         cancelLabel="Fechar"
       >
-        <div className="dashboard-vendas-advanced-grid">
+        <div className="dashboard-vendas-advanced-grid dashboard-vendas-advanced-grid--dates-only">
           <label className="list-layout-field list-layout-field--date dashboard-field dashboard-vendas-date-field">
             <span>Data de</span>
             <CustomDatePicker value={draftDataDe} onChange={setDraftDataDe} className={errors.dataDe ? 'pcp-date-error' : undefined} />
@@ -607,62 +617,6 @@ export function DashboardVendasPage() {
             <CustomDatePicker value={draftDataAte} onChange={setDraftDataAte} className={errors.dataAte ? 'pcp-date-error' : undefined} />
             <small className={`module-field-error${errors.dataAte ? '' : ' dashboard-error-empty'}`}>{errors.dataAte || ' '}</small>
           </label>
-
-          <label className="list-layout-field list-layout-field--sm dashboard-field">
-            <span>Tipo de gráfico</span>
-            <SearchableSelect
-              value={chartType}
-              onChange={(value) => setChartType(value as DashboardChartType)}
-              options={chartTypeOptions}
-              searchPlaceholder="Pesquisar tipo"
-              ariaLabel="Tipo de gráfico"
-            />
-          </label>
-
-          <label className="list-layout-field list-layout-field--sm dashboard-field">
-            <span>Dados a exibir</span>
-            <SearchableSelect
-              value={selectedData}
-              onChange={(value) => setSelectedData(value as VendasBase)}
-              options={dataOptions}
-              searchPlaceholder="Pesquisar bloco"
-              ariaLabel="Dados a exibir"
-            />
-          </label>
-
-          <label className="list-layout-field list-layout-field--sm dashboard-field">
-            <span>Agrupar por</span>
-            <SearchableSelect
-              value={groupBy}
-              onChange={(value) => setGroupBy(value as VendasGroup)}
-              options={groupOptions}
-              searchPlaceholder="Pesquisar agrupamento"
-              ariaLabel="Agrupar por"
-            />
-          </label>
-
-          <label className="list-layout-field list-layout-field--sm dashboard-field">
-            <span>{filtroDependenteMeta.label}</span>
-            <SearchableSelect
-              value={filtroDependente}
-              onChange={setFiltroDependente}
-              options={filtroDependenteOptions}
-              searchPlaceholder={filtroDependenteMeta.placeholder}
-              ariaLabel={filtroDependenteMeta.label}
-            />
-          </label>
-
-          <label className="list-layout-field list-layout-field--sm dashboard-field">
-            <span>Tipo de valor</span>
-            <SearchableSelect
-              value={metric}
-              onChange={(value) => setMetric(value as VendasMetric)}
-              options={metricOptions}
-              searchPlaceholder="Pesquisar métrica"
-              ariaLabel="Tipo de valor"
-            />
-          </label>
-
         </div>
       </AdvancedFiltersPanel>
 
@@ -697,46 +651,224 @@ export function DashboardVendasPage() {
           </button>
         </div>
 
+        <p className="dashboard-period-range">Período: {appliedDataDe} - {appliedDataAte}</p>
+
         {errorMessage ? <p className="status-box status-box--error">{errorMessage}</p> : null}
         {loading ? <p className="module-empty">Carregando dashboard de vendas...</p> : null}
 
         {!loading && !errorMessage && !hasFetched ? (
           <div className="dashboard-empty-state" role="status" aria-live="polite">
             <IoStatsChartOutline size={24} aria-hidden="true" />
-            <p>Preencha os filtros e clique em atualizar para visualizar os gráficos</p>
+            <p>Selecione as datas e clique em atualizar para visualizar os gráficos</p>
           </div>
         ) : null}
 
-        {!loading && !errorMessage && hasFetched && (!hasAnyData || !hasDataAfterSearch) ? (
+        {!loading && !errorMessage && hasFetched && !hasAnyData ? (
           <div className="dashboard-empty-state" role="status" aria-live="polite">
             <IoStatsChartOutline size={24} aria-hidden="true" />
-            <p>Nenhum dado encontrado para os filtros informados</p>
+            <p>Nenhum dado encontrado para o período informado</p>
           </div>
         ) : null}
 
-        {!loading && !errorMessage && hasFetched && hasAnyData && hasDataAfterSearch ? (
+        {!loading && !errorMessage && hasFetched && hasAnyData ? (
           <>
             <DashboardKpiCards cards={kpis} />
 
             <section className="dashboard-chart-grid">
               <article className="card dashboard-chart-card">
-                <header className="dashboard-section-header">
-                  <h2>Visualização principal</h2>
-                  <p>Altere o tipo de gráfico e os agrupamentos nos filtros avançados.</p>
+                <header className="dashboard-section-header dashboard-section-header--collapsible">
+                  <div>
+                    <h2>Faturamento por região</h2>
+                    <p>Passe o mouse na região para visualizar os 3 clientes mais vendidos.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="home-dashboard-card__collapse"
+                    onClick={() => setMainChartCollapsed((prev) => !prev)}
+                    aria-label={mainChartCollapsed ? 'Expandir gráfico por região' : 'Encolher gráfico por região'}
+                    title={mainChartCollapsed ? 'Expandir gráfico por região' : 'Encolher gráfico por região'}
+                  >
+                    {mainChartCollapsed ? <IoChevronDownOutline size={18} /> : <IoChevronUpOutline size={18} />}
+                  </button>
                 </header>
-                <DashboardChart chartType={chartType} rows={chartRows} series={processed.series} xKey="label" />
+
+                {!mainChartCollapsed ? (
+                  regionSlices.length === 0 ? (
+                    <p className="module-empty">Sem dados de faturamento por região.</p>
+                  ) : (
+                    <div className="dashboard-native-pie-wrap dashboard-vendas-region-pie-wrap">
+                      <svg viewBox="0 0 120 120" className="dashboard-native-pie" aria-label="Gráfico de pizza de faturamento por região">
+                        {(() => {
+                          let offset = 0;
+                          const circleRadius = 42;
+                          const circleLength = 2 * Math.PI * circleRadius;
+
+                          return regionSlices.map((region, index) => {
+                            const value = Math.max(0, region.total);
+                            const slice = (value / totalRegiao) * circleLength;
+                            const dashArray = `${slice} ${circleLength - slice}`;
+                            const dashOffset = -offset;
+                            offset += slice;
+
+                            return (
+                              <circle
+                                key={region.key}
+                                cx="60"
+                                cy="60"
+                                r={circleRadius}
+                                fill="none"
+                                stroke={chartPalette[index % chartPalette.length]}
+                                strokeWidth={28}
+                                strokeDasharray={dashArray}
+                                strokeDashoffset={dashOffset}
+                                transform="rotate(-90 60 60)"
+                                onMouseEnter={() => setActiveRegionKey(region.key)}
+                              >
+                                <title>{`${region.label}: ${formatCurrencyBRL(region.total)}`}</title>
+                              </circle>
+                            );
+                          });
+                        })()}
+                      </svg>
+
+                      <div className="dashboard-native-legend dashboard-vendas-region-legend">
+                        {regionSlices.map((region, index) => (
+                          <button
+                            type="button"
+                            key={region.key}
+                            className={`dashboard-native-legend-item dashboard-vendas-region-legend__item${activeRegion?.key === region.key ? ' is-active' : ''}`}
+                            onMouseEnter={() => setActiveRegionKey(region.key)}
+                            onFocus={() => setActiveRegionKey(region.key)}
+                          >
+                            <span style={{ backgroundColor: chartPalette[index % chartPalette.length] }} />
+                            <strong>{region.label}</strong>
+                            <small>{formatCurrencyBRL(region.total)}</small>
+                          </button>
+                        ))}
+
+                        {activeRegion ? (
+                          <div className="dashboard-vendas-region-tooltip" role="status" aria-live="polite">
+                            <p>{`Top 3 clientes - ${activeRegion.label}`}</p>
+                            <ol>
+                              {activeRegion.topClients.length > 0 ? (
+                                activeRegion.topClients.map((client) => (
+                                  <li key={`${activeRegion.key}-${client.label}`}>
+                                    <span>{client.label}</span>
+                                    <strong>{formatCurrencyBRL(client.total)}</strong>
+                                  </li>
+                                ))
+                              ) : (
+                                <li>
+                                  <span>Sem clientes para esta região</span>
+                                </li>
+                              )}
+                            </ol>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  )
+                ) : null}
               </article>
 
               <article className="card dashboard-chart-card">
-                <header className="dashboard-section-header">
-                  <h2>Top agrupamentos</h2>
-                  <p>Resumo dos principais grupos para leitura rápida.</p>
+                <header className="dashboard-section-header dashboard-section-header--collapsible">
+                  <div>
+                    <h2>Top 10 clientes por tipo de faturamento</h2>
+                    <p>Expanda um cliente para visualizar os 5 itens com maior valor faturado.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="home-dashboard-card__collapse"
+                    onClick={() => setTopChartCollapsed((prev) => !prev)}
+                    aria-label={topChartCollapsed ? 'Expandir top 10 clientes' : 'Encolher top 10 clientes'}
+                    title={topChartCollapsed ? 'Expandir top 10 clientes' : 'Encolher top 10 clientes'}
+                  >
+                    {topChartCollapsed ? <IoChevronDownOutline size={18} /> : <IoChevronUpOutline size={18} />}
+                  </button>
                 </header>
-                <DashboardChart chartType="bar-horizontal" rows={secondaryChartRows} series={processed.series} xKey="label" />
+
+                {!topChartCollapsed ? (
+                  topClientsByBillingType.length === 0 ? (
+                    <p className="module-empty">Sem clientes faturados no período.</p>
+                  ) : (
+                    <div className="dashboard-native-bars is-horizontal dashboard-vendas-top-client-bars">
+                      {(() => {
+                        const max = Math.max(1, ...topClientsByBillingType.map((item) => Math.abs(item.total)));
+
+                        return topClientsByBillingType.map((item, index) => {
+                          const sizePercent = Math.max(2, (Math.abs(item.total) / max) * 100);
+                          const isExpanded = expandedTopClients.includes(item.key);
+
+                          return (
+                            <article key={item.key} className={`dashboard-vendas-top-client${isExpanded ? ' is-expanded' : ''}`}>
+                              <button
+                                type="button"
+                                className="dashboard-native-row dashboard-vendas-top-client__trigger"
+                                title={`${item.client} (${item.billingType}): ${formatCurrencyBRL(item.total)}`}
+                                onClick={() => toggleTopClient(item.key)}
+                                aria-expanded={isExpanded}
+                              >
+                                <div className="dashboard-native-row-label dashboard-vendas-top-client__label">
+                                  <strong className="dashboard-vendas-top-client__name">{item.client}</strong>
+                                  <small className="dashboard-vendas-top-client__type">{formatBillingTypeDisplay(item.billingType)}</small>
+                                </div>
+                                <div className="dashboard-native-track" aria-hidden="true">
+                                  <div
+                                    className="dashboard-native-fill"
+                                    style={{ width: `${sizePercent}%`, backgroundColor: chartPalette[index % chartPalette.length] }}
+                                  />
+                                </div>
+                                <div className="dashboard-native-row-value dashboard-vendas-top-client__value">
+                                  <span>{formatCurrencyBRL(item.total)}</span>
+                                  {isExpanded ? <IoChevronUpOutline size={16} /> : <IoChevronDownOutline size={16} />}
+                                </div>
+                              </button>
+
+                              {isExpanded ? (
+                                <div className="dashboard-vendas-top-client__details">
+                                  <p>Top 5 itens do faturamento</p>
+                                  {item.topItems.length > 0 ? (
+                                    <ol>
+                                      {item.topItems.map((topItem, topItemIndex) => (
+                                        <li key={`${item.key}-${topItem.key}`}>
+                                          <span className="dashboard-vendas-top-client__rank">{String(topItemIndex + 1).padStart(2, '0')}</span>
+                                          <span>{topItem.label}</span>
+                                          <strong>{formatCurrencyBRL(topItem.total)}</strong>
+                                        </li>
+                                      ))}
+                                    </ol>
+                                  ) : (
+                                    <p className="dashboard-vendas-top-client__empty">Sem itens associados para este cliente.</p>
+                                  )}
+                                </div>
+                              ) : null}
+                            </article>
+                          );
+                        });
+                      })()}
+                    </div>
+                  )
+                ) : null}
               </article>
             </section>
 
-            <DashboardSummaryTable rows={displayedRows} columns={processed.columns} />
+            <DashboardSummaryTable
+              rows={summaryRows}
+              columns={summaryColumns}
+              headerAction={(
+                <button
+                  className="icon-button module-action-button"
+                  type="button"
+                  onClick={handleExportExcel}
+                  title="Exportar grade resumo para Excel"
+                  aria-label="Exportar grade resumo para Excel"
+                  disabled={loading || !summaryRows.length}
+                >
+                  <IoDownloadOutline size={16} />
+                </button>
+              )}
+            />
           </>
         ) : null}
 

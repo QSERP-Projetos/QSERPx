@@ -2558,6 +2558,10 @@ select {
   bottom: calc(100% + 6px);
 }
 
+.searchable-select__popover--portal {
+  z-index: 10150;
+}
+
 .searchable-select .search-input {
   min-width: 0;
   width: 100%;
