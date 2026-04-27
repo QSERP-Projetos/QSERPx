@@ -648,6 +648,190 @@ body {
   line-height: 1.25;
 }
 
+.dashboard-financeiro-advanced-grid--dates-only {
+  grid-template-columns: repeat(2, max-content);
+  gap: 8px;
+  justify-content: start;
+  justify-items: start;
+}
+
+.filters-panel__content:has(.dashboard-financeiro-advanced-grid--dates-only) {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: nowrap;
+  overflow: visible;
+}
+
+.filters-panel__content:has(.dashboard-financeiro-advanced-grid--dates-only) > * {
+  min-width: 0;
+}
+
+.filters-panel__content:has(.dashboard-financeiro-advanced-grid--dates-only) .dashboard-financeiro-advanced-grid {
+  margin-right: auto;
+}
+
+.filters-panel__content:has(.dashboard-financeiro-advanced-grid--dates-only) .filters-panel__actions {
+  margin-left: auto;
+  margin-top: 0;
+  justify-content: flex-end;
+  align-self: flex-end;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.filters-panel__content:has(.dashboard-financeiro-advanced-grid--dates-only) .filters-panel__actions .primary-button,
+.filters-panel__content:has(.dashboard-financeiro-advanced-grid--dates-only) .filters-panel__actions .secondary-button {
+  min-width: 104px;
+  flex: 0 0 auto;
+}
+
+.dashboard-financeiro-page .dashboard-chart-grid {
+  grid-template-columns: 1fr;
+}
+
+.dashboard-financeiro-top-pies {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dashboard-financeiro-top-pies__card {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 12px;
+  background: var(--color-surface-alt);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.dashboard-financeiro-top-pies__card h3 {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--color-text);
+}
+
+.dashboard-financeiro-classic {
+  display: grid;
+  gap: 10px;
+}
+
+.dashboard-financeiro-classic__plot {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.dashboard-financeiro-classic__y-axis {
+  position: relative;
+  min-height: 260px;
+}
+
+.dashboard-financeiro-classic__y-axis span {
+  position: absolute;
+  left: 0;
+  transform: translateY(-50%);
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.dashboard-financeiro-classic__chart {
+  position: relative;
+  border-left: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  min-height: 260px;
+  padding: 10px 10px 0;
+  overflow-x: auto;
+}
+
+.dashboard-financeiro-classic__grid-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--color-border-soft);
+  pointer-events: none;
+}
+
+.dashboard-financeiro-classic__groups {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(88px, 1fr);
+  gap: 8px;
+  align-items: end;
+  min-height: 250px;
+  min-width: 100%;
+  width: max-content;
+}
+
+.dashboard-financeiro-classic__group {
+  display: grid;
+  gap: 6px;
+  align-items: end;
+}
+
+.dashboard-financeiro-classic__bars {
+  min-height: 210px;
+  display: grid;
+  grid-template-columns: repeat(2, 12px);
+  gap: 6px;
+  justify-content: center;
+  align-items: end;
+}
+
+.dashboard-financeiro-classic__bar {
+  width: 12px;
+  height: var(--bar-size, 2px);
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+}
+
+.dashboard-financeiro-classic__bar.is-receita {
+  background: #2563eb;
+}
+
+.dashboard-financeiro-classic__bar.is-despesa {
+  background: #ef4444;
+}
+
+.dashboard-financeiro-classic__label {
+  font-size: 0.74rem;
+  color: var(--color-text);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashboard-financeiro-classic__legend {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.dashboard-financeiro-classic__legend-item {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+
+.dashboard-financeiro-classic__legend-item.is-receita {
+  border-color: rgba(37, 99, 235, 0.35);
+  color: #2563eb;
+}
+
+.dashboard-financeiro-classic__legend-item.is-despesa {
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+}
+
 .dashboard-vendas-search {
   flex: 0 1 440px;
   min-width: 0;
@@ -1057,6 +1241,25 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .filters-panel__content:has(.dashboard-financeiro-advanced-grid--dates-only) {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+    justify-content: stretch;
+    gap: 8px;
+  }
+
+  .filters-panel__content:has(.dashboard-financeiro-advanced-grid--dates-only) .dashboard-financeiro-advanced-grid--dates-only,
+  .filters-panel__content:has(.dashboard-financeiro-advanced-grid--dates-only) .filters-panel__actions {
+    margin-right: 0;
+    margin-left: 0;
+  }
+
+  .filters-panel__content:has(.dashboard-financeiro-advanced-grid--dates-only) .filters-panel__actions {
+    margin-top: 8px;
+    justify-content: flex-end;
+  }
+
   .dashboard-financeiro-page .dashboard-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1090,6 +1293,74 @@ body {
 
   .dashboard-chart-grid {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-financeiro-top-pies {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-financeiro-classic__plot {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  .dashboard-financeiro-classic__groups {
+    grid-auto-columns: minmax(72px, 1fr);
+  }
+
+  .dashboard-financeiro-classic__y-axis {
+    display: none;
+  }
+
+  .dashboard-financeiro-classic__plot {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-financeiro-classic__chart {
+    border-left: 0;
+    border-bottom: 0;
+    padding: 0;
+  }
+
+  .dashboard-financeiro-classic__grid-line {
+    display: none;
+  }
+
+  .dashboard-financeiro-classic__groups {
+    grid-auto-flow: row;
+    grid-auto-columns: unset;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    min-height: 0;
+    width: 100%;
+  }
+
+  .dashboard-financeiro-classic__group {
+    grid-template-columns: minmax(84px, 112px) minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--color-border-soft);
+    border-radius: 10px;
+    padding: 8px;
+    background: var(--color-surface-alt);
+  }
+
+  .dashboard-financeiro-classic__bars {
+    min-height: 0;
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(2, 10px);
+    justify-content: stretch;
+    gap: 6px;
+  }
+
+  .dashboard-financeiro-classic__bar {
+    width: var(--bar-size, 0%);
+    height: 10px;
+    min-height: 10px;
+    border-radius: 999px;
+  }
+
+  .dashboard-financeiro-classic__label {
+    text-align: left;
   }
 }
 
@@ -1160,6 +1431,10 @@ body {
     align-items: center;
     justify-content: flex-end;
     flex-wrap: nowrap;
+  }
+
+  .filters-panel__content:has(.dashboard-financeiro-advanced-grid--dates-only) .dashboard-financeiro-advanced-grid--dates-only {
+    grid-template-columns: 1fr;
   }
 
   .filters-panel__content:has(.dashboard-vendas-advanced-grid--dates-only) .dashboard-vendas-advanced-grid--dates-only {
