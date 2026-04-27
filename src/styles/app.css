@@ -4526,6 +4526,9 @@ select.text-field:focus {
   font-weight: 700;
   letter-spacing: 0.01em;
   text-transform: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .ficha-inspecao-laudo-item-card__description {
@@ -4621,11 +4624,9 @@ select.text-field:focus {
 }
 
 .ficha-inspecao-laudo-item-card__result-icon {
-  padding-bottom: 8px;
-  min-width: 26px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  line-height: 0;
 }
 
 .ficha-inspecao-medicoes-modal {

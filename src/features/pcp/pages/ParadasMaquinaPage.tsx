@@ -59,6 +59,8 @@ const getRows = (payload: any): any[] => {
         'codigo_Motivo',
         'Codigo_Motivo',
         'codigo_motivo',
+        'codigoMotivo',
+        'CodigoMotivo',
         'cod_Motivo',
         'codMotivo',
         'codigo',
@@ -266,31 +268,47 @@ export function ParadasMaquinaPage() {
         .map((motivo) => {
           const value = String(
             getFirstFilledValue(motivo, [
+              'codigo_Parada',
+              'Codigo_Parada',
               'codigo_Motivo',
               'Codigo_Motivo',
               'codigo_motivo',
+              'codigoMotivo',
+              'CodigoMotivo',
               'cod_Motivo',
               'codMotivo',
               'codigo',
               'Codigo',
+              'id',
+              'ID',
             ]) ?? '',
           ).trim();
 
           const labelText = String(
             getFirstFilledValue(motivo, [
+              'codMotivoParada',
+              'motivo_Parada',
+              'Motivo_Parada',
               'descricao_Motivo',
               'Descricao_Motivo',
               'descricao_motivo',
+              'descricaoMotivo',
+              'DescricaoMotivo',
               'descricao',
               'Descricao',
               'desc_Motivo',
               'desc_motivo',
+              'descMotivo',
+              'nome',
+              'Nome',
             ]) ?? value,
           ).trim();
 
+          // se o label já contém o código (ex: "1 - TROCA DE MOLDE"), usa direto
+          const startsWithValue = labelText.startsWith(`${value} -`) || labelText.startsWith(`${value}-`);
           return {
             value,
-            label: labelText ? `${value} - ${labelText}` : value,
+            label: startsWithValue ? labelText : labelText ? `${value} - ${labelText}` : value,
           };
         })
         .filter((option) => option.value.length > 0),
@@ -607,9 +625,8 @@ export function ParadasMaquinaPage() {
                 }}
               />
               <small
-                className={`module-field-error paradas-maquina-field__error-slot${
-                  filtroErrors.dataInicio ? '' : ' paradas-maquina-field__error-slot--empty'
-                }`}
+                className={`module-field-error paradas-maquina-field__error-slot${filtroErrors.dataInicio ? '' : ' paradas-maquina-field__error-slot--empty'
+                  }`}
               >
                 {filtroErrors.dataInicio || ' '}
               </small>
@@ -627,9 +644,8 @@ export function ParadasMaquinaPage() {
                 }}
               />
               <small
-                className={`module-field-error paradas-maquina-field__error-slot${
-                  filtroErrors.dataFim ? '' : ' paradas-maquina-field__error-slot--empty'
-                }`}
+                className={`module-field-error paradas-maquina-field__error-slot${filtroErrors.dataFim ? '' : ' paradas-maquina-field__error-slot--empty'
+                  }`}
               >
                 {filtroErrors.dataFim || ' '}
               </small>
@@ -651,9 +667,8 @@ export function ParadasMaquinaPage() {
                 className={filtroErrors.numMaquina ? 'is-error' : undefined}
               />
               <small
-                className={`module-field-error paradas-maquina-field__error-slot${
-                  filtroErrors.numMaquina ? '' : ' paradas-maquina-field__error-slot--empty'
-                }`}
+                className={`module-field-error paradas-maquina-field__error-slot${filtroErrors.numMaquina ? '' : ' paradas-maquina-field__error-slot--empty'
+                  }`}
               >
                 {filtroErrors.numMaquina || ' '}
               </small>
@@ -685,124 +700,124 @@ export function ParadasMaquinaPage() {
         </AdvancedFiltersPanel>
 
         <section className="module-table list-layout-table">
-        {loading ? (
-          <p className="module-empty">Carregando paradas...</p>
-        ) : rowsFiltradas.length === 0 ? (
-          <p className="module-empty">Nenhuma parada encontrada.</p>
-        ) : (
-          <>
-            <div className="table-scroll module-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('ordem')}>
-                        Ordem <span>{getSortIndicator('ordem')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('maquina')}>
-                        Máquina <span>{getSortIndicator('maquina')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('motivo')}>
-                        Motivo <span>{getSortIndicator('motivo')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('inicio')}>
-                        Início <span>{getSortIndicator('inicio')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('fim')}>
-                        Fim <span>{getSortIndicator('fim')}</span>
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rowsFiltradas.map((row, index) => {
-                    const current = resolveParadaListRow(row);
+          {loading ? (
+            <p className="module-empty">Carregando paradas...</p>
+          ) : rowsFiltradas.length === 0 ? (
+            <p className="module-empty">Nenhuma parada encontrada.</p>
+          ) : (
+            <>
+              <div className="table-scroll module-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('ordem')}>
+                          Ordem <span>{getSortIndicator('ordem')}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('maquina')}>
+                          Máquina <span>{getSortIndicator('maquina')}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('motivo')}>
+                          Motivo <span>{getSortIndicator('motivo')}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('inicio')}>
+                          Início <span>{getSortIndicator('inicio')}</span>
+                        </button>
+                      </th>
+                      <th>
+                        <button className="module-table__sort" type="button" onClick={() => handleSort('fim')}>
+                          Fim <span>{getSortIndicator('fim')}</span>
+                        </button>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rowsFiltradas.map((row, index) => {
+                      const current = resolveParadaListRow(row);
 
-                    return (
-                      <tr key={`pm-${index}`}>
-                        <td>{current.ordem}</td>
-                        <td>{current.maquina}</td>
-                        <td>{current.motivo}</td>
-                        <td>
-                          {current.inicioData} {current.inicioHora}
-                        </td>
-                        <td>
-                          {current.fimData} {current.fimHora}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="module-cards">
-              {rowsFiltradas.map((row, index) => {
-                const current = resolveParadaListRow(row);
-                const cardKey = `${current.ordem || `idx-${index}`}-${current.maquina}`;
-                const isExpandedCard = Boolean(expandedParadaCards[cardKey]);
-
-                return (
-                  <article className="module-card" key={`card-pm-${index}`}>
-                    <div className="module-card__row module-card__row--split">
-                      <div className="module-card__row-stack">
-                        <span>Ordem</span>
-                        <strong>{current.ordem}</strong>
-                      </div>
-                      <button
-                        type="button"
-                        className="module-card__expand-toggle"
-                        onClick={() =>
-                          setExpandedParadaCards((prev) => ({
-                            ...prev,
-                            [cardKey]: !prev[cardKey],
-                          }))
-                        }
-                        aria-label={isExpandedCard ? 'Recolher detalhes da parada' : 'Expandir detalhes da parada'}
-                        title={isExpandedCard ? 'Recolher detalhes' : 'Expandir detalhes'}
-                      >
-                        {isExpandedCard ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
-                      </button>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Máquina</span>
-                      <strong>{current.maquina}</strong>
-                    </div>
-
-                    {isExpandedCard ? (
-                      <>
-                        <div className="module-card__row">
-                          <span>Motivo</span>
-                          <strong>{current.motivo}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Início</span>
-                          <strong>
+                      return (
+                        <tr key={`pm-${index}`}>
+                          <td>{current.ordem}</td>
+                          <td>{current.maquina}</td>
+                          <td>{current.motivo}</td>
+                          <td>
                             {current.inicioData} {current.inicioHora}
-                          </strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Fim</span>
-                          <strong>
+                          </td>
+                          <td>
                             {current.fimData} {current.fimHora}
-                          </strong>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="module-cards">
+                {rowsFiltradas.map((row, index) => {
+                  const current = resolveParadaListRow(row);
+                  const cardKey = `${current.ordem || `idx-${index}`}-${current.maquina}`;
+                  const isExpandedCard = Boolean(expandedParadaCards[cardKey]);
+
+                  return (
+                    <article className="module-card" key={`card-pm-${index}`}>
+                      <div className="module-card__row module-card__row--split">
+                        <div className="module-card__row-stack">
+                          <span>Ordem</span>
+                          <strong>{current.ordem}</strong>
                         </div>
-                      </>
-                    ) : null}
-                  </article>
-                );
-              })}
-            </div>
-          </>
-        )}
+                        <button
+                          type="button"
+                          className="module-card__expand-toggle"
+                          onClick={() =>
+                            setExpandedParadaCards((prev) => ({
+                              ...prev,
+                              [cardKey]: !prev[cardKey],
+                            }))
+                          }
+                          aria-label={isExpandedCard ? 'Recolher detalhes da parada' : 'Expandir detalhes da parada'}
+                          title={isExpandedCard ? 'Recolher detalhes' : 'Expandir detalhes'}
+                        >
+                          {isExpandedCard ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
+                        </button>
+                      </div>
+                      <div className="module-card__row">
+                        <span>Máquina</span>
+                        <strong>{current.maquina}</strong>
+                      </div>
+
+                      {isExpandedCard ? (
+                        <>
+                          <div className="module-card__row">
+                            <span>Motivo</span>
+                            <strong>{current.motivo}</strong>
+                          </div>
+                          <div className="module-card__row">
+                            <span>Início</span>
+                            <strong>
+                              {current.inicioData} {current.inicioHora}
+                            </strong>
+                          </div>
+                          <div className="module-card__row">
+                            <span>Fim</span>
+                            <strong>
+                              {current.fimData} {current.fimHora}
+                            </strong>
+                          </div>
+                        </>
+                      ) : null}
+                    </article>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </section>
       </section>
 
