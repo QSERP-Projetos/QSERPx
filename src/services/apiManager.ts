@@ -26,6 +26,10 @@ export interface ApiCallResponse<T = any> {
   bodyText: string;
 }
 
+export interface ApiCallRequestOptions {
+  timeoutMs?: number;
+}
+
 class ApiManager {
   private static instance: ApiManager;
   private axiosInstance: AxiosInstance;
@@ -53,6 +57,7 @@ class ApiManager {
     headers: ApiCallHeaders = {},
     params: ApiCallParams = {},
     body: any = null,
+    requestOptions: ApiCallRequestOptions = {},
   ): Promise<ApiCallResponse<T>> {
     try {
       const requestHeaders: Record<string, string> = {
@@ -95,6 +100,10 @@ class ApiManager {
         url: apiUrl,
         headers: requestHeaders,
       };
+
+      if (typeof requestOptions.timeoutMs === 'number' && Number.isFinite(requestOptions.timeoutMs) && requestOptions.timeoutMs > 0) {
+        config.timeout = requestOptions.timeoutMs;
+      }
 
       // Preserve query params for every method because some endpoints validate write
       // requests using query string values in addition to (or instead of) JSON body.

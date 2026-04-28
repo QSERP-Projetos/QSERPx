@@ -16,10 +16,11 @@ import { useToast } from '../../../contexts/ToastContext';
 import { GlobalConfig } from '../../../services/globalConfig';
 import { CustomDatePicker } from '../../../components/CustomDatePicker';
 import { AdvancedFiltersPanel } from '../../../components/AdvancedFiltersPanel';
+import { SearchableSelect } from '../../../components/SearchableSelect';
 import { DashboardKpiCards } from '../components/DashboardKpiCards';
 import { DashboardSummaryTable } from '../components/DashboardSummaryTable';
 import { getDashboardVendas, type DashboardVendasResponse } from '../services/dashboardApi';
-import type { DashboardDateErrors, DashboardKpiCard, DashboardRow, DashboardTableColumn } from '../types';
+import type { DashboardDateErrors, DashboardKpiCard, DashboardRow, DashboardTableColumn, Option } from '../types';
 import { chartPalette, formatCurrencyBRL, monthEndPtBr, monthStartPtBr, normalizeText, parseDateStrict, toApiDate, toNumber } from '../utils/dashboardUtils';
 
 type RegionSlice = {
@@ -101,6 +102,16 @@ const formatBillingTypeDisplay = (value: string) => {
   }
 
   return value || 'Sem tipo';
+};
+
+const isFornecedorItem = (item: Record<string, any>) => {
+  const billingType = normalizeText(getBillingTypeLabel(item));
+  if (billingType === 'f' || billingType === 'fornecedor' || billingType.startsWith('fornecedor')) {
+    return true;
+  }
+
+  const region = normalizeText(item?.Nome_Regiao ?? item?.nome_Regiao ?? item?.nomeRegiao ?? item?.Regiao ?? item?.regiao ?? '');
+  return region === 'fornecedor';
 };
 
 const getAtrasoValue = (item: Record<string, any>) =>
@@ -199,6 +210,7 @@ export function DashboardVendasPage() {
   const [topChartCollapsed, setTopChartCollapsed] = useState(false);
   const [activeRegionKey, setActiveRegionKey] = useState<string | null>(null);
   const [expandedTopClients, setExpandedTopClients] = useState<string[]>([]);
+  const [destinatarioScope, setDestinatarioScope] = useState<'todos' | 'clientes'>('todos');
 
   const [loading, setLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
@@ -212,6 +224,32 @@ export function DashboardVendasPage() {
 
   const initialFetchRef = useRef(false);
   const requestIdRef = useRef(0);
+
+  const destinatarioOptions = useMemo<Option[]>(
+    () => [
+      { value: 'todos', label: 'Todos' },
+      { value: 'clientes', label: 'Clientes' },
+    ],
+    [],
+  );
+
+  const filteredFaturamento = useMemo(() => {
+    const source = payload.Faturamento ?? [];
+    if (destinatarioScope === 'todos') return source;
+    return source.filter((item) => !isFornecedorItem(item));
+  }, [destinatarioScope, payload.Faturamento]);
+
+  const filteredAtraso = useMemo(() => {
+    const source = payload.Atraso ?? [];
+    if (destinatarioScope === 'todos') return source;
+    return source.filter((item) => !isFornecedorItem(item));
+  }, [destinatarioScope, payload.Atraso]);
+
+  const filteredForecast = useMemo(() => {
+    const source = payload.Forecast ?? [];
+    if (destinatarioScope === 'todos') return source;
+    return source.filter((item) => !isFornecedorItem(item));
+  }, [destinatarioScope, payload.Forecast]);
 
   const validateFilters = useCallback(() => {
     const nextErrors: DashboardDateErrors = {};
@@ -298,9 +336,9 @@ export function DashboardVendasPage() {
   }, [appliedDataAte, appliedDataDe, fetchDashboard]);
 
   const kpis = useMemo<DashboardKpiCard[]>(() => {
-    const faturamento = payload.Faturamento ?? [];
-    const atraso = payload.Atraso ?? [];
-    const forecast = payload.Forecast ?? [];
+    const faturamento = filteredFaturamento;
+    const atraso = filteredAtraso;
+    const forecast = filteredForecast;
 
     const totalFaturamento = faturamento.reduce(
       (acc, item) => acc + toNumber(item?.Valor_Total ?? item?.valor_Total ?? item?.valorTotal ?? 0),
@@ -363,12 +401,12 @@ export function DashboardVendasPage() {
       { key: 'total-forecast', label: 'Total previsto (forecast)', value: totalForecast, format: 'currency' },
       { key: 'qtd-clientes-faturados', label: 'Clientes faturados', value: clientesFaturados.size, format: 'number' },
     ];
-  }, [payload]);
+  }, [filteredAtraso, filteredFaturamento, filteredForecast]);
 
   const regionSlices = useMemo<RegionSlice[]>(() => {
     const regionMap = new Map<string, { label: string; total: number; clients: Map<string, number> }>();
 
-    for (const rawItem of payload.Faturamento ?? []) {
+    for (const rawItem of filteredFaturamento) {
       const item = (rawItem ?? {}) as Record<string, any>;
       const regionLabel = getRegionLabel(item);
       const clientLabel = getClientLabel(item);
@@ -392,12 +430,12 @@ export function DashboardVendasPage() {
           .slice(0, 3),
       }))
       .sort((a, b) => b.total - a.total);
-  }, [payload.Faturamento]);
+  }, [filteredFaturamento]);
 
   const topClientsByBillingType = useMemo<TopClientByBillingType[]>(() => {
     const topClientMap = new Map<string, { client: string; billingType: string; total: number; topItems: Map<string, { label: string; total: number }> }>();
 
-    for (const rawItem of payload.Faturamento ?? []) {
+    for (const rawItem of filteredFaturamento) {
       const faturamentoItem = (rawItem ?? {}) as Record<string, any>;
       const client = getClientLabel(faturamentoItem);
       const billingType = getBillingTypeLabel(faturamentoItem);
@@ -458,7 +496,7 @@ export function DashboardVendasPage() {
       }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 10);
-  }, [payload.Faturamento]);
+  }, [filteredFaturamento]);
 
   useEffect(() => {
     setExpandedTopClients((prev) => prev.filter((key) => topClientsByBillingType.some((item) => item.key === key)));
@@ -469,21 +507,21 @@ export function DashboardVendasPage() {
     const atrasoByClient = new Map<string, number>();
     const forecastByClient = new Map<string, number>();
 
-    for (const rawItem of payload.Atraso ?? []) {
+    for (const rawItem of filteredAtraso) {
       const item = (rawItem ?? {}) as Record<string, any>;
       const client = getClientLabel(item);
       const key = normalizeText(client) || 'sem-cliente';
       atrasoByClient.set(key, (atrasoByClient.get(key) ?? 0) + getAtrasoValue(item));
     }
 
-    for (const rawItem of payload.Forecast ?? []) {
+    for (const rawItem of filteredForecast) {
       const item = (rawItem ?? {}) as Record<string, any>;
       const client = getClientLabel(item);
       const key = normalizeText(client) || 'sem-cliente';
       forecastByClient.set(key, (forecastByClient.get(key) ?? 0) + getForecastValue(item));
     }
 
-    for (const rawItem of payload.Faturamento ?? []) {
+    for (const rawItem of filteredFaturamento) {
       const item = (rawItem ?? {}) as Record<string, any>;
       const cliente = getClientLabel(item);
       const regiao = getRegionLabel(item);
@@ -519,7 +557,7 @@ export function DashboardVendasPage() {
         } as DashboardRow;
       })
       .sort((a, b) => Number(b.faturado ?? 0) - Number(a.faturado ?? 0));
-  }, [payload.Atraso, payload.Faturamento, payload.Forecast]);
+  }, [filteredAtraso, filteredFaturamento, filteredForecast]);
 
   const summaryColumns = useMemo<DashboardTableColumn[]>(() => {
     return [
@@ -541,7 +579,7 @@ export function DashboardVendasPage() {
     return byActive ?? regionSlices[0];
   }, [activeRegionKey, regionSlices]);
 
-  const hasAnyData = (payload.Faturamento?.length ?? 0) > 0 || (payload.Atraso?.length ?? 0) > 0 || (payload.Forecast?.length ?? 0) > 0;
+  const hasAnyData = filteredFaturamento.length > 0 || filteredAtraso.length > 0 || filteredForecast.length > 0;
 
   const toggleTopClient = (key: string) => {
     setExpandedTopClients((prev) => (prev.includes(key) ? prev.filter((currentKey) => currentKey !== key) : [...prev, key]));
@@ -622,6 +660,19 @@ export function DashboardVendasPage() {
 
       <section className="card dashboard-vendas-results">
         <div className="dashboard-vendas-controls-inline dashboard-vendas-results__actions">
+          <label className="list-layout-field list-layout-field--sm dashboard-field dashboard-vendas-scope-filter" aria-label="Filtrar destinatário">
+            <span>Destinatário</span>
+            <SearchableSelect
+              value={destinatarioScope}
+              onChange={(value) => setDestinatarioScope(value as 'todos' | 'clientes')}
+              options={destinatarioOptions}
+              enableSearch={false}
+              searchPlaceholder="Pesquisar destinatário"
+              ariaLabel="Filtrar destinatário"
+            />
+          </label>
+
+          <div className="dashboard-vendas-controls-inline__buttons">
           <button
             className={`icon-button module-action-button${advancedOpen ? ' module-action-button--primary' : ''}`}
             type="button"
@@ -649,6 +700,7 @@ export function DashboardVendasPage() {
           >
             <IoRefreshOutline size={16} />
           </button>
+          </div>
         </div>
 
         <p className="dashboard-period-range">Período: {appliedDataDe} - {appliedDataAte}</p>

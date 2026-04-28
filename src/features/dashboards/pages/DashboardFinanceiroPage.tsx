@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   IoAlertCircleOutline,
@@ -169,6 +169,48 @@ const getGroupInfo = (item: FinanceiroApiItem, groupBy: FinanceiroGroup) => {
   };
 };
 
+const getContaFinanceiraLabel = (item: FinanceiroApiItem) => {
+  const descricaoConta = String(
+    item?.Descricao_Conta ?? item?.descricao_Conta ?? item?.descricaoConta ?? item?.Descricao_Conta_Financeira ?? item?.descricao_Conta_Financeira ?? '',
+  ).trim();
+
+  if (descricaoConta) {
+    return descricaoConta;
+  }
+
+  const contaFinanceiraRaw =
+    item?.Conta_Financeira ?? item?.conta_Financeira ?? item?.contaFinanceira ?? item?.Conta_Contabil ?? item?.conta_Contabil ?? item?.contaContabil;
+
+  const contaFinanceiraNumero = toNumber(contaFinanceiraRaw);
+  if (contaFinanceiraNumero <= 0) {
+    return 'SEM CONTA FINANCEIRA';
+  }
+
+  const nomeConta = String(item?.Nome_Conta_Financeira ?? item?.nome_Conta_Financeira ?? item?.nomeContaFinanceira ?? '').trim();
+  if (nomeConta) {
+    return nomeConta;
+  }
+
+  return `Conta ${contaFinanceiraNumero}`;
+};
+
+const getValorAtrasoFinanceiro = (item: FinanceiroApiItem) =>
+  toNumber(
+    item?.Valor_Atraso ??
+      item?.valor_Atraso ??
+      item?.valorAtraso ??
+      item?.Valor_Atrasado ??
+      item?.valor_Atrasado ??
+      item?.valorAtrasado ??
+      item?.Valor_Vencido ??
+      item?.valor_Vencido ??
+      item?.valorVencido ??
+      item?.Saldo_Vencido ??
+      item?.saldo_Vencido ??
+      item?.saldoVencido ??
+      0,
+  );
+
 const filterByDependent = (source: FinanceiroApiItem[], groupBy: FinanceiroGroup, dependentValue: string) => {
   const selected = normalizeText(dependentValue);
   if (!selected || selected === 'todos') return source;
@@ -299,6 +341,7 @@ export function DashboardFinanceiroPage() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [mainChartCollapsed, setMainChartCollapsed] = useState(false);
   const [topChartCollapsed, setTopChartCollapsed] = useState(false);
+  const [showAllTopReceitas, setShowAllTopReceitas] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
@@ -414,23 +457,15 @@ export function DashboardFinanceiroPage() {
     );
 
     const saldo = totalReceitas - totalDespesas;
+    const totalReceitasEmAtraso = (filteredPayload.FluxoCaixaReceitas ?? []).reduce((acc, item) => acc + getValorAtrasoFinanceiro(item), 0);
+    const totalDespesasEmAtraso = (filteredPayload.FluxoCaixaDespesas ?? []).reduce((acc, item) => acc + getValorAtrasoFinanceiro(item), 0);
 
     return [
       { key: 'total-receitas', label: 'Total de receitas', value: totalReceitas, format: 'currency' },
       { key: 'total-despesas', label: 'Total de despesas', value: totalDespesas, format: 'currency' },
       { key: 'saldo-periodo', label: 'Saldo do período', value: saldo, format: 'currency' },
-      {
-        key: 'qtd-receitas',
-        label: 'Lançamentos de receitas',
-        value: filteredPayload.FluxoCaixaReceitas.length,
-        format: 'number',
-      },
-      {
-        key: 'qtd-despesas',
-        label: 'Lançamentos de despesas',
-        value: filteredPayload.FluxoCaixaDespesas.length,
-        format: 'number',
-      },
+      { key: 'receitas-atraso', label: 'Receitas em atraso', value: totalReceitasEmAtraso, format: 'currency' },
+      { key: 'despesas-atraso', label: 'Despesas em atraso', value: totalDespesasEmAtraso, format: 'currency' },
     ];
   }, [filteredPayload]);
 
@@ -451,16 +486,21 @@ export function DashboardFinanceiroPage() {
     }
 
     return Array.from(grouped.values())
-      .sort((a, b) => Number(b.valor ?? 0) - Number(a.valor ?? 0))
-      .slice(0, 5);
+      .sort((a, b) => Number(b.valor ?? 0) - Number(a.valor ?? 0));
   }, [filteredPayload.FluxoCaixaReceitas]);
 
-  const topDespesasRows = useMemo<DashboardRow[]>(() => {
+  const topReceitasVisibleRows = useMemo(() => {
+    if (showAllTopReceitas) return topReceitasRows;
+    return topReceitasRows.slice(0, 10);
+  }, [showAllTopReceitas, topReceitasRows]);
+
+  const despesasPorContaRows = useMemo<DashboardRow[]>(() => {
     const grouped = new Map<string, DashboardRow>();
 
     for (const rawItem of filteredPayload.FluxoCaixaDespesas ?? []) {
       const item = (rawItem ?? {}) as FinanceiroApiItem;
-      const info = getGroupInfo(item, 'cliente');
+      const label = getContaFinanceiraLabel(item);
+      const info = { key: normalizeText(label) || 'sem-conta', label };
       const current = grouped.get(info.key) || { key: info.key, label: info.label, valor: 0 };
       current.valor = Number(current.valor ?? 0) + toNumber(item?.Valor_Mov ?? item?.valor_Mov ?? item?.valorMov ?? 0);
       grouped.set(info.key, current);
@@ -468,7 +508,7 @@ export function DashboardFinanceiroPage() {
 
     return Array.from(grouped.values())
       .sort((a, b) => Number(b.valor ?? 0) - Number(a.valor ?? 0))
-      .slice(0, 5);
+      .slice(0, 10);
   }, [filteredPayload.FluxoCaixaDespesas]);
 
   const topReceitasSeries = useMemo<DashboardSeries[]>(() => [{ key: 'valor', label: 'Receitas', color: '#2563eb', format: 'currency' }], []);
@@ -503,14 +543,58 @@ export function DashboardFinanceiroPage() {
     );
   }, [monthlyComparisonRows]);
 
-  const monthlyAxisTicks = useMemo(() => {
+  const monthlyAreaPoints = useMemo(() => {
+    const width = 920;
+    const height = 300;
+    const padX = 74;
+    const padY = 18;
+    const stepX = monthlyComparisonRows.length > 1 ? (width - padX * 2) / (monthlyComparisonRows.length - 1) : 0;
+
+    const receitasPoints = monthlyComparisonRows.map((row, index) => {
+      const value = Math.max(0, Number(row.receitas ?? 0));
+      const x = padX + index * stepX;
+      const y = height - padY - (value / monthlyComparisonMax) * (height - padY * 2);
+      return { x, y, value, key: row.key, label: row.label };
+    });
+
+    const despesasPoints = monthlyComparisonRows.map((row, index) => {
+      const value = Math.max(0, Number(row.despesas ?? 0));
+      const x = padX + index * stepX;
+      const y = height - padY - (value / monthlyComparisonMax) * (height - padY * 2);
+      return { x, y, value, key: row.key, label: row.label };
+    });
+
+    const receitasLine = receitasPoints.map((point) => `${point.x},${point.y}`).join(' ');
+    const despesasLine = despesasPoints.map((point) => `${point.x},${point.y}`).join(' ');
+
+    const receitasEndX = receitasPoints.length > 0 ? receitasPoints[receitasPoints.length - 1].x : padX;
+    const despesasEndX = despesasPoints.length > 0 ? despesasPoints[despesasPoints.length - 1].x : padX;
+
+    const receitasArea = `${padX},${height - padY} ${receitasLine} ${receitasEndX},${height - padY}`;
+    const despesasArea = `${padX},${height - padY} ${despesasLine} ${despesasEndX},${height - padY}`;
+
+    return {
+      width,
+      height,
+      padX,
+      padY,
+      receitasPoints,
+      despesasPoints,
+      receitasLine,
+      despesasLine,
+      receitasArea,
+      despesasArea,
+    };
+  }, [monthlyComparisonMax, monthlyComparisonRows]);
+
+  const monthlyAreaTicks = useMemo(() => {
     const steps = 5;
     return Array.from({ length: steps + 1 }, (_, index) => {
       const value = (monthlyComparisonMax / steps) * (steps - index);
-      const topPercent = (index / steps) * 100;
-      return { value, topPercent };
+      const y = monthlyAreaPoints.padY + ((monthlyAreaPoints.height - monthlyAreaPoints.padY * 2) / steps) * index;
+      return { value, y };
     });
-  }, [monthlyComparisonMax]);
+  }, [monthlyAreaPoints.height, monthlyAreaPoints.padY, monthlyComparisonMax]);
 
   const hasAnyData = filteredPayload.FluxoCaixaReceitas.length > 0 || filteredPayload.FluxoCaixaDespesas.length > 0;
   const hasDataAfterFilters = processed.rows.length > 0;
@@ -616,8 +700,8 @@ export function DashboardFinanceiroPage() {
               <article className="card dashboard-chart-card">
                 <header className="dashboard-section-header dashboard-section-header--collapsible">
                   <div>
-                    <h2>Top 5 receitas e top 5 despesas</h2>
-                    <p>Ranking em pizza dos maiores clientes de receitas e despesas no período.</p>
+                    <h2>Top receitas e despesas</h2>
+                    <p>Top 10 receitas em barra horizontal e despesas por conta financeira em pizza.</p>
                   </div>
                   <button
                     type="button"
@@ -630,23 +714,35 @@ export function DashboardFinanceiroPage() {
                   </button>
                 </header>
                 {!mainChartCollapsed ? (
-                  topReceitasRows.length === 0 && topDespesasRows.length === 0 ? (
-                    <p className="module-empty">Sem dados para montar o top 5 de receitas e despesas.</p>
+                  topReceitasRows.length === 0 && despesasPorContaRows.length === 0 ? (
+                    <p className="module-empty">Sem dados para montar os rankings de receitas e despesas.</p>
                   ) : (
                     <div className="dashboard-financeiro-top-pies">
                       <article className="dashboard-financeiro-top-pies__card">
-                        <h3>Top 5 receitas</h3>
-                        {topReceitasRows.length > 0 ? (
-                          <DashboardChart chartType="pie" rows={topReceitasRows} series={topReceitasSeries} xKey="label" />
+                        <div className="dashboard-financeiro-top-pies__card-header">
+                          <h3>{showAllTopReceitas ? 'Receitas (todas)' : 'Top 10 receitas'}</h3>
+                          {topReceitasRows.length > 10 ? (
+                            <button
+                              type="button"
+                              className="secondary-button dashboard-financeiro-top-pies__toggle"
+                              onClick={() => setShowAllTopReceitas((prev) => !prev)}
+                            >
+                              {showAllTopReceitas ? 'Mostrar top 10' : 'Ver todos'}
+                            </button>
+                          ) : null}
+                        </div>
+
+                        {topReceitasVisibleRows.length > 0 ? (
+                          <DashboardChart chartType="bar-horizontal" rows={topReceitasVisibleRows} series={topReceitasSeries} xKey="label" />
                         ) : (
                           <p className="module-empty">Sem receitas no período.</p>
                         )}
                       </article>
 
                       <article className="dashboard-financeiro-top-pies__card">
-                        <h3>Top 5 despesas</h3>
-                        {topDespesasRows.length > 0 ? (
-                          <DashboardChart chartType="pie" rows={topDespesasRows} series={topDespesasSeries} xKey="label" />
+                        <h3>Despesas por conta financeira</h3>
+                        {despesasPorContaRows.length > 0 ? (
+                          <DashboardChart chartType="pie" rows={despesasPorContaRows} series={topDespesasSeries} xKey="label" />
                         ) : (
                           <p className="module-empty">Sem despesas no período.</p>
                         )}
@@ -660,7 +756,7 @@ export function DashboardFinanceiroPage() {
                 <header className="dashboard-section-header dashboard-section-header--collapsible">
                   <div>
                     <h2>Receita x Despesa por mês</h2>
-                    <p>Duas barras verticais por mês para comparar receitas e despesas.</p>
+                    <p>Comparativo mensal em linha com área para receitas e despesas.</p>
                   </div>
                   <button
                     type="button"
@@ -676,53 +772,57 @@ export function DashboardFinanceiroPage() {
                   monthlyComparisonRows.length === 0 ? (
                     <p className="module-empty">Sem dados mensais para comparar receitas e despesas.</p>
                   ) : (
-                    <div className="dashboard-financeiro-classic">
-                      <div className="dashboard-financeiro-classic__plot">
-                        <div className="dashboard-financeiro-classic__y-axis" aria-hidden="true">
-                          {monthlyAxisTicks.map((tick) => (
-                            <span key={`tick-${tick.topPercent}`} style={{ top: `${tick.topPercent}%` }}>
+                    <div className="dashboard-financeiro-area">
+                      <div className="dashboard-native-svg-wrap dashboard-financeiro-area__chart-wrap">
+                        <svg viewBox={`0 0 ${monthlyAreaPoints.width} ${monthlyAreaPoints.height}`} className="dashboard-native-svg">
+                          <line
+                            x1={monthlyAreaPoints.padX}
+                            y1={monthlyAreaPoints.padY}
+                            x2={monthlyAreaPoints.padX}
+                            y2={monthlyAreaPoints.height - monthlyAreaPoints.padY}
+                            className="dashboard-financeiro-area__axis"
+                          />
+
+                          {Array.from({ length: 5 }).map((_, index) => {
+                            const y = monthlyAreaPoints.padY + ((monthlyAreaPoints.height - monthlyAreaPoints.padY * 2) / 4) * index;
+                            return <line key={`grid-${index}`} x1={monthlyAreaPoints.padX} y1={y} x2={monthlyAreaPoints.width - monthlyAreaPoints.padX} y2={y} className="dashboard-financeiro-area__grid" />;
+                          })}
+
+                          {monthlyAreaTicks.map((tick, index) => (
+                            <text key={`tick-${index}`} x={monthlyAreaPoints.padX - 8} y={tick.y + 3} textAnchor="end" className="dashboard-financeiro-area__tick-text">
                               {formatNumberBR(Math.round(tick.value))}
-                            </span>
-                          ))}
-                        </div>
-
-                        <div className="dashboard-financeiro-classic__chart">
-                          {monthlyAxisTicks.map((tick) => (
-                            <span key={`grid-${tick.topPercent}`} className="dashboard-financeiro-classic__grid-line" style={{ top: `${tick.topPercent}%` }} />
+                            </text>
                           ))}
 
-                          <div className="dashboard-financeiro-classic__groups">
-                            {monthlyComparisonRows.map((row) => {
-                              const receitas = Number(row.receitas ?? 0);
-                              const despesas = Number(row.despesas ?? 0);
-                              const receitaHeight = Math.max(2, (Math.abs(receitas) / monthlyComparisonMax) * 100);
-                              const despesaHeight = Math.max(2, (Math.abs(despesas) / monthlyComparisonMax) * 100);
+                          <polygon points={monthlyAreaPoints.receitasArea} className="dashboard-financeiro-area__fill is-receita" />
+                          <polygon points={monthlyAreaPoints.despesasArea} className="dashboard-financeiro-area__fill is-despesa" />
 
-                              return (
-                                <article key={row.key} className="dashboard-financeiro-classic__group">
-                                  <div className="dashboard-financeiro-classic__bars">
-                                    <div
-                                      className="dashboard-financeiro-classic__bar is-receita"
-                                      style={{ '--bar-size': `${receitaHeight}%` } as CSSProperties}
-                                      title={`Receita: ${Number(receitas).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`}
-                                    />
-                                    <div
-                                      className="dashboard-financeiro-classic__bar is-despesa"
-                                      style={{ '--bar-size': `${despesaHeight}%` } as CSSProperties}
-                                      title={`Despesa: ${Number(despesas).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`}
-                                    />
-                                  </div>
-                                  <strong className="dashboard-financeiro-classic__label">{row.label}</strong>
-                                </article>
-                              );
-                            })}
-                          </div>
+                          <polyline points={monthlyAreaPoints.receitasLine} className="dashboard-financeiro-area__line is-receita" />
+                          <polyline points={monthlyAreaPoints.despesasLine} className="dashboard-financeiro-area__line is-despesa" />
+
+                          {monthlyAreaPoints.receitasPoints.map((point) => (
+                            <circle key={`rec-${point.key}`} cx={point.x} cy={point.y} r="3.5" className="dashboard-financeiro-area__dot is-receita">
+                              <title>{`Receita ${point.label}: ${Number(point.value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`}</title>
+                            </circle>
+                          ))}
+
+                          {monthlyAreaPoints.despesasPoints.map((point) => (
+                            <circle key={`des-${point.key}`} cx={point.x} cy={point.y} r="3.5" className="dashboard-financeiro-area__dot is-despesa">
+                              <title>{`Despesa ${point.label}: ${Number(point.value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`}</title>
+                            </circle>
+                          ))}
+                        </svg>
+
+                        <div className="dashboard-native-xlabels">
+                          {monthlyComparisonRows.map((row) => (
+                            <span key={`label-${row.key}`}>{row.label}</span>
+                          ))}
                         </div>
                       </div>
 
-                      <div className="dashboard-financeiro-classic__legend" aria-hidden="true">
-                        <span className="dashboard-financeiro-classic__legend-item is-receita">Receitas</span>
-                        <span className="dashboard-financeiro-classic__legend-item is-despesa">Despesas</span>
+                      <div className="dashboard-financeiro-area__legend" aria-hidden="true">
+                        <span className="dashboard-financeiro-area__legend-item is-receita">Receitas</span>
+                        <span className="dashboard-financeiro-area__legend-item is-despesa">Despesas</span>
                       </div>
                     </div>
                   )

@@ -11,6 +11,7 @@ type SearchableSelectProps = {
   options: SearchableSelectOption[];
   value: string;
   onChange: (value: string) => void;
+  enableSearch?: boolean;
   placeholder?: string;
   searchPlaceholder?: string;
   emptyText?: string;
@@ -31,6 +32,7 @@ export function SearchableSelect({
   options,
   value,
   onChange,
+  enableSearch = true,
   placeholder = 'Selecione',
   searchPlaceholder = 'Pesquisar...',
   emptyText = 'Nenhuma opcao encontrada.',
@@ -52,6 +54,8 @@ export function SearchableSelect({
   const selectedOption = useMemo(() => options.find((option) => option.value === value) ?? null, [options, value]);
 
   const filteredOptions = useMemo(() => {
+    if (!enableSearch) return options;
+
     const normalizedQuery = normalizeText(query.trim());
     if (!normalizedQuery) return options;
 
@@ -60,9 +64,10 @@ export function SearchableSelect({
       const normalizedValue = normalizeText(option.value);
       return normalizedLabel.includes(normalizedQuery) || normalizedValue.includes(normalizedQuery);
     });
-  }, [options, query]);
+  }, [enableSearch, options, query]);
 
   useEffect(() => {
+    if (!enableSearch) return;
     if (!isOpen) return;
 
     const handleMouseDown = (event: MouseEvent) => {
@@ -76,7 +81,7 @@ export function SearchableSelect({
 
     document.addEventListener('mousedown', handleMouseDown);
     return () => document.removeEventListener('mousedown', handleMouseDown);
-  }, [isOpen]);
+  }, [enableSearch, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -177,23 +182,25 @@ export function SearchableSelect({
           : undefined
       }
     >
-      <input
-        ref={searchInputRef}
-        className="search-input"
-        type="search"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        onKeyDown={handleSearchKeyDown}
-        placeholder={searchPlaceholder}
-        aria-label={searchPlaceholder}
-      />
+      {enableSearch ? (
+        <input
+          ref={searchInputRef}
+          className="search-input"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={handleSearchKeyDown}
+          placeholder={searchPlaceholder}
+          aria-label={searchPlaceholder}
+        />
+      ) : null}
 
       <ul
         className="searchable-select__list"
         role="listbox"
         id={listboxId}
         aria-label={ariaLabel || 'Opcoes'}
-        style={popoverStyle ? { maxHeight: `${Math.max(120, popoverStyle.maxHeight - 70)}px` } : undefined}
+        style={popoverStyle ? { maxHeight: `${Math.max(120, popoverStyle.maxHeight - (enableSearch ? 70 : 20))}px` } : undefined}
       >
         {filteredOptions.length === 0 ? (
           <li className="searchable-select__empty">{emptyText}</li>
