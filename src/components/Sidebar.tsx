@@ -29,7 +29,7 @@ import type { MenuItem } from '../types/menu';
 import { LogoIcon } from './LogoIcon';
 import { ThemeIcon } from './ThemeIcon';
 import { useLanguage } from '../contexts/LanguageContext';
-import { APP_VERSION } from '../constants/appInfo';
+import { APP_NAME, APP_VERSION } from '../constants/appInfo';
 
 type SidebarProps = {
   userName: string;
@@ -282,7 +282,7 @@ export function Sidebar({
             <div className="sidebar__brand-home-content">
               <LogoIcon size={40} mode={themeMode} />
               <div className="sidebar__brand-text">
-                <p className="sidebar__brand-title">Bem vindo ao QSERPx</p>
+                <p className="sidebar__brand-title">Bem vindo ao {APP_NAME}</p>
                 <p className="sidebar__brand-subtitle">v{APP_VERSION}</p>
               </div>
             </div>

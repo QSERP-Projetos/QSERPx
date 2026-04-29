@@ -106,7 +106,8 @@ export function SearchableSelect({
       const viewportWidth = window.innerWidth;
       const horizontalPadding = 12;
 
-      const width = Math.min(rect.width, viewportWidth - horizontalPadding * 2);
+      const preferredMinWidth = enableSearch ? 340 : rect.width;
+      const width = Math.min(Math.max(rect.width, preferredMinWidth), viewportWidth - horizontalPadding * 2);
       const left = Math.max(horizontalPadding, Math.min(rect.left, viewportWidth - width - horizontalPadding));
 
       const spaceBelow = Math.max(160, viewportHeight - rect.bottom - 14);
@@ -127,7 +128,7 @@ export function SearchableSelect({
       window.removeEventListener('resize', updatePopoverPosition);
       window.removeEventListener('scroll', updatePopoverPosition, true);
     };
-  }, [dropUp, isOpen]);
+  }, [dropUp, enableSearch, isOpen]);
 
   const close = () => {
     setIsOpen(false);
@@ -175,6 +176,7 @@ export function SearchableSelect({
           ? {
               position: 'fixed',
               left: `${popoverStyle.left}px`,
+              right: 'auto',
               width: `${popoverStyle.width}px`,
               top: popoverStyle.renderUp ? undefined : `${popoverStyle.top}px`,
               bottom: popoverStyle.renderUp ? `${Math.max(12, window.innerHeight - popoverStyle.top)}px` : undefined,

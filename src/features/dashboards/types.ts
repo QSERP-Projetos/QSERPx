@@ -33,4 +33,5 @@ export type DashboardDateErrors = {
   codigoEmpresa?: string;
   dataDe?: string;
   dataAte?: string;
+  ano?: string;
 };

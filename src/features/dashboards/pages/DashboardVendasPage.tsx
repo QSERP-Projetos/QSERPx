@@ -395,7 +395,7 @@ export function DashboardVendasPage() {
 
     return [
       { key: 'total-faturamento', label: 'Faturamento total', value: totalFaturamento, format: 'currency' },
-      { key: 'total-por-produto', label: 'Total por produto', value: totalPorProduto, format: 'currency' },
+      { key: 'total-por-produto', label: 'Total mercadoria', value: totalPorProduto, format: 'currency' },
       { key: 'total-impostos', label: 'Total de impostos', value: totalImpostos, format: 'currency' },
       { key: 'total-atraso', label: 'Total em atraso', value: totalAtraso, format: 'currency' },
       { key: 'total-forecast', label: 'Total previsto (forecast)', value: totalForecast, format: 'currency' },

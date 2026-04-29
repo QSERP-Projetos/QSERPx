@@ -2545,6 +2545,8 @@ select {
   left: 0;
   right: 0;
   top: calc(100% + 6px);
+  min-width: 0;
+  max-width: calc(100vw - 24px);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 12px;
@@ -2563,8 +2565,10 @@ select {
 }
 
 .searchable-select .search-input {
+  display: block;
   min-width: 0;
   width: 100%;
+  max-width: 100%;
   border-radius: 10px;
 }
 
