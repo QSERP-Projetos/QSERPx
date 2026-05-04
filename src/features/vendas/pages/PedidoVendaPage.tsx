@@ -98,7 +98,7 @@ const normalizeText = (value: any) =>
     .toLowerCase();
 
 const SITUACAO_MAP_BY_CODE: Record<string, { label: string; badgeClass: string; weight: number }> = {
-  '-1': { label: 'Elaboração', badgeClass: 'warning', weight: 1 },
+  '-1': { label: 'Elaboração', badgeClass: 'elaboracao', weight: 1 },
   '1': { label: 'Em aberto', badgeClass: 'info', weight: 2 },
   '0': { label: 'Pendente', badgeClass: 'warning', weight: 3 },
   '2': { label: 'Encerrado', badgeClass: 'success', weight: 4 },

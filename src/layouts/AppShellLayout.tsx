@@ -56,6 +56,11 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
       ? ROUTES.dashboardFinanceiro
       : undefined) ||
     (normalizedTitle.includes('dashboard') && normalizedTitle.includes('venda') ? ROUTES.dashboardVendas : undefined) ||
+    (normalizedTitle.includes('pedido') &&
+    normalizedTitle.includes('venda') &&
+    (normalizedTitle.includes('representante') || normalizedTitle.includes('represent'))
+      ? ROUTES.pedidoVendaRepresentantes
+      : undefined) ||
     (normalizedTitle.includes('pedido') && normalizedTitle.includes('venda') ? ROUTES.pedidoVenda : undefined) ||
     (normalizedTitle.includes('pedido') && normalizedTitle.includes('compra') && normalizedTitle.includes('liber')
       ? ROUTES.comprasPedidoLiberacao
@@ -85,7 +90,7 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
       ? ROUTES.qualidadeFichaRecebimento
       : undefined);
 
-  return dashboardRouteByTitle || routeByTitle || routeByCode;
+  return dashboardRouteByTitle || routeByCode || routeByTitle;
 };
 
 const isTipoApontamentoTransaction = (transactionCode: string, title: string) => {

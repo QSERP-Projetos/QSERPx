@@ -2796,6 +2796,26 @@ export function PedidoVendaFormPanel({
   if (!open) return null;
 
   const numeroTitulo = cleanLabelText(numPedido ?? (initialPedido as any)?.num_Pedido ?? (initialPedido as any)?.numPedido ?? '');
+  const situacaoConsulta = cleanLabelText(
+    situacaoPedido
+      ?? (initialPedido as any)?.situacaoPedido
+      ?? (initialPedido as any)?.descricao_Situacao
+      ?? (initialPedido as any)?.descricaoSituacao
+      ?? '',
+  );
+  const destinoConsulta = findOptionLabel(destinoPedidoOptions, destinoPedido, destinoPedido || '-');
+  const condicaoConsulta = lookupLabels.condicao || findOptionLabel(condicaoOptions, condicaoPagto);
+  const transportadoraConsulta =
+    lookupLabels.transportadora || findOptionLabel(transportadoraOptions, codigoTransportadora);
+  const valorFreteConsulta = formatMoney(frete, 'R$');
+  const descontoClienteConsulta = `${parseNumber(desconto).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}%`;
+  const descontoAplicadoConsulta = `${parseNumber(descontoAplicado).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}%`;
 
   return (
     <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Pedido de venda${sufixoTitulo}`}>
@@ -2848,6 +2868,38 @@ export function PedidoVendaFormPanel({
                         {lookupLabels.vendedor || findOptionLabel(vendedorOptions, codigoVendedor)}
                       </div>
                     </label>
+                    {!isMobileLayout ? (
+                      <>
+                        <label>
+                          <span>Destino pedido</span>
+                          <div className="pedido-venda-static-value">{destinoConsulta}</div>
+                        </label>
+                        <label>
+                          <span>Situação</span>
+                          <div className="pedido-venda-static-value">{situacaoConsulta || '-'}</div>
+                        </label>
+                        <label>
+                          <span>Condição pgto</span>
+                          <div className="pedido-venda-static-value">{condicaoConsulta}</div>
+                        </label>
+                        <label>
+                          <span>Valor frete</span>
+                          <div className="pedido-venda-static-value">{valorFreteConsulta}</div>
+                        </label>
+                        <label>
+                          <span>Transportadora</span>
+                          <div className="pedido-venda-static-value">{transportadoraConsulta}</div>
+                        </label>
+                        <label>
+                          <span>Desconto cliente (%)</span>
+                          <div className="pedido-venda-static-value">{descontoClienteConsulta}</div>
+                        </label>
+                        <label>
+                          <span>Desconto aplicado (%)</span>
+                          <div className="pedido-venda-static-value">{descontoAplicadoConsulta}</div>
+                        </label>
+                      </>
+                    ) : null}
                   </div>
                 ) : (
                   <>
