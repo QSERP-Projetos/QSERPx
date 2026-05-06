@@ -5768,9 +5768,9 @@ select.text-field:focus {
 
 .pedido-venda-total-footer-row {
   display: grid;
-  grid-template-columns: minmax(180px, 260px) minmax(180px, 260px) minmax(180px, 260px) minmax(0, 1fr);
+  grid-template-columns: minmax(150px, 205px) minmax(150px, 205px) minmax(150px, 205px) minmax(150px, 205px) minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .pedido-venda-total-footer {
@@ -5782,14 +5782,20 @@ select.text-field:focus {
 .pedido-venda-total-footer__actions {
   width: auto;
   display: inline-flex;
-  gap: 10px;
+  flex-wrap: nowrap;
+  gap: 8px;
   margin-left: auto;
 }
 
 .pedido-venda-total-footer__actions .primary-button,
 .pedido-venda-total-footer__actions .secondary-button {
   width: auto;
-  min-width: 140px;
+  min-width: 128px;
+}
+
+.pedido-venda-form-modal .pedido-venda-total-footer__actions .primary-button,
+.pedido-venda-form-modal .pedido-venda-total-footer__actions .secondary-button {
+  min-width: 128px;
 }
 
 .pedido-venda-item-ficha-field {
@@ -6626,9 +6632,34 @@ select.text-field:focus {
     width: 100%;
   }
 
-  .pedido-venda-consulta-actions {
+  .pedido-venda-consulta-total-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .pedido-venda-consulta-total {
+    align-items: flex-start;
     flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+  }
+
+  .pedido-venda-consulta-total > span {
+    font-size: 0.74rem;
+    line-height: 1.15;
+  }
+
+  .pedido-venda-consulta-total > strong {
+    font-size: 1.02rem;
+    line-height: 1.2;
+  }
+
+  .pedido-venda-consulta-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: stretch;
+    gap: 8px;
   }
 
   .pedido-venda-consulta-actions .secondary-button {

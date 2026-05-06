@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { IoAddOutline, IoChevronDownOutline, IoChevronForwardOutline, IoCloseCircleOutline, IoCloseOutline, IoDocumentTextOutline, IoSaveOutline, IoSearchOutline, IoTrashOutline } from 'react-icons/io5';
+import { IoAddOutline, IoChevronDownOutline, IoChevronForwardOutline, IoCloseCircleOutline, IoCloseOutline, IoDocumentTextOutline, IoDownloadOutline, IoSaveOutline, IoSearchOutline, IoTrashOutline } from 'react-icons/io5';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -121,6 +121,7 @@ const getPlanilhaStatusCode = (item: PlanilhaItemPreview): 'ok' | 'x' | 'i' | 't
 };
 
 const PLANILHA_HEADERS_ESPERADOS = ['Código Drw:', 'Qtde:'];
+const PLANILHA_MODELO_URL = 'https://docs.google.com/spreadsheets/d/1M3fyKWWl2lGKLbM6V2IhgonIteC19zBs/edit?usp=sharing&ouid=116213973783828713079&rtpof=true&sd=true';
 
 const formatQtdPlanilhaInput = (value: string) => {
   const cleaned = String(value ?? '').replace(/[^\d.,]/g, '');
@@ -673,6 +674,10 @@ export function PedidoVendaFormPanel({
     setDataEntregaImportacao((prev) => prev || dataEntregaPadrao);
     setDadosImportacaoOpen(true);
   }, [codigoCliente, itens, showToast]);
+
+  const handleClickBaixarPlanilha = useCallback(() => {
+    window.open(PLANILHA_MODELO_URL, '_blank', 'noopener,noreferrer');
+  }, []);
 
   const handleConfirmarDadosImportacao = useCallback(() => {
     if (!pedidoClienteImportacao.trim() || !dataEntregaImportacao.trim()) {
@@ -2042,6 +2047,11 @@ export function PedidoVendaFormPanel({
     [itens],
   );
 
+  const qtdTotalItens = useMemo(
+    () => itens.reduce((acc, item) => acc + parseNumber(item.Qtd_Entregar), 0),
+    [itens],
+  );
+
   const totalPedido = useMemo(() => totalItens + parseNumber(frete), [frete, totalItens]);
 
   const resumoPlanilhaStatus = useMemo(() => {
@@ -2092,6 +2102,7 @@ export function PedidoVendaFormPanel({
       const destino = findOptionLabel(destinoPedidoOptions, destinoPedido, '-');
 
       const formatNumber = (value: number) => value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const formatQuantity = (value: number) => value.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -2171,14 +2182,16 @@ export function PedidoVendaFormPanel({
       const itensFinalY = (doc as any).lastAutoTable?.finalY ?? 190;
       const totalsStartY = Math.min(itensFinalY + 5, 190);
       const totals = [
-        { label: 'TOTAL DE ITENS DO PEDIDO', value: itens.length.toLocaleString('pt-BR') },
-        { label: 'TOTAL DOS ITENS', value: `R$ ${formatNumber(totalItens)}` },
-        { label: 'TOTAL DO PEDIDO', value: `R$ ${formatNumber(totalPedido)}` },
+        { label: 'TOTAL DE ITENS', value: itens.length.toLocaleString('pt-BR') },
+        { label: 'QUANTIDADE TOTAL', value: formatQuantity(qtdTotalItens) },
+        { label: 'VALOR ITENS', value: `R$ ${formatNumber(totalItens)}` },
+        { label: 'VALOR PEDIDO', value: `R$ ${formatNumber(totalPedido)}` },
       ];
 
-      const boxWidth = (pageWidth - 28 - 8 * 2) / 3;
+      const gap = 8;
+      const boxWidth = (pageWidth - 28 - gap * (totals.length - 1)) / totals.length;
       totals.forEach((total, index) => {
-        const x = 14 + index * (boxWidth + 8);
+        const x = 14 + index * (boxWidth + gap);
         doc.setDrawColor(190, 196, 205);
         doc.setFillColor(249, 250, 251);
         doc.roundedRect(x, totalsStartY, boxWidth, 16, 2, 2, 'FD');
@@ -2220,6 +2233,7 @@ export function PedidoVendaFormPanel({
     lookupLabels,
     numPedido,
     showToast,
+    qtdTotalItens,
     totalItens,
     totalPedido,
     transportadoraOptions,
@@ -3023,15 +3037,26 @@ export function PedidoVendaFormPanel({
                       <IoAddOutline size={16} />
                     </button>
                     {isRepresentantes && allowImportSpreadsheet ? (
-                      <button
-                        className="icon-button module-action-button module-action-button--primary"
-                        type="button"
-                        onClick={handleClickImportarPlanilha}
-                        aria-label="Importar planilha"
-                        title="Importar planilha"
-                      >
-                        <IoDocumentTextOutline size={16} />
-                      </button>
+                      <>
+                        <button
+                          className="icon-button module-action-button module-action-button--primary"
+                          type="button"
+                          onClick={handleClickBaixarPlanilha}
+                          aria-label="Baixar planilha"
+                          title="Baixar planilha"
+                        >
+                          <IoDownloadOutline size={16} />
+                        </button>
+                        <button
+                          className="icon-button module-action-button module-action-button--primary"
+                          type="button"
+                          onClick={handleClickImportarPlanilha}
+                          aria-label="Importar planilha"
+                          title="Importar planilha"
+                        >
+                          <IoDocumentTextOutline size={16} />
+                        </button>
+                      </>
                     ) : null}
                     <input
                       ref={fileInputPlanilhaRef}
@@ -3388,18 +3413,18 @@ export function PedidoVendaFormPanel({
                   <div className="pedido-venda-total-footer-row">
                     <div className="module-summary module-summary--single module-summary--muted pedido-venda-total-footer">
                       <article>
-                        <span>Total de itens do pedido</span>
+                        <span>TOTAL DE ITENS</span>
                         <strong>{itens.length.toLocaleString('pt-BR')}</strong>
                       </article>
                     </div>
 
                     <div className="module-summary module-summary--single module-summary--muted pedido-venda-total-footer">
                       <article>
-                        <span>Total dos itens</span>
+                        <span>QUANTIDADE TOTAL</span>
                         <strong>
-                          {totalItens.toLocaleString('pt-BR', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
+                          {qtdTotalItens.toLocaleString('pt-BR', {
+                            minimumFractionDigits: 3,
+                            maximumFractionDigits: 3,
                           })}
                         </strong>
                       </article>
@@ -3407,13 +3432,15 @@ export function PedidoVendaFormPanel({
 
                     <div className="module-summary module-summary--single module-summary--muted pedido-venda-total-footer">
                       <article>
-                        <span>Total do pedido</span>
-                        <strong>
-                          {totalPedido.toLocaleString('pt-BR', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </strong>
+                        <span>VALOR ITENS</span>
+                        <strong>{`R$ ${totalItens.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</strong>
+                      </article>
+                    </div>
+
+                    <div className="module-summary module-summary--single module-summary--muted pedido-venda-total-footer">
+                      <article>
+                        <span>VALOR PEDIDO</span>
+                        <strong>{`R$ ${totalPedido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</strong>
                       </article>
                     </div>
 
@@ -3437,12 +3464,25 @@ export function PedidoVendaFormPanel({
           <footer className="pedido-venda-consulta-footer">
             <div className="pedido-venda-consulta-total-group">
               <div className="pedido-venda-consulta-total">
-                <span>Total de itens do pedido</span>
+                <span>TOTAL DE ITENS</span>
                 <strong>{itens.length.toLocaleString('pt-BR')}</strong>
               </div>
               <div className="pedido-venda-consulta-total">
-                <span>Total do pedido</span>
-                <strong>{formatMoney(totalPedido, 'R$')}</strong>
+                <span>QUANTIDADE TOTAL</span>
+                <strong>
+                  {qtdTotalItens.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 3,
+                    maximumFractionDigits: 3,
+                  })}
+                </strong>
+              </div>
+              <div className="pedido-venda-consulta-total">
+                <span>VALOR ITENS</span>
+                <strong>{`R$ ${totalItens.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</strong>
+              </div>
+              <div className="pedido-venda-consulta-total">
+                <span>VALOR PEDIDO</span>
+                <strong>{`R$ ${totalPedido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</strong>
               </div>
             </div>
             <div className="pedido-venda-consulta-actions">
