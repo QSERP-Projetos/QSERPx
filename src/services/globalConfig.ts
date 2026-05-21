@@ -16,6 +16,7 @@ type SessionData = {
   tipoApontProd: string;
   tipoApontMaoObra: string;
   permitirApontamentoSemOperacao: boolean;
+  tipoMenuSistema: 'padrao' | 'simplificado';
 };
 
 declare global {
@@ -49,6 +50,28 @@ const defaultSession: SessionData = {
   tipoApontProd: 'Apontamento Padrão',
   tipoApontMaoObra: 'Apontamento Padrão',
   permitirApontamentoSemOperacao: false,
+  tipoMenuSistema: 'padrao',
+};
+
+const normalizeTipoMenuSistema = (value: unknown): 'padrao' | 'simplificado' => {
+  const normalized = String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+
+  if (
+    normalized === '2' ||
+    normalized === 'menu simplificado' ||
+    normalized === 'simplificado' ||
+    normalized === 'simples' ||
+    normalized === '-1' ||
+    normalized === 'true'
+  ) {
+    return 'simplificado';
+  }
+
+  return 'padrao';
 };
 
 const safeGet = (key: string): string | null => {
@@ -166,6 +189,7 @@ export class GlobalConfig {
         tipoApontProd: parsed.tipoApontProd || parsed.tipoApontProd || 'Apontamento Padrão',
         tipoApontMaoObra: parsed.tipoApontMaoObra || parsed.tipoApontMaoObra || 'Apontamento Padrão',
         permitirApontamentoSemOperacao: Boolean(parsed.permitirApontamentoSemOperacao),
+        tipoMenuSistema: normalizeTipoMenuSistema(parsed.tipoMenuSistema),
       };
     } catch {
       this.session = { ...defaultSession };
@@ -360,5 +384,18 @@ export class GlobalConfig {
 
   static getPermitirApontamentoSemOperacao(): boolean {
     return Boolean(this.session.permitirApontamentoSemOperacao);
+  }
+
+  static setTipoMenuSistema(value: unknown): void {
+    this.session.tipoMenuSistema = normalizeTipoMenuSistema(value);
+    void this.saveSession();
+  }
+
+  static getTipoMenuSistema(): 'padrao' | 'simplificado' {
+    return normalizeTipoMenuSistema(this.session.tipoMenuSistema);
+  }
+
+  static isMenuSimplificado(): boolean {
+    return this.getTipoMenuSistema() === 'simplificado';
   }
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   IoAddOutline,
   IoBookmarkOutline,
@@ -11,13 +12,32 @@ import {
   IoTrashOutline,
 } from 'react-icons/io5';
 import { CustomDatePicker } from '../components/CustomDatePicker';
+import { ROUTES } from '../constants/routes';
 import { useToast } from '../contexts/ToastContext';
 import { GlobalConfig } from '../services/globalConfig';
 import { buscarLembretesQS, buscarNotificacoesQS, criarLembrete, deleteLembrete } from '../services/supabaseQueries';
 import { listNotificacoesCall } from '../services/apiCalls';
+import { useDynamicMenu } from '../hooks/useDynamicMenu';
 
 const REMINDER_COLORS = ['#4A90E2', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6'];
 const HOME_AUTO_REFRESH_INTERVAL_MS = 120000;
+const MENU_MODULE_COLORS: Record<string, string> = {
+  dashboards: '#4A90E2',
+  'ativo-fixo': '#0EA5E9',
+  basico: '#22C55E',
+  compras: '#F59E0B',
+  contabilidade: '#6366F1',
+  custo: '#E11D48',
+  engenharia: '#14B8A6',
+  financeiro: '#2563EB',
+  fiscal: '#8B5CF6',
+  manutencao: '#F97316',
+  pcp: '#06B6D4',
+  qualidade: '#10B981',
+  servico: '#EC4899',
+  vendas: '#3B82F6',
+  seguranca: '#64748B',
+};
 
 const parseDisplayDate = (value: string) => {
   const normalized = String(value || '').trim();
@@ -61,9 +81,100 @@ const formatDateLabel = (value: any) => {
   return text;
 };
 
+const resolveRouteFromTransaction = (transactionCode: string, title: string): string | undefined => {
+  const normalizedCode = String(transactionCode || '').toUpperCase();
+  const normalizedTitle = String(title || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  const isDashboardCode = normalizedCode.startsWith('DSB');
+
+  const codeRouteMap: Record<string, string> = {
+    DSB002: ROUTES.dashboardFinanceiro,
+    DSB003: ROUTES.dashboardVendas,
+    VEN001: ROUTES.pedidoVendaRepresentantes,
+    VEN002: ROUTES.pedidoVenda,
+    VEN003: ROUTES.pedidoVenda,
+    BAS001: ROUTES.basicoClientes,
+    COM001: ROUTES.comprasPedidoLiberacao,
+    COM002: ROUTES.comprasPedidoLiberacao,
+    SEG001: ROUTES.segurancaUsuarios,
+    SEG002: ROUTES.segurancaTipoApontamento,
+    CFG008: ROUTES.segurancaSessoes,
+    CFG009: ROUTES.segurancaTipoApontamento,
+    PCP001: ROUTES.pcpApontamentoProducao,
+    PCP002: ROUTES.pcpOrdensFabricacao,
+    PCP003: ROUTES.pcpParadasMaquina,
+    PCP004: ROUTES.pcpPreparacaoMaquina,
+    SER001: ROUTES.servicoApontamentoMaoObra,
+    SER002: ROUTES.servicoOrdens,
+    SER003: ROUTES.servicoOrdens,
+    MAN001: ROUTES.manutencaoOrdens,
+  };
+
+  const dashboardRouteByTitle =
+    isDashboardCode && normalizedTitle.includes('finance')
+      ? ROUTES.dashboardFinanceiro
+      : isDashboardCode && normalizedTitle.includes('venda')
+        ? ROUTES.dashboardVendas
+        : undefined;
+
+  const routeByCode = codeRouteMap[normalizedCode];
+  const routeByTitle =
+    (normalizedTitle.includes('dashboard') && normalizedTitle.includes('finance')
+      ? ROUTES.dashboardFinanceiro
+      : undefined) ||
+    (normalizedTitle.includes('dashboard') && normalizedTitle.includes('venda') ? ROUTES.dashboardVendas : undefined) ||
+    (normalizedTitle.includes('pedido') &&
+    normalizedTitle.includes('venda') &&
+    (normalizedTitle.includes('representante') || normalizedTitle.includes('represent'))
+      ? ROUTES.pedidoVendaRepresentantes
+      : undefined) ||
+    (normalizedTitle.includes('pedido') && normalizedTitle.includes('venda') ? ROUTES.pedidoVenda : undefined) ||
+    (normalizedTitle.includes('pedido') && normalizedTitle.includes('compra') && normalizedTitle.includes('liber')
+      ? ROUTES.comprasPedidoLiberacao
+      : undefined) ||
+    (normalizedTitle.includes('cliente') ? ROUTES.basicoClientes : undefined) ||
+    (normalizedTitle.includes('usuario') ? ROUTES.segurancaUsuarios : undefined) ||
+    (normalizedTitle.includes('tipo') && normalizedTitle.includes('apont')
+      ? ROUTES.segurancaTipoApontamento
+      : undefined) ||
+    (normalizedTitle.includes('sess') ? ROUTES.segurancaSessoes : undefined) ||
+    (normalizedTitle.includes('ordem') && normalizedTitle.includes('fabricacao') ? ROUTES.pcpOrdensFabricacao : undefined) ||
+    (normalizedTitle.includes('apont') && normalizedTitle.includes('produc')
+      ? ROUTES.pcpApontamentoProducao
+      : undefined) ||
+    (normalizedTitle.includes('parada') && normalizedTitle.includes('maquina') ? ROUTES.pcpParadasMaquina : undefined) ||
+    (normalizedTitle.includes('preparacao') && normalizedTitle.includes('maquina')
+      ? ROUTES.pcpPreparacaoMaquina
+      : undefined) ||
+    (normalizedTitle.includes('ordem') && normalizedTitle.includes('servico') ? ROUTES.servicoOrdens : undefined) ||
+    (normalizedTitle.includes('apontamento') && normalizedTitle.includes('mao') && normalizedTitle.includes('obra')
+      ? ROUTES.servicoApontamentoMaoObra
+      : undefined) ||
+    (normalizedTitle.includes('ordem') && normalizedTitle.includes('manutenc')
+      ? ROUTES.manutencaoOrdens
+      : undefined) ||
+    (normalizedTitle.includes('ficha') && normalizedTitle.includes('inspec') && normalizedTitle.includes('process')
+      ? ROUTES.qualidadeFichaProcesso
+      : undefined) ||
+    (normalizedTitle.includes('ficha') && normalizedTitle.includes('inspec') && normalizedTitle.includes('receb')
+      ? ROUTES.qualidadeFichaRecebimento
+      : undefined);
+
+  return dashboardRouteByTitle || routeByCode || routeByTitle;
+};
+
 export function HomePage() {
+  const navigate = useNavigate();
   const { showToast } = useToast();
+  const { menus, loading: loadingMenus } = useDynamicMenu();
   const refreshInProgressRef = useRef(false);
+  const menuSimplificadoPreferencia = GlobalConfig.isMenuSimplificado();
+  const [isMobileViewport, setIsMobileViewport] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 1024px)').matches;
+  });
 
   const [notificacoesSistema, setNotificacoesSistema] = useState<any[]>([]);
   const [notificacoesQs, setNotificacoesQs] = useState<any[]>([]);
@@ -84,8 +195,12 @@ export function HomePage() {
   const [deletingReminder, setDeletingReminder] = useState(false);
   const [notificacoesQsCollapsed, setNotificacoesQsCollapsed] = useState(false);
   const [notificacoesSistemaCollapsed, setNotificacoesSistemaCollapsed] = useState(false);
+  const [notificacoesQsExpanded, setNotificacoesQsExpanded] = useState(false);
+  const [notificacoesSistemaExpanded, setNotificacoesSistemaExpanded] = useState(false);
+  const [expandedSimplifiedModules, setExpandedSimplifiedModules] = useState<Set<string>>(new Set());
   const [notificacaoQsSearch, setNotificacaoQsSearch] = useState('');
   const [notificacaoSistemaSearch, setNotificacaoSistemaSearch] = useState('');
+  const menuSimplificado = menuSimplificadoPreferencia && isMobileViewport;
 
   const getItemText = (item: any, fallback: string) => {
     const keys = [
@@ -283,6 +398,19 @@ export function HomePage() {
     };
   }, [refreshDashboard]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mediaQuery = window.matchMedia('(max-width: 1024px)');
+    const syncViewport = (event?: MediaQueryListEvent) => {
+      setIsMobileViewport(event ? event.matches : mediaQuery.matches);
+    };
+
+    syncViewport();
+    mediaQuery.addEventListener('change', syncViewport);
+    return () => mediaQuery.removeEventListener('change', syncViewport);
+  }, []);
+
   const lembretesFiltrados = useMemo(() => {
     const term = lembreteSearch.trim().toLowerCase();
     if (!term) return lembretes;
@@ -324,28 +452,158 @@ export function HomePage() {
     });
   }, [notificacaoSistemaSearch, notificacoesSistema]);
 
+  const notificacoesQsVisiveis = useMemo(() => {
+    if (notificacoesQsExpanded) return notificacoesQsFiltradas;
+    return notificacoesQsFiltradas.slice(0, 6);
+  }, [notificacoesQsExpanded, notificacoesQsFiltradas]);
+
+  const notificacoesSistemaVisiveis = useMemo(() => {
+    if (notificacoesSistemaExpanded) return notificacoesSistemaFiltradas;
+    return notificacoesSistemaFiltradas.slice(0, 6);
+  }, [notificacoesSistemaExpanded, notificacoesSistemaFiltradas]);
+
+  const canExpandNotificacoesQs = notificacoesQsFiltradas.length > 6;
+  const canExpandNotificacoesSistema = notificacoesSistemaFiltradas.length > 6;
+
+  const simplifiedModules = useMemo(() => {
+    return menus.map((menu, menuIndex) => ({
+      ...menu,
+      color: MENU_MODULE_COLORS[menu.id] || REMINDER_COLORS[menuIndex % REMINDER_COLORS.length],
+    }));
+  }, [menus]);
+
+  const toggleSimplifiedModule = (moduleId: string) => {
+    setExpandedSimplifiedModules((prev) => {
+      const next = new Set(prev);
+      if (next.has(moduleId)) {
+        next.delete(moduleId);
+      } else {
+        next.add(moduleId);
+      }
+      return next;
+    });
+  };
+
   const selectedReminderTitle = selectedReminder ? getReminderTitle(selectedReminder, 0) : '';
   const selectedReminderDescription = selectedReminder ? getReminderDescription(selectedReminder) : '';
   const selectedReminderDate = selectedReminder ? formatDateLabel(selectedReminder?.data) : '';
+
+  const handleSimplifiedMenuNavigate = (transactionCode: string, title: string) => {
+    const route = resolveRouteFromTransaction(transactionCode, title);
+    if (!route) {
+      showToast(`Módulo ${title} em migração para web.`, 'info');
+      return;
+    }
+
+    navigate(route);
+  };
 
   return (
     <section className="home-dashboard">
       <header className="home-dashboard__header">
         <div className="home-dashboard__title-group">
           <h1>Painel Principal</h1>
-          <p>Resumo das suas atividades e notificações.</p>
+          <p>
+            {menuSimplificado
+              ? 'Menu simplificado ativo: selecione uma opção para navegar no sistema.'
+              : 'Resumo das suas atividades e notificações.'}
+          </p>
         </div>
 
-        <button
-          className="home-dashboard__new-button"
-          type="button"
-          onClick={() => setCreateReminderOpen(true)}
-        >
-          <IoAddOutline size={18} />
-          Novo Lembrete
-        </button>
+        {!menuSimplificado ? (
+          <button
+            className="home-dashboard__new-button"
+            type="button"
+            onClick={() => setCreateReminderOpen(true)}
+          >
+            <IoAddOutline size={18} />
+            Novo Lembrete
+          </button>
+        ) : null}
       </header>
 
+      {menuSimplificado ? (
+        <article className="home-dashboard-card home-dashboard-card--full">
+          <header className="home-dashboard-card__header">
+            <div className="home-dashboard-card__title-wrap">
+              <span className="home-dashboard-card__accent home-dashboard-card__accent--blue" aria-hidden="true" />
+              <h2>Menu Simplificado</h2>
+            </div>
+
+            <div className="home-dashboard-card__header-actions">
+            </div>
+          </header>
+
+          <div className="home-dashboard-card__content">
+            {loadingMenus ? (
+              <p className="module-empty">Carregando opções do menu...</p>
+            ) : simplifiedModules.length === 0 ? (
+              <p className="module-empty">Nenhuma opção de menu liberada para este usuário.</p>
+            ) : (
+              <div className="home-simple-menu-modules">
+                {simplifiedModules.map((module) => {
+                  const expanded = expandedSimplifiedModules.has(module.id);
+
+                  return (
+                    <article key={module.id} className="home-simple-menu-module" style={{ borderLeftColor: module.color }}>
+                      <header className="home-simple-menu-module__header">
+                        <div className="home-simple-menu-module__title-wrap">
+                          <span className="home-simple-menu-module__dot" style={{ backgroundColor: module.color }} aria-hidden="true" />
+                          <h3>{module.title}</h3>
+                        </div>
+
+                        <div className="home-simple-menu-module__actions">
+                          <button
+                            type="button"
+                            className="home-dashboard-card__collapse"
+                            onClick={() => toggleSimplifiedModule(module.id)}
+                            aria-label={expanded ? `Encolher módulo ${module.title}` : `Expandir módulo ${module.title}`}
+                            title={expanded ? `Encolher módulo ${module.title}` : `Expandir módulo ${module.title}`}
+                          >
+                            {expanded ? <IoChevronUpOutline size={18} /> : <IoChevronDownOutline size={18} />}
+                          </button>
+                        </div>
+                      </header>
+
+                      {expanded ? (
+                        <ul className="home-dashboard-reminder-list home-dashboard-reminder-list--menu">
+                          {module.subitems.map((subitem) => (
+                            <li
+                              key={`${module.id}-${subitem.transactionCode}-${subitem.title}`}
+                              className="home-dashboard-reminder-card home-dashboard-reminder-card--menu"
+                              style={{ borderLeftColor: module.color }}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => handleSimplifiedMenuNavigate(subitem.transactionCode, subitem.title)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault();
+                                  handleSimplifiedMenuNavigate(subitem.transactionCode, subitem.title);
+                                }
+                              }}
+                            >
+                              <div className="home-dashboard-reminder-card__title-row">
+                                <span
+                                  className="home-dashboard-reminder-card__dot"
+                                  style={{ backgroundColor: module.color }}
+                                  aria-hidden="true"
+                                />
+                                <strong>{subitem.title}</strong>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </article>
+      ) : null}
+
+      {!(menuSimplificado && isMobileViewport) ? (
       <section className="home-dashboard__grid" aria-label="Resumo principal">
         <article className={`home-dashboard-card home-dashboard-card--full${lembretesCollapsed ? ' is-line' : ''}`}>
           <header className="home-dashboard-card__header">
@@ -414,12 +672,13 @@ export function HomePage() {
                       return (
                         <li
                           key={`lembrete-${index}`}
-                          className="home-dashboard-reminder-card"
+                          className={`home-dashboard-reminder-card${menuSimplificado ? ' home-dashboard-reminder-card--readonly' : ''}`}
                           style={{ borderLeftColor: color }}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => openReminderViewModal(item, index)}
+                          role={menuSimplificado ? undefined : 'button'}
+                          tabIndex={menuSimplificado ? -1 : 0}
+                          onClick={menuSimplificado ? undefined : () => openReminderViewModal(item, index)}
                           onKeyDown={(event) => {
+                            if (menuSimplificado) return;
                             if (event.key === 'Enter' || event.key === ' ') {
                               event.preventDefault();
                               openReminderViewModal(item, index);
@@ -497,6 +756,16 @@ export function HomePage() {
                     placeholder="Pesquisar notificações QS"
                   />
                 </label>
+
+                {canExpandNotificacoesQs ? (
+                  <button
+                    type="button"
+                    className="home-dashboard-reminder-expand"
+                    onClick={() => setNotificacoesQsExpanded((prev) => !prev)}
+                  >
+                    {notificacoesQsExpanded ? 'Encolher cards' : 'Expandir cards'}
+                  </button>
+                ) : null}
               </div>
 
               {notificacoesQsFiltradas.length === 0 ? (
@@ -511,11 +780,25 @@ export function HomePage() {
                   </p>
                 </div>
               ) : (
-                <ul className="home-dashboard-list">
-                  {notificacoesQsFiltradas.map((item, index) => (
-                    <li key={`not-qs-${index}`}>{getItemText(item, `Notificação QS ${index + 1}`)}</li>
-                  ))}
-                </ul>
+                <>
+                  <ul className="home-dashboard-list">
+                    {notificacoesQsVisiveis.map((item, index) => (
+                      <li key={`not-qs-${index}`}>{getItemText(item, `Notificação QS ${index + 1}`)}</li>
+                    ))}
+                  </ul>
+
+                  {canExpandNotificacoesQs ? (
+                    <button
+                      type="button"
+                      className="home-dashboard-reminder-expand home-dashboard-reminder-expand--bottom"
+                      onClick={() => setNotificacoesQsExpanded((prev) => !prev)}
+                    >
+                      {notificacoesQsExpanded
+                        ? 'Mostrar menos notificações'
+                        : `Mostrar todas as notificações (${notificacoesQsFiltradas.length})`}
+                    </button>
+                  ) : null}
+                </>
               )}
             </div>
           ) : null}
@@ -555,6 +838,16 @@ export function HomePage() {
                     placeholder="Pesquisar notificações do sistema"
                   />
                 </label>
+
+                {canExpandNotificacoesSistema ? (
+                  <button
+                    type="button"
+                    className="home-dashboard-reminder-expand"
+                    onClick={() => setNotificacoesSistemaExpanded((prev) => !prev)}
+                  >
+                    {notificacoesSistemaExpanded ? 'Encolher cards' : 'Expandir cards'}
+                  </button>
+                ) : null}
               </div>
 
               {notificacoesSistemaFiltradas.length === 0 ? (
@@ -569,18 +862,33 @@ export function HomePage() {
                   </p>
                 </div>
               ) : (
-                <ul className="home-dashboard-list">
-                  {notificacoesSistemaFiltradas.map((item, index) => (
-                    <li key={`not-sys-${index}`}>{getItemText(item, `Notificação ${index + 1}`)}</li>
-                  ))}
-                </ul>
+                <>
+                  <ul className="home-dashboard-list">
+                    {notificacoesSistemaVisiveis.map((item, index) => (
+                      <li key={`not-sys-${index}`}>{getItemText(item, `Notificação ${index + 1}`)}</li>
+                    ))}
+                  </ul>
+
+                  {canExpandNotificacoesSistema ? (
+                    <button
+                      type="button"
+                      className="home-dashboard-reminder-expand home-dashboard-reminder-expand--bottom"
+                      onClick={() => setNotificacoesSistemaExpanded((prev) => !prev)}
+                    >
+                      {notificacoesSistemaExpanded
+                        ? 'Mostrar menos notificações'
+                        : `Mostrar todas as notificações (${notificacoesSistemaFiltradas.length})`}
+                    </button>
+                  ) : null}
+                </>
               )}
             </div>
           ) : null}
         </article>
       </section>
+      ) : null}
 
-      {createReminderOpen ? (
+      {!menuSimplificado && createReminderOpen ? (
         <section
           className="modal-backdrop"
           role="dialog"
@@ -671,7 +979,7 @@ export function HomePage() {
         </section>
       ) : null}
 
-      {viewReminderOpen && selectedReminder ? (
+      {!menuSimplificado && viewReminderOpen && selectedReminder ? (
         <section
           className="modal-backdrop"
           role="dialog"

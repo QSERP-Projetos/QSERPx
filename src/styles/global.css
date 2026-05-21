@@ -667,6 +667,40 @@ select {
   background: var(--color-surface);
 }
 
+.app-shell__topbar-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-shell__topbar-action-button {
+  min-height: 34px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.app-shell__simplified-actions {
+  position: fixed;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 1003;
+  display: grid;
+  gap: 8px;
+}
+
+.app-shell__simplified-action-button {
+  min-height: 38px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
 .icon-button.app-shell__floating-menu-trigger {
   display: none;
   position: fixed;
@@ -729,6 +763,12 @@ select {
   min-width: 0;
   padding: 12px;
   overflow-y: auto;
+}
+
+.app-shell[data-menu-mode="simplificado"] .app-shell__topbar,
+.app-shell[data-menu-mode="simplificado"] .icon-button.app-shell__floating-menu-trigger,
+.app-shell[data-menu-mode="simplificado"] .sidebar {
+  display: none !important;
 }
 
 .page-header {

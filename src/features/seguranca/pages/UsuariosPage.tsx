@@ -67,6 +67,36 @@ const TIPO_USUARIO_OPTIONS: SelectOption[] = [
   { label: 'Externo', value: 'Externo' },
 ];
 
+const TIPO_MENU_OPTIONS: SelectOption[] = [
+  { label: 'Menu padrão', value: 'padrao' },
+  { label: 'Menu simplificado', value: 'simplificado' },
+];
+
+const parseTipoMenu = (value: unknown): 'padrao' | 'simplificado' => {
+  const normalized = String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+
+  if (
+    normalized === '2' ||
+    normalized === 'menu simplificado' ||
+    normalized === 'simplificado' ||
+    normalized === 'simples' ||
+    normalized === '-1' ||
+    normalized === 'true'
+  ) {
+    return 'simplificado';
+  }
+
+  return 'padrao';
+};
+
+const toMenuApiValue = (value: 'padrao' | 'simplificado') => {
+  return value === 'simplificado' ? 2 : 1;
+};
+
 const getRows = (payload: any): any[] => {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.data)) return payload.data;
@@ -111,6 +141,7 @@ export function UsuariosPage() {
   const [paramEmail, setParamEmail] = useState('');
   const [paramSenhaEmail, setParamSenhaEmail] = useState('');
   const [paramTipoUsuario, setParamTipoUsuario] = useState<'Interno' | 'Externo'>('Interno');
+  const [paramTipoMenu, setParamTipoMenu] = useState<'padrao' | 'simplificado'>('padrao');
 
   const [transacoes, setTransacoes] = useState<any[]>([]);
   const [transacoesUsuario, setTransacoesUsuario] = useState<any[]>([]);
@@ -246,6 +277,10 @@ export function UsuariosPage() {
     const email = asText(usuario?.e_mail_Usuario ?? usuario?.e_mail_usuario);
     const senhaEmail = asText(usuario?.e_mail_Senha ?? usuario?.e_mail_senha);
     const externo = asText((usuario?.usuario_Externo ?? usuario?.usuario_externo) || '0');
+    const menuTipoRaw =
+      usuario?.tipo_Menu_QSERPx ??
+      usuario?.tipo_menu_qserpx ??
+      usuario?.tipo_Menu ?? usuario?.tipo_menu ?? usuario?.menu_Sistema ?? usuario?.menu_sistema ?? usuario?.menu;
 
     setUsuarioSelecionado(usuario);
     setParamCodigo(codigo);
@@ -255,6 +290,7 @@ export function UsuariosPage() {
     setParamEmail(email);
     setParamSenhaEmail(senhaEmail);
     setParamTipoUsuario(externo === '0' ? 'Interno' : 'Externo');
+    setParamTipoMenu(parseTipoMenu(menuTipoRaw));
     setParametrosOpen(true);
   };
 
@@ -282,11 +318,18 @@ export function UsuariosPage() {
         eMailUsuario: paramEmail,
         eMailSenha: paramSenhaEmail,
         usuarioExterno: paramTipoUsuario === 'Interno' ? 0 : -1,
+        tipoMenuQserpx: toMenuApiValue(paramTipoMenu),
       });
 
       if (!resp.succeeded) {
         showToast(getApiErrorMessage(resp, 'Não foi possível salvar os parâmetros do usuário.'), 'error');
         return;
+      }
+
+      const usuarioLogado = asText(GlobalConfig.getUsuario()).toUpperCase();
+      const usuarioAlterado = asText(paramCodigo).toUpperCase();
+      if (usuarioAlterado && usuarioAlterado === usuarioLogado) {
+        GlobalConfig.setTipoMenuSistema(paramTipoMenu);
       }
 
       showToast('Parâmetros do usuário atualizados.', 'success');
@@ -819,6 +862,17 @@ export function UsuariosPage() {
                     options={TIPO_USUARIO_OPTIONS}
                     ariaLabel="Tipo usuário"
                     searchPlaceholder="Pesquisar tipo"
+                  />
+                </label>
+
+                <label>
+                  <span>Tipo de menu</span>
+                  <SearchableSelect
+                    value={paramTipoMenu}
+                    onChange={(nextValue) => setParamTipoMenu(nextValue as 'padrao' | 'simplificado')}
+                    options={TIPO_MENU_OPTIONS}
+                    ariaLabel="Tipo de menu"
+                    searchPlaceholder="Pesquisar menu"
                   />
                 </label>
 

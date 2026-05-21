@@ -140,6 +140,7 @@ export const alterarParamUsuariosCall = async (
     eMailUsuario: string;
     eMailSenha: string;
     usuarioExterno: number;
+    tipoMenuQserpx: number;
   },
 ): Promise<ApiCallResponse> => {
   const url = `${normalizeBaseUrl(baseUrl)}/api/v1/usuarios/${codigoUsuario}`;
@@ -155,6 +156,7 @@ export const alterarParamUsuariosCall = async (
       E_mail_Usuario: payload.eMailUsuario,
       E_mail_Senha: payload.eMailSenha,
       Usuario_Externo: payload.usuarioExterno,
+      Tipo_Menu_QSERPx: payload.tipoMenuQserpx,
     },
   );
 };

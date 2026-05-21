@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { IoCloseOutline, IoMenuOutline } from 'react-icons/io5';
+import { IoCloseOutline, IoHomeOutline, IoLogOutOutline, IoMenuOutline } from 'react-icons/io5';
 import { createPortal } from 'react-dom';
 import { Sidebar } from '../components/Sidebar';
 import { ConfigScreen } from '../components/ConfigScreen';
-import { TipoApontamentoPage } from '../features/seguranca/pages/TipoApontamentoPage';
 import { APP_NAME, APP_VERSION } from '../constants/appInfo';
 import { ROUTES } from '../constants/routes';
 import { STORAGE_KEYS } from '../constants/storageKeys';
@@ -32,6 +31,8 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
     COM001: ROUTES.comprasPedidoLiberacao,
     COM002: ROUTES.comprasPedidoLiberacao,
     SEG001: ROUTES.segurancaUsuarios,
+    SEG002: ROUTES.segurancaTipoApontamento,
+    CFG009: ROUTES.segurancaTipoApontamento,
     CFG008: ROUTES.segurancaSessoes,
     PCP001: ROUTES.pcpApontamentoProducao,
     PCP002: ROUTES.pcpOrdensFabricacao,
@@ -67,6 +68,9 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
       : undefined) ||
     (normalizedTitle.includes('cliente') ? ROUTES.basicoClientes : undefined) ||
     (normalizedTitle.includes('usuario') ? ROUTES.segurancaUsuarios : undefined) ||
+    (normalizedTitle.includes('tipo') && normalizedTitle.includes('apont')
+      ? ROUTES.segurancaTipoApontamento
+      : undefined) ||
     (normalizedTitle.includes('sess') ? ROUTES.segurancaSessoes : undefined) ||
     (normalizedTitle.includes('ordem') && normalizedTitle.includes('fabricacao') ? ROUTES.pcpOrdensFabricacao : undefined) ||
     (normalizedTitle.includes('apont') && normalizedTitle.includes('produc')
@@ -93,20 +97,6 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
   return dashboardRouteByTitle || routeByCode || routeByTitle;
 };
 
-const isTipoApontamentoTransaction = (transactionCode: string, title: string) => {
-  const normalizedCode = String(transactionCode || '').toUpperCase();
-  const normalizedTitle = String(title || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-
-  if (normalizedCode === 'CFG009' || normalizedCode === 'SEG002') {
-    return true;
-  }
-
-  return normalizedTitle.includes('tipo') && normalizedTitle.includes('apont');
-};
-
 export function AppShellLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -127,11 +117,12 @@ export function AppShellLayout() {
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [logoutPending, setLogoutPending] = useState(false);
   const [configModalOpen, setConfigModalOpen] = useState(false);
-  const [tipoApontamentoModalOpen, setTipoApontamentoModalOpen] = useState(false);
 
   const userName = useMemo(() => GlobalConfig.getUsuario() || '', []);
   const companyName = useMemo(() => GlobalConfig.getNomeEmpresa() || '', []);
   const nivelUsuario = useMemo(() => Number(GlobalConfig.getNivelUsuario() ?? 0), []);
+  const menuSimplificadoPreferencia = useMemo(() => GlobalConfig.isMenuSimplificado(), []);
+  const menuSimplificadoAtivo = menuSimplificadoPreferencia && isMobileViewport;
 
   useEffect(() => {
     const verificarSessao = async () => {
@@ -192,6 +183,7 @@ export function AppShellLayout() {
   }, []);
 
   const isApontamentoProducaoRoute = location.pathname === ROUTES.pcpApontamentoProducao;
+  const isHomeRoute = location.pathname === ROUTES.home;
 
   const handleLogout = async () => {
     if (logoutPending) return;
@@ -225,12 +217,6 @@ export function AppShellLayout() {
       .toLowerCase();
     const isDashboardCode = normalizedCode.startsWith('DSB');
 
-    if (isTipoApontamentoTransaction(transactionCode, title)) {
-      setMobileNavOpen(false);
-      setTipoApontamentoModalOpen(true);
-      return;
-    }
-
     if (
       (isDashboardCode && normalizedTitle.includes('compr')) ||
       (isDashboardCode && normalizedTitle.includes('pcp')) ||
@@ -258,65 +244,70 @@ export function AppShellLayout() {
       data-sidebar-collapsed={sidebarCollapsed ? 'true' : 'false'}
       data-mobile-nav-open={mobileNavOpen ? 'true' : 'false'}
       data-route={isApontamentoProducaoRoute ? 'pcp-apontamento-producao' : 'default'}
+      data-menu-mode={menuSimplificadoAtivo ? 'simplificado' : 'padrao'}
     >
-      {mobileNavOpen ? <div className="sidebar-overlay" onClick={() => setMobileNavOpen(false)} aria-hidden="true" /> : null}
+      {!menuSimplificadoAtivo && mobileNavOpen ? <div className="sidebar-overlay" onClick={() => setMobileNavOpen(false)} aria-hidden="true" /> : null}
 
-      <Sidebar
-        userName={userName}
-        companyName={companyName}
-        menus={menus}
-        loadingMenus={loading}
-        expandedMenu={expandedMenu}
-        collapsed={sidebarCollapsed}
-        onToggleCollapsed={() => setSidebarCollapsed((prev) => !prev)}
-        onToggleMenu={(menuId) => setExpandedMenu((prev) => (prev === menuId ? null : menuId))}
-        onNavigateTransaction={handleNavigateTransaction}
-        onNavigateHome={() => {
-          setMobileNavOpen(false);
-          navigate(ROUTES.home);
-        }}
-        onLogout={() => {
-          setLogoutConfirmOpen(true);
-        }}
-        themeMode={theme}
-        onSelectThemeMode={(mode) => {
-          if (mode !== theme) {
-            toggleTheme();
-          }
-        }}
-        canOpenConfigScreen={nivelUsuario >= 9}
-        onOpenConfigScreen={() => {
-          setMobileNavOpen(false);
-          setConfigModalOpen(true);
-        }}
-        onShowInfo={(message) => showToast(message, 'info')}
-      />
+      {!menuSimplificadoAtivo ? (
+        <Sidebar
+          userName={userName}
+          companyName={companyName}
+          menus={menus}
+          loadingMenus={loading}
+          expandedMenu={expandedMenu}
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((prev) => !prev)}
+          onToggleMenu={(menuId) => setExpandedMenu((prev) => (prev === menuId ? null : menuId))}
+          onNavigateTransaction={handleNavigateTransaction}
+          onNavigateHome={() => {
+            setMobileNavOpen(false);
+            navigate(ROUTES.home);
+          }}
+          onLogout={() => {
+            setLogoutConfirmOpen(true);
+          }}
+          themeMode={theme}
+          onSelectThemeMode={(mode) => {
+            if (mode !== theme) {
+              toggleTheme();
+            }
+          }}
+          canOpenConfigScreen={nivelUsuario >= 9}
+          onOpenConfigScreen={() => {
+            setMobileNavOpen(false);
+            setConfigModalOpen(true);
+          }}
+          onShowInfo={(message) => showToast(message, 'info')}
+        />
+      ) : null}
 
       <main className="app-shell__main">
-        <header className="app-shell__topbar">
-          {!mobileNavOpen ? (
-            <button
-              type="button"
-              className="icon-button app-shell__menu-trigger"
-              onClick={() => setMobileNavOpen(true)}
-              aria-label="Abrir menu"
-              title="Abrir menu"
-            >
-              <IoMenuOutline aria-hidden="true" />
-            </button>
-          ) : null}
-          <div className="app-shell__topbar-brand">
-            <div className="app-shell__topbar-title">{APP_NAME}</div>
-            <div className="app-shell__topbar-description">v{APP_VERSION}</div>
-          </div>
-        </header>
+        {!menuSimplificadoAtivo ? (
+          <header className="app-shell__topbar">
+            {!mobileNavOpen ? (
+              <button
+                type="button"
+                className="icon-button app-shell__menu-trigger"
+                onClick={() => setMobileNavOpen(true)}
+                aria-label="Abrir menu"
+                title="Abrir menu"
+              >
+                <IoMenuOutline aria-hidden="true" />
+              </button>
+            ) : null}
+            <div className="app-shell__topbar-brand">
+              <div className="app-shell__topbar-title">{APP_NAME}</div>
+              <div className="app-shell__topbar-description">v{APP_VERSION}</div>
+            </div>
+          </header>
+        ) : null}
 
         <div className="app-shell__content">
           <Outlet />
         </div>
       </main>
 
-      {isMobileViewport && !mobileNavOpen ? (
+      {isMobileViewport && !mobileNavOpen && !menuSimplificadoAtivo ? (
         <button
           type="button"
           className="icon-button app-shell__floating-menu-trigger"
@@ -326,6 +317,29 @@ export function AppShellLayout() {
         >
           <IoMenuOutline aria-hidden="true" />
         </button>
+      ) : null}
+
+      {menuSimplificadoAtivo ? (
+        <div className="app-shell__simplified-actions" aria-label="Ações rápidas">
+          {!isHomeRoute ? (
+            <button
+              type="button"
+              className="secondary-button app-shell__simplified-action-button"
+              onClick={() => navigate(ROUTES.home)}
+            >
+              <IoHomeOutline size={16} />
+              Início
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="secondary-button app-shell__simplified-action-button"
+            onClick={() => setLogoutConfirmOpen(true)}
+          >
+            <IoLogOutOutline size={16} />
+            Sair
+          </button>
+        </div>
       ) : null}
 
       {logoutConfirmOpen ? (
@@ -395,24 +409,6 @@ export function AppShellLayout() {
         )
         : null}
 
-      {tipoApontamentoModalOpen
-        ? createPortal(
-          <section
-            className="modal-backdrop"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Tipo de apontamento"
-            onClick={(event) => {
-              if (event.target === event.currentTarget) {
-                setTipoApontamentoModalOpen(false);
-              }
-            }}
-          >
-            <TipoApontamentoPage embedded onRequestClose={() => setTipoApontamentoModalOpen(false)} />
-          </section>,
-          document.body,
-        )
-        : null}
     </div>
   );
 }
