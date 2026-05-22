@@ -156,7 +156,7 @@ export const alterarParamUsuariosCall = async (
       E_mail_Usuario: payload.eMailUsuario,
       E_mail_Senha: payload.eMailSenha,
       Usuario_Externo: payload.usuarioExterno,
-      Tipo_Menu_QSERPx: payload.tipoMenuQserpx,
+      Tipo_Menu_Qserpx: payload.tipoMenuQserpx,
     },
   );
 };

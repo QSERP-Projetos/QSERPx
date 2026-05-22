@@ -279,6 +279,8 @@ export function UsuariosPage() {
     const senhaEmail = asText(usuario?.e_mail_Senha ?? usuario?.e_mail_senha);
     const externo = asText((usuario?.usuario_Externo ?? usuario?.usuario_externo) || '0');
     const menuTipoRaw =
+      usuario?.Tipo_Menu_Qserpx ??
+      usuario?.tipo_Menu_Qserpx ??
       usuario?.tipo_Menu_QSERPx ??
       usuario?.tipo_menu_qserpx ??
       usuario?.tipo_Menu ?? usuario?.tipo_menu ?? usuario?.menu_Sistema ?? usuario?.menu_sistema ?? usuario?.menu;

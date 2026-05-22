@@ -9,6 +9,7 @@ import {
   loginCall,
   loginUsuarioCall,
   tokenCall,
+  usuarioDetalheCall,
 } from '../services/apiCalls';
 import { completeCompanySession } from '../services/authFlow';
 import { useTheme } from '../contexts/ThemeContext';
@@ -108,11 +109,43 @@ export function LoginPage() {
 
       const loginResp = await loginCall(baseUrl, tokenTipo1, usuarioUpper, password);
       const loginData = (loginResp.data as any) || {};
-      const loginMessage = loginData?.message || (loginResp.jsonBody as any)?.message;
+      const loginJsonBody = (loginResp.jsonBody as any) || {};
+      const loginMessage = loginData?.message || loginJsonBody?.message;
 
       if (!loginResp.succeeded || loginMessage) {
         showToast(loginMessage || 'Falha na autenticação.', 'error');
         return;
+      }
+
+      const codigoUsuarioDetalhe = String(
+        loginData?.codigo_Usuario ??
+          loginData?.codigo_usuario ??
+          loginJsonBody?.codigo_Usuario ??
+          loginJsonBody?.codigo_usuario ??
+          usuarioUpper,
+      )
+        .trim()
+        .toUpperCase();
+
+      try {
+        const userDetalheResp = await usuarioDetalheCall(baseUrl, tokenTipo1, codigoUsuarioDetalhe);
+        const userDetalheData = (userDetalheResp.data as any) || (userDetalheResp.jsonBody as any) || {};
+
+        if (userDetalheResp.succeeded) {
+          GlobalConfig.setTipoMenuSistema(
+            userDetalheData?.Tipo_Menu_Qserpx ??
+              userDetalheData?.tipo_Menu_Qserpx ??
+            userDetalheData?.tipo_Menu_QSERPx ??
+              userDetalheData?.tipo_menu_qserpx ??
+              userDetalheData?.tipo_Menu ??
+              userDetalheData?.tipo_menu ??
+              userDetalheData?.menu_Sistema ??
+              userDetalheData?.menu_sistema ??
+              userDetalheData?.menu,
+          );
+        }
+      } catch {
+        // Não bloquear login por falha pontual nesta consulta; o tipo de menu é validado novamente no fluxo da sessão.
       }
 
       const loginUsuarioResp = await loginUsuarioCall(baseUrl, tokenTipo1, usuarioUpper);

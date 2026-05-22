@@ -38,6 +38,8 @@ const formatDate = (value?: string) => {
 
 const resolveTipoMenuSistema = (userDetData: any): 'padrao' | 'simplificado' => {
   const rawValue =
+    userDetData?.Tipo_Menu_Qserpx ??
+    userDetData?.tipo_Menu_Qserpx ??
     userDetData?.tipo_Menu_QSERPx ??
     userDetData?.tipo_menu_qserpx ??
     userDetData?.tipo_Menu ??

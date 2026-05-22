@@ -503,11 +503,7 @@ export function HomePage() {
       <header className="home-dashboard__header">
         <div className="home-dashboard__title-group">
           <h1>Painel Principal</h1>
-          <p>
-            {menuSimplificado
-              ? 'Menu simplificado ativo: selecione uma opção para navegar no sistema.'
-              : 'Resumo das suas atividades e notificações.'}
-          </p>
+          {!menuSimplificado ? <p>Resumo das suas atividades e notificações.</p> : null}
         </div>
 
         {!menuSimplificado ? (
@@ -524,16 +520,6 @@ export function HomePage() {
 
       {menuSimplificado ? (
         <article className="home-dashboard-card home-dashboard-card--full">
-          <header className="home-dashboard-card__header">
-            <div className="home-dashboard-card__title-wrap">
-              <span className="home-dashboard-card__accent home-dashboard-card__accent--blue" aria-hidden="true" />
-              <h2>Menu Simplificado</h2>
-            </div>
-
-            <div className="home-dashboard-card__header-actions">
-            </div>
-          </header>
-
           <div className="home-dashboard-card__content">
             {loadingMenus ? (
               <p className="module-empty">Carregando opções do menu...</p>
