@@ -142,6 +142,7 @@ export function UsuariosPage() {
   const [paramSenhaEmail, setParamSenhaEmail] = useState('');
   const [paramTipoUsuario, setParamTipoUsuario] = useState<'Interno' | 'Externo'>('Interno');
   const [paramTipoMenu, setParamTipoMenu] = useState<'padrao' | 'simplificado'>('padrao');
+  const [paramTipoMenuOriginal, setParamTipoMenuOriginal] = useState<'padrao' | 'simplificado'>('padrao');
 
   const [transacoes, setTransacoes] = useState<any[]>([]);
   const [transacoesUsuario, setTransacoesUsuario] = useState<any[]>([]);
@@ -290,7 +291,9 @@ export function UsuariosPage() {
     setParamEmail(email);
     setParamSenhaEmail(senhaEmail);
     setParamTipoUsuario(externo === '0' ? 'Interno' : 'Externo');
-    setParamTipoMenu(parseTipoMenu(menuTipoRaw));
+    const tipoMenuNormalizado = parseTipoMenu(menuTipoRaw);
+    setParamTipoMenu(tipoMenuNormalizado);
+    setParamTipoMenuOriginal(tipoMenuNormalizado);
     setParametrosOpen(true);
   };
 
@@ -330,6 +333,13 @@ export function UsuariosPage() {
       const usuarioAlterado = asText(paramCodigo).toUpperCase();
       if (usuarioAlterado && usuarioAlterado === usuarioLogado) {
         GlobalConfig.setTipoMenuSistema(paramTipoMenu);
+
+        if (paramTipoMenu !== paramTipoMenuOriginal) {
+          showToast('Tipo de menu alterado. Efetuando logout para aplicar a nova configuração.', 'info');
+          setParametrosOpen(false);
+          window.dispatchEvent(new CustomEvent('qserpx:logout-now'));
+          return;
+        }
       }
 
       showToast('Parâmetros do usuário atualizados.', 'success');

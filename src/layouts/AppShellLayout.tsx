@@ -209,6 +209,17 @@ export function AppShellLayout() {
     }
   };
 
+  useEffect(() => {
+    const onForceLogout = () => {
+      void handleLogout();
+    };
+
+    window.addEventListener('qserpx:logout-now', onForceLogout);
+    return () => {
+      window.removeEventListener('qserpx:logout-now', onForceLogout);
+    };
+  }, [handleLogout]);
+
   const handleNavigateTransaction = (transactionCode: string, title: string) => {
     const normalizedCode = String(transactionCode || '').toUpperCase();
     const normalizedTitle = String(title || '')

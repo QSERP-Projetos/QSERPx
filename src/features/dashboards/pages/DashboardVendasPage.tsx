@@ -30,6 +30,13 @@ type RegionSlice = {
   topClients: Array<{ label: string; total: number }>;
 };
 
+type SellerSlice = {
+  key: string;
+  label: string;
+  total: number;
+  topClients: Array<{ key: string; label: string; total: number }>;
+};
+
 type ClientItemTop = {
   key: string;
   label: string;
@@ -71,6 +78,22 @@ const getClientLabel = (item: Record<string, any>) =>
       'razao_Social',
     ],
     'Sem cliente',
+  );
+
+const getSellerLabel = (item: Record<string, any>) =>
+  pickFirstText(
+    item,
+    [
+      'Nome_Vendedor',
+      'nome_Vendedor',
+      'nomeVendedor',
+      'Vendedor',
+      'vendedor',
+      'Nome_Representante',
+      'nome_Representante',
+      'nomeRepresentante',
+    ],
+    'Sem vendedor',
   );
 
 const getBillingTypeLabel = (item: Record<string, any>) =>
@@ -209,6 +232,7 @@ export function DashboardVendasPage() {
   const [mainChartCollapsed, setMainChartCollapsed] = useState(false);
   const [topChartCollapsed, setTopChartCollapsed] = useState(false);
   const [activeRegionKey, setActiveRegionKey] = useState<string | null>(null);
+  const [activeSellerKey, setActiveSellerKey] = useState<string | null>(null);
   const [expandedTopClients, setExpandedTopClients] = useState<string[]>([]);
   const [destinatarioScope, setDestinatarioScope] = useState<'todos' | 'clientes'>('todos');
 
@@ -432,6 +456,39 @@ export function DashboardVendasPage() {
       .sort((a, b) => b.total - a.total);
   }, [filteredFaturamento]);
 
+  const sellerSlices = useMemo<SellerSlice[]>(() => {
+    const sellerMap = new Map<string, { label: string; total: number; clients: Map<string, { key: string; label: string; total: number }> }>();
+
+    for (const rawItem of filteredFaturamento) {
+      const item = (rawItem ?? {}) as Record<string, any>;
+      const sellerLabel = getSellerLabel(item);
+      const sellerKey = normalizeText(sellerLabel) || 'sem-vendedor';
+      const clientLabel = getClientLabel(item);
+      const clientKey = normalizeText(clientLabel) || 'sem-cliente';
+      const rowValue = toNumber(item?.Valor_Total ?? item?.valor_Total ?? item?.valorTotal ?? 0);
+      const current = sellerMap.get(sellerKey) || { label: sellerLabel, total: 0, clients: new Map<string, { key: string; label: string; total: number }>() };
+
+      current.total += rowValue;
+
+      const existingClient = current.clients.get(clientKey) || { key: clientKey, label: clientLabel, total: 0 };
+      existingClient.total += rowValue;
+      current.clients.set(clientKey, existingClient);
+
+      sellerMap.set(sellerKey, current);
+    }
+
+    return Array.from(sellerMap.entries())
+      .map(([key, seller]) => ({
+        key,
+        label: seller.label,
+        total: seller.total,
+        topClients: Array.from(seller.clients.values())
+          .sort((a, b) => b.total - a.total)
+          .slice(0, 3),
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [filteredFaturamento]);
+
   const topClientsByBillingType = useMemo<TopClientByBillingType[]>(() => {
     const topClientMap = new Map<string, { client: string; billingType: string; total: number; topItems: Map<string, { label: string; total: number }> }>();
 
@@ -559,6 +616,49 @@ export function DashboardVendasPage() {
       .sort((a, b) => Number(b.faturado ?? 0) - Number(a.faturado ?? 0));
   }, [filteredAtraso, filteredFaturamento, filteredForecast]);
 
+  const summaryMaterialsByClient = useMemo(() => {
+    const materialsByClient = new Map<string, Map<string, { key: string; label: string; total: number }>>();
+
+    for (const rawItem of filteredFaturamento) {
+      const item = (rawItem ?? {}) as Record<string, any>;
+      const clientKey = normalizeText(getClientLabel(item)) || 'sem-cliente';
+      const rowKey = `cliente-${clientKey}`;
+      const current = materialsByClient.get(rowKey) || new Map<string, { key: string; label: string; total: number }>();
+
+      const materiais = getMaterials(item);
+      if (materiais.length > 0) {
+        for (const materialRaw of materiais) {
+          const material = (materialRaw ?? {}) as Record<string, any>;
+          const label = getProductLabel(material);
+          const key = normalizeText(label) || 'sem-produto';
+          const total = toNumber(
+            material?.Valor_Total ?? material?.valor_Total ?? material?.valorTotal ?? material?.Valor_Mercadoria ?? material?.valor_Mercadoria ?? 0,
+          );
+
+          const existing = current.get(key) || { key, label, total: 0 };
+          existing.total += total;
+          current.set(key, existing);
+        }
+      } else {
+        const fallbackLabel = getProductLabel(item);
+        const fallbackKey = normalizeText(fallbackLabel) || 'sem-produto';
+        const fallbackTotal = toNumber(item?.Valor_Total ?? item?.valor_Total ?? item?.valorTotal ?? 0);
+        const existing = current.get(fallbackKey) || { key: fallbackKey, label: fallbackLabel, total: 0 };
+        existing.total += fallbackTotal;
+        current.set(fallbackKey, existing);
+      }
+
+      materialsByClient.set(rowKey, current);
+    }
+
+    return new Map(
+      Array.from(materialsByClient.entries()).map(([rowKey, materialMap]) => [
+        rowKey,
+        Array.from(materialMap.values()).sort((a, b) => b.total - a.total),
+      ]),
+    );
+  }, [filteredFaturamento]);
+
   const summaryColumns = useMemo<DashboardTableColumn[]>(() => {
     return [
       { key: 'cliente', label: 'Cliente', format: 'text' },
@@ -573,17 +673,51 @@ export function DashboardVendasPage() {
     return Math.max(1, regionSlices.reduce((acc, item) => acc + Math.max(0, item.total), 0));
   }, [regionSlices]);
 
+  const totalSeller = useMemo(() => {
+    return Math.max(1, sellerSlices.reduce((acc, item) => acc + Math.max(0, item.total), 0));
+  }, [sellerSlices]);
+
   const activeRegion = useMemo(() => {
     if (!regionSlices.length) return null;
     const byActive = regionSlices.find((item) => item.key === activeRegionKey);
     return byActive ?? regionSlices[0];
   }, [activeRegionKey, regionSlices]);
 
+  const activeSeller = useMemo(() => {
+    if (!sellerSlices.length) return null;
+    const byActive = sellerSlices.find((item) => item.key === activeSellerKey);
+    return byActive ?? sellerSlices[0];
+  }, [activeSellerKey, sellerSlices]);
+
   const hasAnyData = filteredFaturamento.length > 0 || filteredAtraso.length > 0 || filteredForecast.length > 0;
 
   const toggleTopClient = (key: string) => {
     setExpandedTopClients((prev) => (prev.includes(key) ? prev.filter((currentKey) => currentKey !== key) : [...prev, key]));
   };
+
+  const getSummaryRowSearchText = useCallback((row: DashboardRow) => {
+    const materials = summaryMaterialsByClient.get(row.key) ?? [];
+    return materials.map((item) => item.label).join(' ');
+  }, [summaryMaterialsByClient]);
+
+  const renderSummaryRowDetails = useCallback((row: DashboardRow) => {
+    const materials = summaryMaterialsByClient.get(row.key) ?? [];
+    if (!materials.length) {
+      return <p className="dashboard-summary-table__details-empty">Sem materiais faturados para este cliente no período.</p>;
+    }
+
+    return (
+      <ol className="dashboard-summary-table__materials-list">
+        {materials.map((material, index) => (
+          <li key={`${row.key}-${material.key}`}>
+            <span className="dashboard-summary-table__materials-rank">{String(index + 1).padStart(2, '0')}</span>
+            <span>{material.label}</span>
+            <strong>{formatCurrencyBRL(material.total)}</strong>
+          </li>
+        ))}
+      </ol>
+    );
+  }, [summaryMaterialsByClient]);
 
   const handleExportExcel = () => {
     if (!summaryRows.length) {
@@ -748,76 +882,159 @@ export function DashboardVendasPage() {
                   regionSlices.length === 0 ? (
                     <p className="module-empty">Sem dados de faturamento por região.</p>
                   ) : (
-                    <div className="dashboard-native-pie-wrap dashboard-vendas-region-pie-wrap">
-                      <svg viewBox="0 0 120 120" className="dashboard-native-pie" aria-label="Gráfico de pizza de faturamento por região">
-                        {(() => {
-                          let offset = 0;
-                          const circleRadius = 42;
-                          const circleLength = 2 * Math.PI * circleRadius;
+                    <div className="dashboard-vendas-pie-stack">
+                      <div className="dashboard-native-pie-wrap dashboard-vendas-region-pie-wrap">
+                        <svg viewBox="0 0 120 120" className="dashboard-native-pie" aria-label="Gráfico de pizza de faturamento por região">
+                          {(() => {
+                            let offset = 0;
+                            const circleRadius = 42;
+                            const circleLength = 2 * Math.PI * circleRadius;
 
-                          return regionSlices.map((region, index) => {
-                            const value = Math.max(0, region.total);
-                            const slice = (value / totalRegiao) * circleLength;
-                            const dashArray = `${slice} ${circleLength - slice}`;
-                            const dashOffset = -offset;
-                            offset += slice;
+                            return regionSlices.map((region, index) => {
+                              const value = Math.max(0, region.total);
+                              const slice = (value / totalRegiao) * circleLength;
+                              const dashArray = `${slice} ${circleLength - slice}`;
+                              const dashOffset = -offset;
+                              offset += slice;
 
-                            return (
-                              <circle
-                                key={region.key}
-                                cx="60"
-                                cy="60"
-                                r={circleRadius}
-                                fill="none"
-                                stroke={chartPalette[index % chartPalette.length]}
-                                strokeWidth={28}
-                                strokeDasharray={dashArray}
-                                strokeDashoffset={dashOffset}
-                                transform="rotate(-90 60 60)"
-                                onMouseEnter={() => setActiveRegionKey(region.key)}
-                              >
-                                <title>{`${region.label}: ${formatCurrencyBRL(region.total)}`}</title>
-                              </circle>
-                            );
-                          });
-                        })()}
-                      </svg>
+                              return (
+                                <circle
+                                  key={region.key}
+                                  cx="60"
+                                  cy="60"
+                                  r={circleRadius}
+                                  fill="none"
+                                  stroke={chartPalette[index % chartPalette.length]}
+                                  strokeWidth={28}
+                                  strokeDasharray={dashArray}
+                                  strokeDashoffset={dashOffset}
+                                  transform="rotate(-90 60 60)"
+                                  onMouseEnter={() => setActiveRegionKey(region.key)}
+                                >
+                                  <title>{`${region.label}: ${formatCurrencyBRL(region.total)}`}</title>
+                                </circle>
+                              );
+                            });
+                          })()}
+                        </svg>
 
-                      <div className="dashboard-native-legend dashboard-vendas-region-legend">
-                        {regionSlices.map((region, index) => (
-                          <button
-                            type="button"
-                            key={region.key}
-                            className={`dashboard-native-legend-item dashboard-vendas-region-legend__item${activeRegion?.key === region.key ? ' is-active' : ''}`}
-                            onMouseEnter={() => setActiveRegionKey(region.key)}
-                            onFocus={() => setActiveRegionKey(region.key)}
-                          >
-                            <span style={{ backgroundColor: chartPalette[index % chartPalette.length] }} />
-                            <strong>{region.label}</strong>
-                            <small>{formatCurrencyBRL(region.total)}</small>
-                          </button>
-                        ))}
+                        <div className="dashboard-native-legend dashboard-vendas-region-legend">
+                          {regionSlices.map((region, index) => (
+                            <button
+                              type="button"
+                              key={region.key}
+                              className={`dashboard-native-legend-item dashboard-vendas-region-legend__item${activeRegion?.key === region.key ? ' is-active' : ''}`}
+                              onMouseEnter={() => setActiveRegionKey(region.key)}
+                              onFocus={() => setActiveRegionKey(region.key)}
+                            >
+                              <span style={{ backgroundColor: chartPalette[index % chartPalette.length] }} />
+                              <strong>{region.label}</strong>
+                              <small>{formatCurrencyBRL(region.total)}</small>
+                            </button>
+                          ))}
 
-                        {activeRegion ? (
-                          <div className="dashboard-vendas-region-tooltip" role="status" aria-live="polite">
-                            <p>{`Top 3 clientes - ${activeRegion.label}`}</p>
-                            <ol>
-                              {activeRegion.topClients.length > 0 ? (
-                                activeRegion.topClients.map((client) => (
-                                  <li key={`${activeRegion.key}-${client.label}`}>
-                                    <span>{client.label}</span>
-                                    <strong>{formatCurrencyBRL(client.total)}</strong>
+                          {activeRegion ? (
+                            <div className="dashboard-vendas-region-tooltip" role="status" aria-live="polite">
+                              <p>{`Top 3 clientes - ${activeRegion.label}`}</p>
+                              <ol>
+                                {activeRegion.topClients.length > 0 ? (
+                                  activeRegion.topClients.map((client) => (
+                                    <li key={`${activeRegion.key}-${client.label}`}>
+                                      <span>{client.label}</span>
+                                      <strong>{formatCurrencyBRL(client.total)}</strong>
+                                    </li>
+                                  ))
+                                ) : (
+                                  <li>
+                                    <span>Sem clientes para esta região</span>
                                   </li>
-                                ))
-                              ) : (
-                                <li>
-                                  <span>Sem clientes para esta região</span>
-                                </li>
-                              )}
-                            </ol>
-                          </div>
-                        ) : null}
+                                )}
+                              </ol>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
+
+                      {sellerSlices.length > 0 ? (
+                        <div className="dashboard-vendas-seller-pie-block">
+                          <header className="dashboard-vendas-seller-pie-block__header">
+                            <h3>Faturamento por vendedor</h3>
+                            <p>Passe o mouse no vendedor para visualizar os 3 clientes com maior faturamento.</p>
+                          </header>
+
+                          <div className="dashboard-native-pie-wrap dashboard-vendas-region-pie-wrap">
+                            <svg viewBox="0 0 120 120" className="dashboard-native-pie" aria-label="Gráfico de pizza de faturamento por vendedor">
+                              {(() => {
+                                let offset = 0;
+                                const circleRadius = 42;
+                                const circleLength = 2 * Math.PI * circleRadius;
+
+                                return sellerSlices.map((seller, index) => {
+                                  const value = Math.max(0, seller.total);
+                                  const slice = (value / totalSeller) * circleLength;
+                                  const dashArray = `${slice} ${circleLength - slice}`;
+                                  const dashOffset = -offset;
+                                  offset += slice;
+
+                                  return (
+                                    <circle
+                                      key={seller.key}
+                                      cx="60"
+                                      cy="60"
+                                      r={circleRadius}
+                                      fill="none"
+                                      stroke={chartPalette[index % chartPalette.length]}
+                                      strokeWidth={28}
+                                      strokeDasharray={dashArray}
+                                      strokeDashoffset={dashOffset}
+                                      transform="rotate(-90 60 60)"
+                                      onMouseEnter={() => setActiveSellerKey(seller.key)}
+                                    >
+                                      <title>{`${seller.label}: ${formatCurrencyBRL(seller.total)}`}</title>
+                                    </circle>
+                                  );
+                                });
+                              })()}
+                            </svg>
+
+                            <div className="dashboard-native-legend dashboard-vendas-region-legend">
+                              {sellerSlices.map((seller, index) => (
+                                <button
+                                  type="button"
+                                  key={seller.key}
+                                  className={`dashboard-native-legend-item dashboard-vendas-region-legend__item${activeSeller?.key === seller.key ? ' is-active' : ''}`}
+                                  onMouseEnter={() => setActiveSellerKey(seller.key)}
+                                  onFocus={() => setActiveSellerKey(seller.key)}
+                                >
+                                  <span style={{ backgroundColor: chartPalette[index % chartPalette.length] }} />
+                                  <strong>{seller.label}</strong>
+                                  <small>{formatCurrencyBRL(seller.total)}</small>
+                                </button>
+                              ))}
+
+                              {activeSeller ? (
+                                <div className="dashboard-vendas-region-tooltip" role="status" aria-live="polite">
+                                  <p>{`Top 3 clientes - ${activeSeller.label}`}</p>
+                                  <ol>
+                                    {activeSeller.topClients.length > 0 ? (
+                                      activeSeller.topClients.map((client) => (
+                                        <li key={`${activeSeller.key}-${client.key}`}>
+                                          <span>{client.label}</span>
+                                          <strong>{formatCurrencyBRL(client.total)}</strong>
+                                        </li>
+                                      ))
+                                    ) : (
+                                      <li>
+                                        <span>Sem clientes para este vendedor</span>
+                                      </li>
+                                    )}
+                                  </ol>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   )
                 ) : null}
@@ -908,6 +1125,13 @@ export function DashboardVendasPage() {
             <DashboardSummaryTable
               rows={summaryRows}
               columns={summaryColumns}
+              searchEnabled
+              searchPlaceholder="Pesquisar cliente, região ou material"
+              initialSortColumnKey="faturado"
+              initialSortDirection="desc"
+              rowSearchText={getSummaryRowSearchText}
+              renderRowDetails={renderSummaryRowDetails}
+              rowDetailsTitle="Materiais faturados"
               headerAction={(
                 <button
                   className="icon-button module-action-button"
