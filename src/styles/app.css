@@ -339,8 +339,8 @@ body {
   height: 100%;
 }
 
-.dashboard-kpi-grid > .dashboard-kpi-card,
-.dashboard-chart-grid > .dashboard-chart-card {
+.dashboard-kpi-grid>.dashboard-kpi-card,
+.dashboard-chart-grid>.dashboard-chart-card {
   margin: 0;
 }
 
@@ -707,7 +707,7 @@ body {
   overflow: visible;
 }
 
-.filters-panel__content:has(.dashboard-financeiro-advanced-grid--period) > * {
+.filters-panel__content:has(.dashboard-financeiro-advanced-grid--period)>* {
   min-width: 0;
 }
 
@@ -1015,7 +1015,7 @@ body {
   padding: 8px 2px;
 }
 
-.dashboard-summary-table__details-content > strong {
+.dashboard-summary-table__details-content>strong {
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -1081,7 +1081,7 @@ body {
   white-space: nowrap;
 }
 
-.dashboard-vendas-results > .card {
+.dashboard-vendas-results>.card {
   margin: 0;
 }
 
@@ -1148,7 +1148,7 @@ body {
   flex-wrap: nowrap;
 }
 
-.filters-panel__content:has(.dashboard-vendas-advanced-grid--dates-only) > * {
+.filters-panel__content:has(.dashboard-vendas-advanced-grid--dates-only)>* {
   min-width: 0;
 }
 
@@ -1321,7 +1321,7 @@ body {
   background: var(--color-input-bg);
 }
 
-.dashboard-vendas-top-client__details > p {
+.dashboard-vendas-top-client__details>p {
   margin: 0 0 6px;
   font-size: 0.78rem;
   color: var(--color-muted);
@@ -3623,6 +3623,654 @@ select.text-field:focus {
 
 .module-summary--single {
   gap: 6px;
+}
+
+/* ============================================================
+   Serviços Page
+   ============================================================ */
+.app-shell__content:has(.servicos-page) {
+  overflow: hidden;
+  padding: 10px 12px;
+}
+
+.servicos-page {
+  height: 100%;
+  min-height: 0;
+  padding: 8px 10px 10px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  overflow: hidden;
+}
+
+.servicos-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.servicos-page__title-wrap {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.servicos-page__header h1 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: clamp(1.2rem, 2.2vw, 1.8rem);
+}
+
+.servicos-page__header p {
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.servicos-panel {
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-surface);
+  padding: 10px;
+  display: grid;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  overflow: hidden;
+}
+
+.servicos-panel__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.servicos-panel__summary {
+  display: grid;
+  gap: 2px;
+}
+
+.servicos-panel__summary strong {
+  color: var(--color-text);
+  font-size: 1.1rem;
+}
+
+.servicos-panel__summary span {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.servicos-panel__controls {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.servicos-search {
+  min-width: 0;
+  max-width: 100%;
+  flex: 1;
+}
+
+.servicos-search__input-wrap {
+  position: relative;
+}
+
+.servicos-search__input-wrap>svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-muted);
+}
+
+.servicos-search .servicos-search__input-wrap input {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  padding: 0 34px 0 36px;
+}
+
+.servicos-search .servicos-search__input-wrap input::placeholder {
+  color: var(--color-muted);
+  opacity: 0.72;
+}
+
+.servicos-search .servicos-search__input-wrap input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.servicos-search__clear {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  border: 0;
+  padding: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.servicos-search__clear:hover {
+  color: var(--color-primary);
+}
+
+.servicos-table-wrap {
+  display: block;
+  min-height: 0;
+  overflow: auto;
+  border-radius: 12px;
+}
+
+.servicos-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.servicos-table th,
+.servicos-table td {
+  border-bottom: 1px solid var(--color-border-soft);
+  padding: 12px 10px;
+  text-align: left;
+  color: var(--color-text);
+  font-size: 0.95rem;
+}
+
+.servicos-table th {
+  background: var(--table-head-bg);
+  color: var(--table-head-fg);
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.servicos-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.servicos-table th:first-child {
+  border-top-left-radius: 12px;
+}
+
+.servicos-table th:last-child {
+  border-top-right-radius: 12px;
+}
+
+.servicos-table tbody tr:nth-child(odd) {
+  background: var(--table-row-odd);
+}
+
+.servicos-table tbody tr:nth-child(even) {
+  background: var(--table-row-even);
+}
+
+.servicos-table tbody tr:hover {
+  background: var(--table-row-hover);
+}
+
+.servicos-table .status-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.servicos-table .status-badge--active {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.servicos-table .status-badge--inactive {
+  background: rgba(156, 163, 175, 0.15);
+  color: var(--color-muted);
+}
+
+.servicos-table__col-acoes {
+  width: 88px;
+  text-align: center !important;
+}
+
+.servicos-table__acoes {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.servicos-table__btn-acao {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.servicos-table__btn-acao:hover {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary-border);
+  color: var(--color-primary);
+}
+
+.servicos-table__btn-acao--danger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+}
+
+.servicos-table__row--clickable {
+  cursor: pointer;
+}
+
+.servicos-table__row--clickable:focus-visible {
+  outline: 1px solid var(--color-primary-border);
+  outline-offset: -1px;
+}
+
+/* ============================================================
+   Serviços — Modal de Consulta
+   ============================================================ */
+.modal-card--servicos {
+  width: min(920px, 100%);
+  max-height: 95vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.servicos-consulta-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  padding-bottom: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.servicos-consulta-toprow {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 200px) auto 1fr;
+  gap: 10px;
+  align-items: end;
+}
+
+.servicos-consulta-toprow--novo {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.servicos-consulta-label {
+  display: grid;
+  gap: 6px;
+}
+
+.servicos-consulta-label span {
+  color: var(--color-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.servicos-consulta-label input,
+.servicos-consulta-label textarea {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  padding: 0 12px;
+  font-size: 0.93rem;
+  font-family: inherit;
+}
+
+.servicos-consulta-label textarea {
+  padding: 10px 12px;
+  line-height: 1.4;
+  resize: vertical;
+  min-height: 70px;
+}
+
+.servicos-consulta-status__value {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.servicos-status-text {
+  font-size: 0.97rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.servicos-status-text--ativo {
+  color: #4ade80;
+}
+
+.servicos-status-text--inativo {
+  color: #f87171;
+}
+
+.servicos-status-select {
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  padding: 0 10px;
+  font-size: 0.93rem;
+  font-family: inherit;
+  width: 100%;
+}
+
+.servicos-status-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.servicos-consulta-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid var(--color-border-soft);
+  margin-top: 4px;
+}
+
+/* ── Help Tributação Modal ─────────────────────────── */
+.modal-card--help-trib {
+  width: min(700px, 100%);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+}
+
+.modal-card__title {
+  font-size: 0.97rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.help-trib-table-wrap {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  min-height: 0;
+}
+
+.help-trib-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.87rem;
+}
+
+.help-trib-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--table-head-bg, var(--color-surface-alt));
+  color: var(--table-head-color, var(--color-muted));
+  text-transform: uppercase;
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  z-index: 1;
+}
+
+.help-trib-table__row {
+  cursor: pointer;
+}
+
+.help-trib-table__row:nth-child(odd) {
+  background: var(--table-row-odd-bg, var(--color-surface));
+}
+
+.help-trib-table__row:nth-child(even) {
+  background: var(--table-row-even-bg, var(--color-surface-alt));
+}
+
+.help-trib-table__row:hover td {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.help-trib-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--color-border-soft);
+  color: var(--color-text);
+}
+
+.help-trib-table td:first-child {
+  white-space: nowrap;
+  width: 90px;
+}
+
+.help-trib-loading,
+.help-trib-empty {
+  text-align: center;
+  padding: 24px;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.help-trib-footer {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--color-border-soft);
+  padding-top: 10px;
+}
+
+.servicos-fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: clip;
+}
+
+.servicos-fieldset__title {
+  padding: 7px 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  background: var(--color-surface-alt);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.servicos-fieldset__body {
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.servicos-nbs-2col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  align-items: start;
+}
+
+.servicos-nbs-2col--stretch {
+  align-items: stretch;
+}
+
+.servicos-nbs-2col--stretch label {
+  align-self: stretch;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.servicos-nbs-2col--stretch .servicos-consulta-label input,
+.servicos-nbs-2col--stretch .servicos-consulta-label textarea {
+  height: 100%;
+  min-height: 70px;
+  resize: none;
+  box-sizing: border-box;
+}
+
+.servicos-nbs-2col--stretch textarea {
+  padding: 10px 12px;
+}
+
+.servicos-nbs-codigo-wrap {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.servicos-nbs-codigo-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.servicos-nbs-busca-btn {
+  width: 36px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+  color: var(--color-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.servicos-nbs-busca-btn:hover {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary-border);
+  color: var(--color-primary);
+}
+
+.servicos-nbs-col {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.servicos-nbs-tribis-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.servicos-nbs-tribis-row span {
+  white-space: nowrap;
+}
+
+.servicos-nbs-tribis-row .servicos-nbs-checkbox {
+  width: 46px;
+  flex-shrink: 0;
+}
+
+.servicos-nbs-capitulo {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.servicos-nbs-tribis {
+  width: 76px;
+}
+
+.servicos-nbs-checkbox {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-input-bg);
+}
+
+.servicos-nbs-checkbox input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+}
+
+.servicos-trib-2col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 16px;
+}
+
+.servicos-trib-col {
+  display: grid;
+  gap: 5px;
+  align-content: start;
+}
+
+.servicos-trib-row {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: 6px;
+  align-items: center;
+}
+
+.servicos-trib-row__label {
+  color: var(--color-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding-right: 4px;
+}
+
+.servicos-trib-row__inputs {
+  display: flex;
+  gap: 6px;
+}
+
+.servicos-trib-row__inputs input {
+  flex: 1;
+  min-width: 0;
+  min-height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  padding: 0 10px;
+  font-size: 0.87rem;
+  font-family: inherit;
+}
+
+.servicos-trib-row__code {
+  flex: 0 0 58px !important;
 }
 
 .list-layout-page {
@@ -6915,12 +7563,12 @@ select.text-field:focus {
     padding: 8px 10px;
   }
 
-  .pedido-venda-consulta-total > span {
+  .pedido-venda-consulta-total>span {
     font-size: 0.74rem;
     line-height: 1.15;
   }
 
-  .pedido-venda-consulta-total > strong {
+  .pedido-venda-consulta-total>strong {
     font-size: 1.02rem;
     line-height: 1.2;
   }

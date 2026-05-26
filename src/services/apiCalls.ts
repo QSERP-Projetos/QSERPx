@@ -2078,6 +2078,127 @@ export const testeUrlCall = async (url: string): Promise<ApiCallResponse> => {
 };
 
 // ============================================
+// API: Lista Servicos
+// ============================================
+export const atualizarServicoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  body: Parameters<typeof adicionarServicoCall>[2] & { Codigo_Servico: number },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/AtualizarServico`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.PUT,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    body,
+  );
+};
+
+export const deletarServicoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  codigoServico: number,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/DeletarServico/${codigoServico}`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.DELETE,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+export const adicionarServicoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  body: {
+    Codigo_Servico: number;
+    Descr_Resumida: string;
+    Descr_Completa: string;
+    Valor_Padrao?: number | null;
+    Tributacao_PIS: string;
+    Tributacao_Cofins: string;
+    Codigo_Serv_LC116: string;
+    Gera_Credito_PISCofins?: number | null;
+    Codigo_Tipo_Credito: string;
+    Codigo_Credito: string;
+    Classificacao_Servico_MO_Emp: string;
+    Servico_Ativo?: number | null;
+    CST_IBS_CBS: string;
+    Descricao_CST_IBS_CBS: string;
+    ClassTrib_IBS_CBS: string;
+    Descricao_Tributacao_IBS_CBS: string;
+    CST_IS: string;
+    Descricao_CST_IS: string;
+    ClassTrib_IS: string;
+    Descricao_Tributacao_IS: string;
+    Cod_NBS: string;
+    Trib_IS?: number | null;
+    Capitulo: string;
+    Posicao: string;
+    Item: string;
+    Destino_Servico: string;
+  },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/AdicionarServico`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    body,
+  );
+};
+
+export const obterTributacoesCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  tipo: string,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ObterTributacoes/${tipo}`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+export const nbsCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  nbs: string,
+  data: string,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/nbs`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    { nbs, data },
+  );
+};
+
+export const listaServicosCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params?: {
+    codigoServico?: number;
+    tipoServico?: string;
+  },
+): Promise<ApiCallResponse> => {
+  const parts: string[] = [];
+  if (params?.codigoServico != null) parts.push(String(params.codigoServico));
+  if (params?.tipoServico != null && params.tipoServico !== '') parts.push(params.tipoServico);
+  const suffix = parts.length > 0 ? `/${parts.join('/')}` : '';
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ListaServicos${suffix}`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+// ============================================
 // TEMPLATE: Adicione mais APIs aqui seguindo o padrão acima
 // ============================================
 
@@ -2179,4 +2300,10 @@ export default {
   logoutCall,
   buscaSessoesCall,
   adicionarUsuarioSistemaLogCall,
+  listaServicosCall,
+  nbsCall,
+  obterTributacoesCall,
+  adicionarServicoCall,
+  atualizarServicoCall,
+  deletarServicoCall,
 };

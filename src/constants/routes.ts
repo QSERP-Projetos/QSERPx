@@ -19,6 +19,7 @@ export const ROUTES = {
   servicoApontamentoMaoObra: '/servico/apontamento-mao-obra',
   comprasPedidoLiberacao: '/compras/pedido-liberacao',
   basicoClientes: '/basico/clientes',
+  basicoServicos: '/basico/servicos',
   segurancaUsuarios: '/seguranca/usuarios',
   segurancaTipoApontamento: '/seguranca/tipo-apontamento',
   segurancaSessoes: '/seguranca/sessoes',
