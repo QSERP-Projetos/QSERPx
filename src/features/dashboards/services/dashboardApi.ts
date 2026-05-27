@@ -30,6 +30,7 @@ export type DashboardVendasResponse = {
   Faturamento: Array<Record<string, any>>;
   Atraso: Array<Record<string, any>>;
   Forecast: Array<Record<string, any>>;
+  FaturamentoAcumulado?: Record<string, any> | null;
 };
 
 const ensureArray = (value: unknown) => (Array.isArray(value) ? value : []);
@@ -170,41 +171,31 @@ export const getDashboardVendas = async ({
   dataAte,
 }: DashboardParams): Promise<DashboardVendasResponse> => {
   const url = `${normalizeBaseUrl(baseUrl)}/api/v1/Dashboards/Vendas`;
-  const chunks = buildMonthlyChunks(dataDe, dataAte);
-  const faturamento: Array<Record<string, any>> = [];
-  const atraso: Array<Record<string, any>> = [];
-  const forecast: Array<Record<string, any>> = [];
-  const moedasChunks: Array<Array<Record<string, any>>> = [];
+  const response = await apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    token ? { Authorization: `Bearer ${token}` } : {},
+    {
+      Codigo_Empresa: codigoEmpresa,
+      Data_De: dataDe,
+      Data_Ate: dataAte,
+    },
+    null,
+    { timeoutMs: DASHBOARD_TIMEOUT_MS },
+  );
 
-  for (const chunk of chunks) {
-    const response = await apiManager.makeApiCall(
-      url,
-      ApiCallType.GET,
-      token ? { Authorization: `Bearer ${token}` } : {},
-      {
-        Codigo_Empresa: codigoEmpresa,
-        Data_De: chunk.dataDe,
-        Data_Ate: chunk.dataAte,
-      },
-      null,
-      { timeoutMs: DASHBOARD_TIMEOUT_MS },
-    );
-
-    if (!response.succeeded) {
-      throw new Error(response.bodyText || 'Erro ao consultar dashboard de vendas.');
-    }
-
-    const body = (response.jsonBody ?? response.data ?? {}) as Record<string, unknown>;
-    moedasChunks.push(parseMoedasSemCotacao(body));
-    faturamento.push(...ensureArray(pickFirst(body, ['Faturamento', 'faturamento'])));
-    atraso.push(...ensureArray(pickFirst(body, ['Atraso', 'atraso'])));
-    forecast.push(...ensureArray(pickFirst(body, ['Forecast', 'forecast'])));
+  if (!response.succeeded) {
+    throw new Error(response.bodyText || 'Erro ao consultar dashboard de vendas.');
   }
 
+  const body = (response.jsonBody ?? response.data ?? {}) as Record<string, unknown>;
+  const faturamentoAcumulado = (pickFirst(body, ['FaturamentoAcumulado', 'faturamentoAcumulado']) ?? null) as Record<string, any> | null;
+
   return {
-    MoedasSemCotacao: mergeMoedasSemCotacao(moedasChunks),
-    Faturamento: faturamento,
-    Atraso: atraso,
-    Forecast: forecast,
+    MoedasSemCotacao: parseMoedasSemCotacao(body),
+    Faturamento: ensureArray(pickFirst(body, ['Faturamento', 'faturamento'])),
+    Atraso: ensureArray(pickFirst(body, ['Atraso', 'atraso'])),
+    Forecast: ensureArray(pickFirst(body, ['Forecast', 'forecast'])),
+    FaturamentoAcumulado: faturamentoAcumulado,
   };
 };

@@ -1091,7 +1091,21 @@ body {
 
 .dashboard-vendas-page .dashboard-chart-card {
   min-width: 0;
+  overflow: visible;
+}
+
+.dashboard-vendas-acumulado-card {
+  min-height: 780px;
+  padding-bottom: 28px;
   overflow: hidden;
+}
+
+.dashboard-vendas-acumulado-card .dashboard-section-header h2 {
+  font-size: 1rem;
+}
+
+.dashboard-vendas-acumulado-card .dashboard-section-header p {
+  font-size: 0.82rem;
 }
 
 .dashboard-alert-row--bottom {
@@ -1140,16 +1154,73 @@ body {
   justify-items: start;
 }
 
+.dashboard-vendas-advanced-grid--period {
+  grid-template-columns: repeat(4, max-content);
+  gap: 8px;
+  justify-content: start;
+  justify-items: start;
+}
+
+.dashboard-vendas-advanced-grid .dashboard-vendas-mode-field {
+  width: 220px;
+  max-width: 100%;
+}
+
+.dashboard-vendas-advanced-grid .dashboard-vendas-year-field {
+  width: 120px;
+  max-width: 100%;
+}
+
+.dashboard-vendas-advanced-grid .dashboard-vendas-year-field .searchable-select,
+.dashboard-vendas-advanced-grid .dashboard-vendas-year-field .searchable-select__control,
+.dashboard-vendas-advanced-grid .dashboard-vendas-mode-field .searchable-select,
+.dashboard-vendas-advanced-grid .dashboard-vendas-mode-field .searchable-select__control {
+  width: 100%;
+}
+
 .filters-panel__content:has(.dashboard-vendas-advanced-grid--dates-only) {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  overflow: visible;
 }
 
 .filters-panel__content:has(.dashboard-vendas-advanced-grid--dates-only)>* {
   min-width: 0;
+}
+
+.filters-panel__content:has(.dashboard-vendas-advanced-grid--period) {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+.filters-panel__content:has(.dashboard-vendas-advanced-grid--period) > * {
+  min-width: 0;
+}
+
+.filters-panel__content:has(.dashboard-vendas-advanced-grid--period) .dashboard-vendas-advanced-grid {
+  margin-right: auto;
+}
+
+.filters-panel__content:has(.dashboard-vendas-advanced-grid--period) .filters-panel__actions {
+  margin-left: auto;
+  margin-top: 8px;
+  justify-content: flex-end;
+  align-self: flex-end;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.filters-panel__content:has(.dashboard-vendas-advanced-grid--period) .filters-panel__actions .primary-button,
+.filters-panel__content:has(.dashboard-vendas-advanced-grid--period) .filters-panel__actions .secondary-button {
+  flex: 0 0 auto;
+  min-width: 104px;
 }
 
 .filters-panel__content:has(.dashboard-vendas-advanced-grid--dates-only) .dashboard-vendas-advanced-grid {
@@ -1167,6 +1238,7 @@ body {
 
 .filters-panel__content:has(.dashboard-vendas-advanced-grid--dates-only) .filters-panel__actions {
   margin-left: auto;
+  margin-top: 8px;
   justify-content: flex-end;
   align-self: flex-end;
   text-align: right;
@@ -1264,6 +1336,110 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.dashboard-vendas-acumulado {
+  display: grid;
+  gap: 12px;
+  min-height: 620px;
+}
+
+.dashboard-vendas-acumulado__chart-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-height: 470px;
+  max-width: 100%;
+  padding-bottom: 14px;
+  box-sizing: border-box;
+  scrollbar-gutter: stable;
+}
+
+.dashboard-vendas-acumulado__chart-wrap .dashboard-native-svg {
+  height: 430px;
+  min-height: 430px;
+}
+
+.dashboard-vendas-acumulado__grid {
+  stroke: var(--color-border-soft);
+  stroke-dasharray: 4 4;
+}
+
+.dashboard-vendas-acumulado__axis {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.dashboard-vendas-acumulado__tick-text {
+  fill: var(--color-muted);
+  font-size: 12px;
+}
+
+.dashboard-vendas-acumulado__fill {
+  fill: #2563eb;
+  fill-opacity: 0.16;
+}
+
+.dashboard-vendas-acumulado__line {
+  fill: none;
+  stroke: #2563eb;
+  stroke-width: 2.4;
+}
+
+.dashboard-vendas-acumulado__dot {
+  fill: #2563eb;
+  transition: r 0.14s ease;
+}
+
+.dashboard-vendas-acumulado__dot.is-active,
+.dashboard-vendas-acumulado__dot:hover,
+.dashboard-vendas-acumulado__dot:focus-visible {
+  r: 5.5;
+}
+
+.dashboard-vendas-acumulado-tooltip {
+  margin-top: 4px;
+}
+
+.dashboard-vendas-acumulado-tooltip p {
+  font-size: 0.82rem;
+}
+
+.dashboard-vendas-acumulado .dashboard-native-xlabels {
+  position: relative;
+  height: 64px;
+  margin-top: 6px;
+  padding-bottom: 10px;
+}
+
+.dashboard-vendas-acumulado__xlabel-item {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.dashboard-vendas-acumulado__xlabel-value,
+.dashboard-vendas-acumulado__xlabel-date {
+  font-size: 0.76rem;
+  line-height: 1.2;
+}
+
+.dashboard-vendas-acumulado__xlabel-value {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.dashboard-vendas-acumulado__xlabel-value--empty {
+  visibility: hidden;
+}
+
+.dashboard-vendas-acumulado__xlabel-date {
+  color: var(--color-muted);
+  font-weight: 500;
 }
 
 .dashboard-vendas-top-client-bars {
@@ -1480,13 +1656,32 @@ body {
     gap: 8px;
   }
 
+  .filters-panel__content:has(.dashboard-vendas-advanced-grid--period) {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+    justify-content: stretch;
+    gap: 8px;
+  }
+
   .filters-panel__content:has(.dashboard-vendas-advanced-grid--dates-only) .dashboard-vendas-advanced-grid--dates-only,
   .filters-panel__content:has(.dashboard-vendas-advanced-grid--dates-only) .filters-panel__actions {
     margin-right: 0;
     margin-left: 0;
   }
 
+  .filters-panel__content:has(.dashboard-vendas-advanced-grid--period) .dashboard-vendas-advanced-grid--period,
+  .filters-panel__content:has(.dashboard-vendas-advanced-grid--period) .filters-panel__actions {
+    margin-right: 0;
+    margin-left: 0;
+  }
+
   .filters-panel__content:has(.dashboard-vendas-advanced-grid--dates-only) .filters-panel__actions {
+    margin-top: 8px;
+    justify-content: flex-end;
+  }
+
+  .filters-panel__content:has(.dashboard-vendas-advanced-grid--period) .filters-panel__actions {
     margin-top: 8px;
     justify-content: flex-end;
   }
@@ -1582,6 +1777,10 @@ body {
   }
 
   .filters-panel__content:has(.dashboard-vendas-advanced-grid--dates-only) .dashboard-vendas-advanced-grid--dates-only {
+    grid-template-columns: 1fr;
+  }
+
+  .filters-panel__content:has(.dashboard-vendas-advanced-grid--period) .dashboard-vendas-advanced-grid--period {
     grid-template-columns: 1fr;
   }
 

@@ -77,6 +77,7 @@ export function DashboardSummaryTable({
     return list;
   }, [collator, columns, filteredRows, sortColumnKey, sortDirection]);
 
+
   const handleSort = (columnKey: string) => {
     if (sortColumnKey === columnKey) {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
