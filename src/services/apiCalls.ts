@@ -2150,6 +2150,138 @@ export const adicionarServicoCall = async (
   );
 };
 
+export const obterOcorrenciasNotaFiscalCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: {
+    codigoEmpresa: number;
+    numNota: string;
+    serNota: string | number;
+    ultimaOcorrencia?: boolean;
+  },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ObterOcorrenciasNotaFiscal`;
+  const query: Record<string, string> = {
+    CodigoEmpresa: String(params.codigoEmpresa),
+    NumNota: String(params.numNota),
+    SerNota: String(params.serNota),
+    UltimaOcorrencia: String(params.ultimaOcorrencia ?? false),
+  };
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    query,
+  );
+};
+
+export const obterNotasFiscaisServicoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: {
+    codigoEmpresa: number;
+    dataInicio: string;
+    dataFim: string;
+    tipoNota?: string;
+    numNotaFiscal?: string;
+    serie?: string;
+  },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ObterNotasFiscais`;
+  const query: Record<string, string> = {
+    CodigoEmpresa: String(params.codigoEmpresa),
+    dataInicio: params.dataInicio,
+    dataFim: params.dataFim,
+  };
+  if (params.tipoNota) query.tipoNota = params.tipoNota;
+  if (params.numNotaFiscal) query.numNotaFiscal = params.numNotaFiscal;
+  if (params.serie) query.serie = params.serie;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    query,
+  );
+};
+
+export const enviarDPSCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  body: {
+    CodigoEmpresa: number;
+    TipoNFServico: number;
+    ReenvioXML: boolean;
+    NumNota: string;
+    SerNota: string;
+    CodDestinatario: number;
+    TipoDestinatario: string;
+    CondPagamento: number;
+    CodServico: number;
+    DescricaoServico: string;
+    ClassServMOEmp: string;
+    CodAtivEconomica: string;
+    CTribNacional: string;
+    ValorServico: number;
+    ValorBaseINSS: number;
+    ValorINSS: number;
+    ValorINSSsUB: number;
+    ValorINSSNaoRet: number;
+    ValorINSSAdic: number;
+    ValorINSSAdicNaoRet: number;
+    ValorServ15: number;
+    ValorServ20: number;
+    ValorServ25: number;
+    ValorIRRF: number;
+    ValorISS: number;
+    ValorCSLL: number;
+    ValorPIS: number;
+    ValorCOFINS: number;
+    AlteraValor: boolean;
+    ValorReceber: number;
+    TribISSQN: number;
+    RetISSQN: number;
+    AliqISSQN: number;
+    TpRetPisCofins: number;
+    ValorPISRet: number;
+    ValorCOFINSRet: number;
+    ValorCSLLRet: number;
+    Usuario: string;
+    versao: string;
+  },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/EnviarDPS`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    body,
+  );
+};
+
+export const obterNotaFiscalServicoModCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: {
+    codigoEmpresa: number;
+    numNota: string;
+    serNota: string;
+  },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ObterNotaFiscalServicoMod`;
+  const query: Record<string, string> = {
+    CodigoEmpresa: String(params.codigoEmpresa),
+    NumNota: params.numNota,
+    SerNota: params.serNota,
+  };
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    query,
+  );
+};
+
 export const obterTributacoesCall = async (
   baseUrl: string,
   jwtToken: string | undefined,
@@ -2186,15 +2318,41 @@ export const listaServicosCall = async (
     tipoServico?: string;
   },
 ): Promise<ApiCallResponse> => {
-  const parts: string[] = [];
-  if (params?.codigoServico != null) parts.push(String(params.codigoServico));
-  if (params?.tipoServico != null && params.tipoServico !== '') parts.push(params.tipoServico);
-  const suffix = parts.length > 0 ? `/${parts.join('/')}` : '';
-  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ListaServicos${suffix}`;
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ListaServicos`;
+  const queryParams: Record<string, string> = {};
+  if (params?.codigoServico != null) queryParams.CodigoServico = String(params.codigoServico);
+  if (params?.tipoServico) queryParams.TipoServico = params.tipoServico;
   return apiManager.makeApiCall(
     url,
     ApiCallType.GET,
     jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    Object.keys(queryParams).length > 0 ? queryParams : undefined,
+  );
+};
+
+export const obterClientesFornecedoresCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ObterClientesFornecedores`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+export const obterEmpresasSeriesNFCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: { codigoEmpresa: string | number; tipoNota: string },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ObterEmpresasSeriesNF`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    { CodigoEmpresa: params.codigoEmpresa, tipoNota: params.tipoNota },
   );
 };
 
@@ -2306,4 +2464,10 @@ export default {
   adicionarServicoCall,
   atualizarServicoCall,
   deletarServicoCall,
+  obterNotasFiscaisServicoCall,
+  obterNotaFiscalServicoModCall,
+  enviarDPSCall,
+  obterOcorrenciasNotaFiscalCall,
+  obterClientesFornecedoresCall,
+  obterEmpresasSeriesNFCall,
 };

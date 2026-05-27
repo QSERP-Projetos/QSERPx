@@ -41,7 +41,7 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
     PCP004: ROUTES.pcpPreparacaoMaquina,
     SER001: ROUTES.servicoApontamentoMaoObra,
     SER002: ROUTES.servicoOrdens,
-    SER003: ROUTES.servicoOrdens,
+    SER003: ROUTES.servicoNotaFiscal,
     MAN001: ROUTES.manutencaoOrdens,
   };
 
@@ -68,6 +68,9 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
       ? ROUTES.comprasPedidoLiberacao
       : undefined) ||
     (normalizedTitle.includes('cliente') ? ROUTES.basicoClientes : undefined) ||
+    (normalizedTitle.includes('nota') && normalizedTitle.includes('fiscal')
+      ? ROUTES.servicoNotaFiscal
+      : undefined) ||
     (normalizedTitle.includes('servico') && !normalizedTitle.includes('ordem') && !normalizedTitle.includes('apont') && !normalizedTitle.includes('mao')
       ? ROUTES.basicoServicos
       : undefined) ||

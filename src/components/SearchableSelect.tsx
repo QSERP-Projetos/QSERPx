@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import type React from 'react';
 import { createPortal } from 'react-dom';
 import { IoChevronDownOutline, IoChevronUpOutline } from 'react-icons/io5';
 
@@ -20,6 +21,14 @@ type SearchableSelectProps = {
   ariaLabel?: string;
   className?: string;
   dropUp?: boolean;
+  /** Override the text shown in the trigger button (defaults to the selected option label) */
+  displayValue?: string;
+  /** Minimum width in px for the dropdown list (useful when the trigger is narrow) */
+  minDropdownWidth?: number;
+  /** Custom renderer for each option row in the dropdown */
+  renderOption?: (option: SearchableSelectOption) => React.ReactNode;
+  /** Optional header node rendered above the option list */
+  listHeader?: React.ReactNode;
 };
 
 const normalizeText = (value: string) =>
@@ -41,6 +50,10 @@ export function SearchableSelect({
   ariaLabel,
   className,
   dropUp = false,
+  displayValue,
+  minDropdownWidth,
+  renderOption,
+  listHeader,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -106,7 +119,7 @@ export function SearchableSelect({
       const viewportWidth = window.innerWidth;
       const horizontalPadding = 12;
 
-      const preferredMinWidth = enableSearch ? 340 : rect.width;
+      const preferredMinWidth = minDropdownWidth ?? (enableSearch ? 340 : rect.width);
       const width = Math.min(Math.max(rect.width, preferredMinWidth), viewportWidth - horizontalPadding * 2);
       const left = Math.max(horizontalPadding, Math.min(rect.left, viewportWidth - width - horizontalPadding));
 
@@ -174,13 +187,13 @@ export function SearchableSelect({
       style={
         popoverStyle
           ? {
-              position: 'fixed',
-              left: `${popoverStyle.left}px`,
-              right: 'auto',
-              width: `${popoverStyle.width}px`,
-              top: popoverStyle.renderUp ? undefined : `${popoverStyle.top}px`,
-              bottom: popoverStyle.renderUp ? `${Math.max(12, window.innerHeight - popoverStyle.top)}px` : undefined,
-            }
+            position: 'fixed',
+            left: `${popoverStyle.left}px`,
+            right: 'auto',
+            width: `${popoverStyle.width}px`,
+            top: popoverStyle.renderUp ? undefined : `${popoverStyle.top}px`,
+            bottom: popoverStyle.renderUp ? `${Math.max(12, window.innerHeight - popoverStyle.top)}px` : undefined,
+          }
           : undefined
       }
     >
@@ -204,6 +217,7 @@ export function SearchableSelect({
         aria-label={ariaLabel || 'Opcoes'}
         style={popoverStyle ? { maxHeight: `${Math.max(120, popoverStyle.maxHeight - (enableSearch ? 70 : 20))}px` } : undefined}
       >
+        {listHeader ? <li className="searchable-select__list-header" aria-hidden="true">{listHeader}</li> : null}
         {filteredOptions.length === 0 ? (
           <li className="searchable-select__empty">{emptyText}</li>
         ) : (
@@ -219,7 +233,7 @@ export function SearchableSelect({
                   className={`searchable-select__option${isActive ? ' active' : ''}`}
                   onClick={() => handleSelectValue(option.value)}
                 >
-                  {option.label}
+                  {renderOption ? renderOption(option) : option.label}
                 </button>
               </li>
             );
@@ -261,8 +275,8 @@ export function SearchableSelect({
         aria-label={ariaLabel}
         disabled={disabled}
       >
-        <span className={`searchable-select__value${selectedOption ? '' : ' searchable-select__placeholder'}`}>
-          {selectedOption?.label ?? placeholder}
+        <span className={`searchable-select__value${(displayValue ?? selectedOption?.label) ? '' : ' searchable-select__placeholder'}`}>
+          {displayValue ?? selectedOption?.label ?? placeholder}
         </span>
 
         <span className="searchable-select__chevron" aria-hidden="true">

@@ -2645,6 +2645,11 @@ select {
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
+.searchable-select__option:has(.searchable-select__col-row) {
+  white-space: normal;
+  overflow: visible;
+}
+
 .searchable-select__option:hover {
   background: var(--color-primary-soft);
   border-color: var(--color-primary-border);
@@ -2660,6 +2665,30 @@ select {
   padding: 10px 12px;
   border-radius: 10px;
   color: var(--color-muted);
+}
+
+.searchable-select__list-header {
+  display: grid;
+  padding: 4px 12px 6px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.searchable-select__col-row {
+  display: grid;
+  width: 100%;
+  gap: 8px;
+  align-items: center;
+}
+
+.searchable-select__option .searchable-select__col-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .search-input {

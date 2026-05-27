@@ -15,6 +15,7 @@ import { OrdensFabricacaoPage } from '../features/pcp/pages/OrdensFabricacaoPage
 import { PreparacaoMaquinaPage } from '../features/pcp/pages/PreparacaoMaquinaPage';
 import { OrdensServicoPage } from '../features/servico/pages/OrdensServicoPage';
 import { ApontamentoMaoObraPage } from '../features/servico/pages/ApontamentoMaoObraPage';
+import { NotaFiscalServicoPage } from '../features/servico/pages/NotaFiscalServicoPage';
 import { PedidoCompraLiberacaoPage } from '../features/compras/pages/PedidoCompraLiberacaoPage';
 import { ClientesPage } from '../features/basico/pages/ClientesPage';
 import { ServicosPage } from '../features/basico/pages/ServicosPage';
@@ -76,6 +77,7 @@ export function AppRouter() {
           <Route path={ROUTES.pcpPreparacaoMaquina} element={<PreparacaoMaquinaPage />} />
           <Route path={ROUTES.servicoOrdens} element={<OrdensServicoPage />} />
           <Route path={ROUTES.servicoApontamentoMaoObra} element={<ApontamentoMaoObraPage />} />
+          <Route path={ROUTES.servicoNotaFiscal} element={<NotaFiscalServicoPage />} />
           <Route path={ROUTES.comprasPedidoLiberacao} element={<PedidoCompraLiberacaoPage />} />
           <Route path={ROUTES.basicoClientes} element={<ClientesPage />} />
           <Route path={ROUTES.basicoServicos} element={<ServicosPage />} />

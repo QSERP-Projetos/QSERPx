@@ -1218,31 +1218,31 @@ export function PedidoVendaFormPanel({
           condicao:
             (shouldLookupCondicao
               ? getRowLabel(condRow, [
-                  'descr_Condicao',
-                  'Descr_Condicao',
-                  'descricao_Condicao',
-                  'Descricao_Condicao',
-                  'descrCondicao',
-                  'descricaoCondicao',
-                  'descricao',
-                  'Descricao',
-                ])
+                'descr_Condicao',
+                'Descr_Condicao',
+                'descricao_Condicao',
+                'Descricao_Condicao',
+                'descrCondicao',
+                'descricaoCondicao',
+                'descricao',
+                'Descricao',
+              ])
               : normalizeCode(nextCondicaoPagto)) ||
             prev.condicao,
           vendedor:
             (shouldLookupVendedor
               ? getRowLabel(vendedorRow, [
-                  'nome_Vendedor',
-                  'Nome_Vendedor',
-                  'nomeVendedor',
-                  'NomeVendedor',
-                  'nome',
-                  'Nome',
-                  'razao_Social',
-                  'Razao_Social',
-                  'descricao',
-                  'Descricao',
-                ])
+                'nome_Vendedor',
+                'Nome_Vendedor',
+                'nomeVendedor',
+                'NomeVendedor',
+                'nome',
+                'Nome',
+                'razao_Social',
+                'Razao_Social',
+                'descricao',
+                'Descricao',
+              ])
               : normalizeCode(nextCodigoVendedor)) ||
             prev.vendedor,
           transportadora:
@@ -1250,19 +1250,19 @@ export function PedidoVendaFormPanel({
               ? 'Sem transportadora'
               : shouldLookupTransportadora
                 ? getRowLabel(transportadoraRow, [
-                    'nome_Transportadora',
-                    'Nome_Transportadora',
-                    'nomeTransportadora',
-                    'NomeTransportadora',
-                    'razao_Social',
-                    'Razao_Social',
-                    'nome_Fantasia',
-                    'Nome_Fantasia',
-                    'nome',
-                    'Nome',
-                    'descricao',
-                    'Descricao',
-                  ])
+                  'nome_Transportadora',
+                  'Nome_Transportadora',
+                  'nomeTransportadora',
+                  'NomeTransportadora',
+                  'razao_Social',
+                  'Razao_Social',
+                  'nome_Fantasia',
+                  'Nome_Fantasia',
+                  'nome',
+                  'Nome',
+                  'descricao',
+                  'Descricao',
+                ])
                 : normalizeCode(nextCodigoTransportadora)) ||
             prev.transportadora,
         }));
@@ -1334,6 +1334,8 @@ export function PedidoVendaFormPanel({
       const nextCondicaoOptions: SearchableSelectOption[] = [
         { value: '', label: 'Selecione' },
         ...toOptions(condicaoRows, [
+          ['condicao_Pagamento', 'descr_Condicao'],
+          ['Condicao_Pagamento', 'Descr_Condicao'],
           ['condicao_Pagto', 'descr_Condicao'],
           ['Condicao_Pagto', 'Descr_Condicao'],
           ['condicao_Pagto', 'descricao_Condicao'],
@@ -1579,20 +1581,20 @@ export function PedidoVendaFormPanel({
           nextTransportadora === '0'
             ? 'Sem transportadora'
             : getRowLabel(
-                transportadoraSource,
-                [
-                  'nome_Transportadora',
-                  'Nome_Transportadora',
-                  'nomeTransportadora',
-                  'NomeTransportadora',
-                  'nome_Fantasia',
-                  'Nome_Fantasia',
-                  'razao_Social',
-                  'Razao_Social',
-                  'nome',
-                  'Nome',
-                ],
-              );
+              transportadoraSource,
+              [
+                'nome_Transportadora',
+                'Nome_Transportadora',
+                'nomeTransportadora',
+                'NomeTransportadora',
+                'nome_Fantasia',
+                'Nome_Fantasia',
+                'razao_Social',
+                'Razao_Social',
+                'nome',
+                'Nome',
+              ],
+            );
 
         if (nextCondicao && condLabel) {
           setCondicaoOptions((prev) =>
@@ -1705,96 +1707,96 @@ export function PedidoVendaFormPanel({
 
         const rawCodigoCliente = String(
           pedido.codigo_Cliente
-            ?? pedido.Codigo_Cliente
-            ?? pedido.cod_Cliente
-            ?? pedido.Cod_Cliente
-            ?? pedido.codCliente
-            ?? pedido.codigoCliente
-            ?? pedido.id_Cliente
-            ?? pedido.Id_Cliente
-            ?? '',
+          ?? pedido.Codigo_Cliente
+          ?? pedido.cod_Cliente
+          ?? pedido.Cod_Cliente
+          ?? pedido.codCliente
+          ?? pedido.codigoCliente
+          ?? pedido.id_Cliente
+          ?? pedido.Id_Cliente
+          ?? '',
         ).trim();
         const nextCodigoCliente = rawCodigoCliente || resolveOptionValue(
           clienteOptions,
           String(
             pedido.cliente
-              ?? pedido.nome_Fantasia
-              ?? pedido.nome_Cliente
-              ?? '',
+            ?? pedido.nome_Fantasia
+            ?? pedido.nome_Cliente
+            ?? '',
           ),
         );
 
         const rawCondicaoPagto = String(
           pedido.codigo_Condicao_Pagto
-            ?? pedido.Codigo_Condicao_Pagto
-            ?? pedido.codigoCondicaoPagto
-            ?? pedido.codigo_Condicao
-            ?? pedido.Codigo_Condicao
-            ?? pedido.cod_Condicao
-            ?? pedido.Cod_Condicao
-            ?? pedido.condicao_Codigo
-            ?? pedido.Condicao_Codigo
-            ?? '',
+          ?? pedido.Codigo_Condicao_Pagto
+          ?? pedido.codigoCondicaoPagto
+          ?? pedido.codigo_Condicao
+          ?? pedido.Codigo_Condicao
+          ?? pedido.cod_Condicao
+          ?? pedido.Cod_Condicao
+          ?? pedido.condicao_Codigo
+          ?? pedido.Condicao_Codigo
+          ?? '',
         ).trim();
         const nextCondicaoPagto = rawCondicaoPagto || resolveOptionValue(
           condicaoOptions,
           String(
             pedido.condicao_Pagto
-              ?? pedido.Condicao_Pagto
-              ?? pedido.condicaoPagto
-              ?? pedido.CondicaoPagto
-              ?? pedido.descr_Condicao
-              ?? pedido.Descr_Condicao
-              ?? pedido.descricao_Condicao
-              ?? pedido.Descricao_Condicao
-              ?? '',
+            ?? pedido.Condicao_Pagto
+            ?? pedido.condicaoPagto
+            ?? pedido.CondicaoPagto
+            ?? pedido.descr_Condicao
+            ?? pedido.Descr_Condicao
+            ?? pedido.descricao_Condicao
+            ?? pedido.Descricao_Condicao
+            ?? '',
           ),
         );
 
         const rawCodigoVendedor = String(
           pedido.codigo_Vendedor
-            ?? pedido.Codigo_Vendedor
-            ?? pedido.cod_Vendedor
-            ?? pedido.Cod_Vendedor
-            ?? pedido.codigoVendedor
-            ?? '',
+          ?? pedido.Codigo_Vendedor
+          ?? pedido.cod_Vendedor
+          ?? pedido.Cod_Vendedor
+          ?? pedido.codigoVendedor
+          ?? '',
         ).trim();
         const nextCodigoVendedor = rawCodigoVendedor || resolveOptionValue(
           vendedorOptions,
           String(
             pedido.vendedor
-              ?? pedido.nome_Vendedor
-              ?? pedido.Nome_Vendedor
-              ?? pedido.nomeVendedor
-              ?? '',
+            ?? pedido.nome_Vendedor
+            ?? pedido.Nome_Vendedor
+            ?? pedido.nomeVendedor
+            ?? '',
           ),
         );
 
         const rawCodigoTransportadora = String(
           pedido.codigo_Transportadora
-            ?? pedido.Codigo_Transportadora
-            ?? pedido.cod_Transportadora
-            ?? pedido.Cod_Transportadora
-            ?? pedido.codigoTransportadora
-            ?? '',
+          ?? pedido.Codigo_Transportadora
+          ?? pedido.cod_Transportadora
+          ?? pedido.Cod_Transportadora
+          ?? pedido.codigoTransportadora
+          ?? '',
         ).trim();
         const nextCodigoTransportadora = rawCodigoTransportadora || resolveOptionValue(
           transportadoraOptions,
           String(
             pedido.transportadora
-              ?? pedido.nome_Transportadora
-              ?? pedido.Nome_Transportadora
-              ?? '',
+            ?? pedido.nome_Transportadora
+            ?? pedido.Nome_Transportadora
+            ?? '',
           ),
         );
 
         const clienteNomeLabel = cleanLabelText(
           pedido.nome_Fantasia
-            ?? pedido.nome_Cliente
-            ?? pedido.Nome_Cliente
-            ?? pedido.nomeCliente
-            ?? pedido.cliente
-            ?? '',
+          ?? pedido.nome_Cliente
+          ?? pedido.Nome_Cliente
+          ?? pedido.nomeCliente
+          ?? pedido.cliente
+          ?? '',
         );
 
         handleChangeCliente(nextCodigoCliente, { clearItensIfChanged: false, forceReload: true });
@@ -1810,21 +1812,21 @@ export function PedidoVendaFormPanel({
         setCodigoVendedor(nextCodigoVendedor);
         const nextDescontoAplicado = String(
           pedido.Perc_Desconto_Aplicado
-            ?? pedido.perc_Desconto_Aplicado
-            ?? pedido.percDescontoAplicado
-            ?? pedido.Perc_Desconto
-            ?? pedido.perc_Desconto
-            ?? pedido.percDesconto
-            ?? '0',
+          ?? pedido.perc_Desconto_Aplicado
+          ?? pedido.percDescontoAplicado
+          ?? pedido.Perc_Desconto
+          ?? pedido.perc_Desconto
+          ?? pedido.percDesconto
+          ?? '0',
         );
         const nextDescontoCliente = String(
           pedido.Perc_Desconto_Cliente
-            ?? pedido.perc_Desconto_Cliente
-            ?? pedido.percDescontoCliente
-            ?? pedido.Perc_Desconto_Pedido
-            ?? pedido.perc_Desconto_Pedido
-            ?? pedido.percDescontoPedido
-            ?? nextDescontoAplicado,
+          ?? pedido.perc_Desconto_Cliente
+          ?? pedido.percDescontoCliente
+          ?? pedido.Perc_Desconto_Pedido
+          ?? pedido.perc_Desconto_Pedido
+          ?? pedido.percDescontoPedido
+          ?? nextDescontoAplicado,
         );
 
         setDesconto(nextDescontoCliente);
@@ -1843,34 +1845,6 @@ export function PedidoVendaFormPanel({
           cliente: clienteNomeLabel,
           condicao: cleanLabelText(
             pedido.descr_Condicao
-              ?? pedido.Descr_Condicao
-              ?? pedido.descricao_Condicao
-              ?? pedido.Descricao_Condicao
-              ?? pedido.condicao_Pagto
-              ?? pedido.Condicao_Pagto
-              ?? pedido.condicaoPagto
-              ?? '',
-          ),
-          vendedor: cleanLabelText(
-            pedido.nome_Vendedor
-              ?? pedido.Nome_Vendedor
-              ?? pedido.nomeVendedor
-              ?? pedido.NomeVendedor
-              ?? pedido.vendedor
-              ?? '',
-          ),
-          transportadora: cleanLabelText(
-            pedido.nome_Transportadora
-              ?? pedido.Nome_Transportadora
-              ?? pedido.nomeTransportadora
-              ?? pedido.NomeTransportadora
-              ?? pedido.transportadora
-              ?? (nextCodigoTransportadora === '0' ? 'Sem transportadora' : ''),
-          ),
-        });
-
-        const condLabelFromPedido = String(
-          pedido.descr_Condicao
             ?? pedido.Descr_Condicao
             ?? pedido.descricao_Condicao
             ?? pedido.Descricao_Condicao
@@ -1878,22 +1852,50 @@ export function PedidoVendaFormPanel({
             ?? pedido.Condicao_Pagto
             ?? pedido.condicaoPagto
             ?? '',
-        ).trim();
-        const vendedorLabelFromPedido = String(
-          pedido.nome_Vendedor
+          ),
+          vendedor: cleanLabelText(
+            pedido.nome_Vendedor
             ?? pedido.Nome_Vendedor
             ?? pedido.nomeVendedor
             ?? pedido.NomeVendedor
             ?? pedido.vendedor
             ?? '',
-        ).trim();
-        const transportadoraLabelFromPedido = String(
-          pedido.nome_Transportadora
+          ),
+          transportadora: cleanLabelText(
+            pedido.nome_Transportadora
             ?? pedido.Nome_Transportadora
             ?? pedido.nomeTransportadora
             ?? pedido.NomeTransportadora
             ?? pedido.transportadora
             ?? (nextCodigoTransportadora === '0' ? 'Sem transportadora' : ''),
+          ),
+        });
+
+        const condLabelFromPedido = String(
+          pedido.descr_Condicao
+          ?? pedido.Descr_Condicao
+          ?? pedido.descricao_Condicao
+          ?? pedido.Descricao_Condicao
+          ?? pedido.condicao_Pagto
+          ?? pedido.Condicao_Pagto
+          ?? pedido.condicaoPagto
+          ?? '',
+        ).trim();
+        const vendedorLabelFromPedido = String(
+          pedido.nome_Vendedor
+          ?? pedido.Nome_Vendedor
+          ?? pedido.nomeVendedor
+          ?? pedido.NomeVendedor
+          ?? pedido.vendedor
+          ?? '',
+        ).trim();
+        const transportadoraLabelFromPedido = String(
+          pedido.nome_Transportadora
+          ?? pedido.Nome_Transportadora
+          ?? pedido.nomeTransportadora
+          ?? pedido.NomeTransportadora
+          ?? pedido.transportadora
+          ?? (nextCodigoTransportadora === '0' ? 'Sem transportadora' : ''),
         ).trim();
 
         if (nextCondicaoPagto) {
@@ -1931,57 +1933,57 @@ export function PedidoVendaFormPanel({
         const itensRaw = pedido.Itens_Pedido ?? pedido.itens ?? pedido.items ?? [];
         const mappedItens = Array.isArray(itensRaw)
           ? itensRaw.map((item: any) => ({
-              Codigo_Produto: String(item.Codigo_Produto ?? item.codigo_Produto ?? item.material ?? ''),
-              Descricao_Produto: String(item.Descricao_Produto ?? item.descricao ?? item.descr_Produto ?? ''),
-              Num_Item: Number(item.Num_Item ?? item.num_Item ?? 0) || undefined,
-              Qtd_Entregar: formatDecimalString(item.Qtd_Entregar ?? item.qtdEntregar ?? '0', 3),
-              Qtd_Entregue: String(item.Qtd_Entregue ?? item.qtdEntregue ?? '0'),
-              Saldo: String(item.Saldo ?? item.saldo ?? '0'),
-              Preco_Negociado: formatDecimalString(
-                item.Preco_Negociado ?? item.preco_Negociado ?? item.preco ?? item.preco_Unitario ?? '0',
-                4,
-              ),
-              Preco_Base: formatDecimalString(
-                item.Preco_Base
-                  ?? item.preco_Base
-                  ?? item.Preco_Original
-                  ?? item.preco_Original
-                  ?? item.Preco_Negociado
-                  ?? item.preco_Negociado
-                  ?? item.preco
-                  ?? item.preco_Unitario
-                  ?? '0',
-                4,
-              ),
-              Total_Item: formatDecimalString(
-                item.Total_Item
-                  ?? item.totalItem
-                  ?? (parseNumber(String(item.Qtd_Entregar ?? item.qtdEntregar ?? 0))
-                    * parseNumber(String(item.Preco_Negociado ?? item.preco_Negociado ?? item.preco ?? item.preco_Unitario ?? 0))),
-                2,
-              ),
-              Pedido_Cliente: String(
-                item.Pedido_Cliente
-                  ?? item.Pedido_Ciente
-                  ?? item.num_Pedido_Cliente
-                  ?? item.numPedidoCliente
-                  ?? item.numPedido_Cliente
-                  ?? item.pedidoCliente
-                  ?? '',
-              ),
-              Data_Entrega: String(item.Data_Entrega ?? item.entrega ?? ''),
-              Hora_Entrega: String(item.Hora_Entrega ?? item.hora ?? ''),
-              Unid_Med_Venda: String(
-                item.Unid_Med_Venda
-                  ?? item.unid_Med_Venda
-                  ?? item.unid_Medida
-                  ?? item.unidMedida
-                  ?? item.unidade
-                  ?? '',
-              ),
-              Moeda: String(item.Moeda ?? item.moeda ?? ''),
-              Moeda_Preco: String(item.moeda_Preco ?? item.Moeda_Preco ?? item.Moeda ?? 'R$'),
-            }))
+            Codigo_Produto: String(item.Codigo_Produto ?? item.codigo_Produto ?? item.material ?? ''),
+            Descricao_Produto: String(item.Descricao_Produto ?? item.descricao ?? item.descr_Produto ?? ''),
+            Num_Item: Number(item.Num_Item ?? item.num_Item ?? 0) || undefined,
+            Qtd_Entregar: formatDecimalString(item.Qtd_Entregar ?? item.qtdEntregar ?? '0', 3),
+            Qtd_Entregue: String(item.Qtd_Entregue ?? item.qtdEntregue ?? '0'),
+            Saldo: String(item.Saldo ?? item.saldo ?? '0'),
+            Preco_Negociado: formatDecimalString(
+              item.Preco_Negociado ?? item.preco_Negociado ?? item.preco ?? item.preco_Unitario ?? '0',
+              4,
+            ),
+            Preco_Base: formatDecimalString(
+              item.Preco_Base
+              ?? item.preco_Base
+              ?? item.Preco_Original
+              ?? item.preco_Original
+              ?? item.Preco_Negociado
+              ?? item.preco_Negociado
+              ?? item.preco
+              ?? item.preco_Unitario
+              ?? '0',
+              4,
+            ),
+            Total_Item: formatDecimalString(
+              item.Total_Item
+              ?? item.totalItem
+              ?? (parseNumber(String(item.Qtd_Entregar ?? item.qtdEntregar ?? 0))
+                * parseNumber(String(item.Preco_Negociado ?? item.preco_Negociado ?? item.preco ?? item.preco_Unitario ?? 0))),
+              2,
+            ),
+            Pedido_Cliente: String(
+              item.Pedido_Cliente
+              ?? item.Pedido_Ciente
+              ?? item.num_Pedido_Cliente
+              ?? item.numPedidoCliente
+              ?? item.numPedido_Cliente
+              ?? item.pedidoCliente
+              ?? '',
+            ),
+            Data_Entrega: String(item.Data_Entrega ?? item.entrega ?? ''),
+            Hora_Entrega: String(item.Hora_Entrega ?? item.hora ?? ''),
+            Unid_Med_Venda: String(
+              item.Unid_Med_Venda
+              ?? item.unid_Med_Venda
+              ?? item.unid_Medida
+              ?? item.unidMedida
+              ?? item.unidade
+              ?? '',
+            ),
+            Moeda: String(item.Moeda ?? item.moeda ?? ''),
+            Moeda_Preco: String(item.moeda_Preco ?? item.Moeda_Preco ?? item.Moeda ?? 'R$'),
+          }))
           : [];
 
         const nextItens = mappedItens.length > 0 ? mappedItens : [emptyItem()];
@@ -2140,19 +2142,19 @@ export function PedidoVendaFormPanel({
 
       const itensTableRows = itens.length
         ? itens.map((item, index) => {
-            const totalItem = parseNumber(item.Total_Item ?? String(parseNumber(item.Qtd_Entregar) * parseNumber(item.Preco_Negociado)));
-            return [
-              String(item.Num_Item ?? index + 1),
-              item.Codigo_Produto || '-',
-              item.Descricao_Produto || '-',
-              item.Unid_Med_Venda || '-',
-              String(item.Qtd_Entregar || '0'),
-              formatNumber(parseNumber(item.Preco_Negociado)),
-              formatNumber(totalItem),
-              item.Pedido_Cliente || '-',
-              item.Data_Entrega || '-',
-            ];
-          })
+          const totalItem = parseNumber(item.Total_Item ?? String(parseNumber(item.Qtd_Entregar) * parseNumber(item.Preco_Negociado)));
+          return [
+            String(item.Num_Item ?? index + 1),
+            item.Codigo_Produto || '-',
+            item.Descricao_Produto || '-',
+            item.Unid_Med_Venda || '-',
+            String(item.Qtd_Entregar || '0'),
+            formatNumber(parseNumber(item.Preco_Negociado)),
+            formatNumber(totalItem),
+            item.Pedido_Cliente || '-',
+            item.Data_Entrega || '-',
+          ];
+        })
         : [['-', '-', 'Sem itens no pedido', '-', '-', '-', '-', '-', '-']];
 
       const metaTableFinalY = (doc as any).lastAutoTable?.finalY ?? 40;
@@ -2812,10 +2814,10 @@ export function PedidoVendaFormPanel({
   const numeroTitulo = cleanLabelText(numPedido ?? (initialPedido as any)?.num_Pedido ?? (initialPedido as any)?.numPedido ?? '');
   const situacaoConsulta = cleanLabelText(
     situacaoPedido
-      ?? (initialPedido as any)?.situacaoPedido
-      ?? (initialPedido as any)?.descricao_Situacao
-      ?? (initialPedido as any)?.descricaoSituacao
-      ?? '',
+    ?? (initialPedido as any)?.situacaoPedido
+    ?? (initialPedido as any)?.descricao_Situacao
+    ?? (initialPedido as any)?.descricaoSituacao
+    ?? '',
   );
   const destinoConsulta = findOptionLabel(destinoPedidoOptions, destinoPedido, destinoPedido || '-');
   const condicaoConsulta = lookupLabels.condicao || findOptionLabel(condicaoOptions, condicaoPagto);
@@ -3093,317 +3095,317 @@ export function PedidoVendaFormPanel({
                       <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--data"><strong>Data entrega</strong></div>
                     </article>
                     {itens.map((item, index) => {
-                    const totalItem = parseNumber(
-                      item.Total_Item ?? String(parseNumber(item.Qtd_Entregar) * parseNumber(item.Preco_Negociado)),
-                    );
+                      const totalItem = parseNumber(
+                        item.Total_Item ?? String(parseNumber(item.Qtd_Entregar) * parseNumber(item.Preco_Negociado)),
+                      );
 
-                    return (
-                      <article
-                        key={`item-consulta-${index}`}
-                        className={`pedido-venda-consulta-row${isRepresentantes ? ' pedido-venda-consulta-row--representante' : ''}`}
-                        role="listitem"
-                      >
-                        <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--item">
-                          <span className="pedido-venda-consulta-label">Item</span>
-                          <strong>{item.Num_Item ?? index + 1}</strong>
-                        </div>
-                        <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--codigo">
-                          <span className="pedido-venda-consulta-label">Código</span>
-                          <strong>{item.Codigo_Produto || '-'}</strong>
-                        </div>
-                        <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--descricao">
-                          <span className="pedido-venda-consulta-label">Descrição</span>
-                          <strong title={item.Descricao_Produto || '-'}>{item.Descricao_Produto || '-'}</strong>
-                        </div>
-                        <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--unidade">
-                          <span className="pedido-venda-consulta-label">Unid.</span>
-                          <strong>{item.Unid_Med_Venda || '-'}</strong>
-                        </div>
-                        <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--qtd">
-                          <span className="pedido-venda-consulta-label">Qtd</span>
-                          <strong>{formatDecimalString(item.Qtd_Entregar, 3)}</strong>
-                        </div>
-                        {!isRepresentantes ? (
-                          <>
-                            <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--qtd">
-                              <span className="pedido-venda-consulta-label">Entregue</span>
-                              <strong>{item.Qtd_Entregue || '0'}</strong>
-                            </div>
-                            <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--qtd">
-                              <span className="pedido-venda-consulta-label">Saldo</span>
-                              <strong>{item.Saldo || '0'}</strong>
-                            </div>
-                          </>
-                        ) : null}
-                        <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--valor">
-                          <span className="pedido-venda-consulta-label">Preço</span>
-                          <strong>{formatMoney(item.Preco_Negociado, item.Moeda_Preco || 'R$', 4)}</strong>
-                        </div>
-                        <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--valor">
-                          <span className="pedido-venda-consulta-label">Total item</span>
-                          <strong>{formatMoney(totalItem, item.Moeda_Preco || 'R$')}</strong>
-                        </div>
-                        <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--pedido-cliente">
-                          <span className="pedido-venda-consulta-label">Pedido cliente</span>
-                          <strong>{item.Pedido_Cliente || '-'}</strong>
-                        </div>
-                        <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--data">
-                          <span className="pedido-venda-consulta-label">Data entrega</span>
-                          <strong>{item.Data_Entrega || '-'}</strong>
-                        </div>
-                      </article>
-                    );
+                      return (
+                        <article
+                          key={`item-consulta-${index}`}
+                          className={`pedido-venda-consulta-row${isRepresentantes ? ' pedido-venda-consulta-row--representante' : ''}`}
+                          role="listitem"
+                        >
+                          <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--item">
+                            <span className="pedido-venda-consulta-label">Item</span>
+                            <strong>{item.Num_Item ?? index + 1}</strong>
+                          </div>
+                          <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--codigo">
+                            <span className="pedido-venda-consulta-label">Código</span>
+                            <strong>{item.Codigo_Produto || '-'}</strong>
+                          </div>
+                          <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--descricao">
+                            <span className="pedido-venda-consulta-label">Descrição</span>
+                            <strong title={item.Descricao_Produto || '-'}>{item.Descricao_Produto || '-'}</strong>
+                          </div>
+                          <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--unidade">
+                            <span className="pedido-venda-consulta-label">Unid.</span>
+                            <strong>{item.Unid_Med_Venda || '-'}</strong>
+                          </div>
+                          <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--qtd">
+                            <span className="pedido-venda-consulta-label">Qtd</span>
+                            <strong>{formatDecimalString(item.Qtd_Entregar, 3)}</strong>
+                          </div>
+                          {!isRepresentantes ? (
+                            <>
+                              <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--qtd">
+                                <span className="pedido-venda-consulta-label">Entregue</span>
+                                <strong>{item.Qtd_Entregue || '0'}</strong>
+                              </div>
+                              <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--qtd">
+                                <span className="pedido-venda-consulta-label">Saldo</span>
+                                <strong>{item.Saldo || '0'}</strong>
+                              </div>
+                            </>
+                          ) : null}
+                          <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--valor">
+                            <span className="pedido-venda-consulta-label">Preço</span>
+                            <strong>{formatMoney(item.Preco_Negociado, item.Moeda_Preco || 'R$', 4)}</strong>
+                          </div>
+                          <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--valor">
+                            <span className="pedido-venda-consulta-label">Total item</span>
+                            <strong>{formatMoney(totalItem, item.Moeda_Preco || 'R$')}</strong>
+                          </div>
+                          <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--pedido-cliente">
+                            <span className="pedido-venda-consulta-label">Pedido cliente</span>
+                            <strong>{item.Pedido_Cliente || '-'}</strong>
+                          </div>
+                          <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--data">
+                            <span className="pedido-venda-consulta-label">Data entrega</span>
+                            <strong>{item.Data_Entrega || '-'}</strong>
+                          </div>
+                        </article>
+                      );
                     })}
                   </div>
                 ) : (
                   <div className="pedido-venda-itens-desktop-cards">
                     {itens.map((item, index) => {
-                    const totalItem = parseNumber(item.Qtd_Entregar) * parseNumber(item.Preco_Negociado);
+                      const totalItem = parseNumber(item.Qtd_Entregar) * parseNumber(item.Preco_Negociado);
 
-                    return (
-                      <article key={`item-desktop-${index}`} className="pedido-venda-item-ficha-card">
-                        <div className="pedido-venda-item-ficha-row pedido-venda-item-ficha-row--top">
-                          <label className="pedido-venda-item-ficha-field pedido-venda-item-ficha-field--item">
-                            <span>Item</span>
-                            <div className="pedido-venda-readonly-value">{item.Num_Item ?? index + 1}</div>
-                          </label>
+                      return (
+                        <article key={`item-desktop-${index}`} className="pedido-venda-item-ficha-card">
+                          <div className="pedido-venda-item-ficha-row pedido-venda-item-ficha-row--top">
+                            <label className="pedido-venda-item-ficha-field pedido-venda-item-ficha-field--item">
+                              <span>Item</span>
+                              <div className="pedido-venda-readonly-value">{item.Num_Item ?? index + 1}</div>
+                            </label>
 
-                          <label className="pedido-venda-item-ficha-field pedido-venda-item-ficha-field--search">
-                            <span>Busca</span>
-                            <button
-                              className="icon-button module-action-button ordens-servico-produto-search"
-                              type="button"
-                              onClick={() => void handleAbrirConsultaPreco(index)}
-                              aria-label="Consultar tabela de preços"
-                              title="Consultar tabela de preços"
-                            >
-                              <IoSearchOutline size={16} />
-                            </button>
-                          </label>
+                            <label className="pedido-venda-item-ficha-field pedido-venda-item-ficha-field--search">
+                              <span>Busca</span>
+                              <button
+                                className="icon-button module-action-button ordens-servico-produto-search"
+                                type="button"
+                                onClick={() => void handleAbrirConsultaPreco(index)}
+                                aria-label="Consultar tabela de preços"
+                                title="Consultar tabela de preços"
+                              >
+                                <IoSearchOutline size={16} />
+                              </button>
+                            </label>
 
-                          <label className="pedido-venda-item-ficha-field pedido-venda-item-ficha-field--codigo">
-                            <span>Código do produto *</span>
-                            {isRepresentantes ? (
-                              <div className="pedido-venda-readonly-value">{item.Codigo_Produto || '-'}</div>
-                            ) : (
-                              <input
-                                value={item.Codigo_Produto}
-                                onChange={(event) => handleChangeItem(index, 'Codigo_Produto', event.target.value)}
-                              />
-                            )}
-                          </label>
+                            <label className="pedido-venda-item-ficha-field pedido-venda-item-ficha-field--codigo">
+                              <span>Código do produto *</span>
+                              {isRepresentantes ? (
+                                <div className="pedido-venda-readonly-value">{item.Codigo_Produto || '-'}</div>
+                              ) : (
+                                <input
+                                  value={item.Codigo_Produto}
+                                  onChange={(event) => handleChangeItem(index, 'Codigo_Produto', event.target.value)}
+                                />
+                              )}
+                            </label>
 
-                          <label className="pedido-venda-item-ficha-field pedido-venda-item-ficha-field--descricao">
-                            <span>Descrição</span>
-                            <div className="pedido-venda-readonly-value">{item.Descricao_Produto || '-'}</div>
-                          </label>
+                            <label className="pedido-venda-item-ficha-field pedido-venda-item-ficha-field--descricao">
+                              <span>Descrição</span>
+                              <div className="pedido-venda-readonly-value">{item.Descricao_Produto || '-'}</div>
+                            </label>
 
-                          <div className="pedido-venda-item-ficha-actions pedido-venda-item-ficha-actions--inline">
-                            <button
-                              className="icon-button module-action-button danger"
-                              type="button"
-                              onClick={() => handleRemoveItem(index)}
-                              title="Excluir item"
-                              aria-label="Excluir item"
-                            >
-                              <IoTrashOutline size={16} />
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="pedido-venda-item-ficha-row pedido-venda-item-ficha-row--bottom">
-                          <label className="pedido-venda-item-ficha-field">
-                            <span>Qtd *</span>
-                            <input
-                              value={item.Qtd_Entregar}
-                              onChange={(event) => handleChangeItem(index, 'Qtd_Entregar', event.target.value)}
-                              onBlur={() => handleBlurItem(index, 'Qtd_Entregar')}
-                            />
-                          </label>
-
-                          <label className="pedido-venda-item-ficha-field">
-                            <span>Unidade</span>
-                            <div className="pedido-venda-readonly-value">{item.Unid_Med_Venda || '-'}</div>
-                          </label>
-
-                          <label className="pedido-venda-item-ficha-field">
-                            <span>Moeda</span>
-                            <div className="pedido-venda-readonly-value">{item.Moeda || item.Moeda_Preco || '-'}</div>
-                          </label>
-
-                          <label className="pedido-venda-item-ficha-field">
-                            <span>Preço *</span>
-                            {isRepresentantes ? (
-                              <div className="pedido-venda-readonly-value">
-                                {parseNumber(item.Preco_Negociado).toLocaleString('pt-BR', {
-                                  minimumFractionDigits: 4,
-                                  maximumFractionDigits: 4,
-                                })}
-                              </div>
-                            ) : (
-                              <input
-                                value={item.Preco_Negociado}
-                                onChange={(event) => handleChangeItem(index, 'Preco_Negociado', event.target.value)}
-                                onBlur={() => handleBlurItem(index, 'Preco_Negociado')}
-                              />
-                            )}
-                          </label>
-
-                          <label className="pedido-venda-item-ficha-field pedido-venda-item-ficha-field--pedido-cliente">
-                            <span>Pedido cliente</span>
-                            <input
-                              value={item.Pedido_Cliente}
-                              onChange={(event) => handleChangeItem(index, 'Pedido_Cliente', event.target.value)}
-                            />
-                          </label>
-
-                          <label className="pedido-venda-item-ficha-field">
-                            <span>Data entrega</span>
-                            <CustomDatePicker
-                              value={item.Data_Entrega}
-                              onChange={(nextDate) => handleChangeItem(index, 'Data_Entrega', nextDate)}
-                            />
-                          </label>
-
-                          <label className="pedido-venda-item-ficha-field">
-                            <span>Total item</span>
-                            <div className="pedido-venda-readonly-value">
-                              {totalItem.toLocaleString('pt-BR', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                            </div>
-                          </label>
-                        </div>
-                      </article>
-                    );
-                    })}
-                  </div>
-                )}
-
-                <div className="pedido-venda-itens-mobile-list">
-                  {itens.map((item, index) => {
-                  const moedaItem = item.Moeda || item.Moeda_Preco || 'R$';
-                  const itemCardKey = `item-${index}-${item.Codigo_Produto || 'sem-codigo'}`;
-                  const isExpandedCard = Boolean(expandedMobileItemCards[itemCardKey]);
-
-                  return (
-                    <article
-                      className={`module-card${isViewOnly ? '' : ' module-row-clickable'}`}
-                      key={`item-mobile-${index}`}
-                      role={isViewOnly ? undefined : 'button'}
-                      tabIndex={isViewOnly ? undefined : 0}
-                      onClick={() => {
-                        if (isViewOnly) return;
-                        handleEditarItemMobile(index);
-                      }}
-                      onKeyDown={(event) => {
-                        if (isViewOnly) return;
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          handleEditarItemMobile(index);
-                        }
-                      }}
-                    >
-                      <div className="module-card__row module-card__row--split">
-                        <div className="module-card__row-stack">
-                          <span>Produto</span>
-                          <strong className="module-card__product-inline">
-                            {item.Codigo_Produto && item.Descricao_Produto
-                              ? `${item.Codigo_Produto} - ${item.Descricao_Produto}`
-                              : item.Codigo_Produto || item.Descricao_Produto || '-'}
-                          </strong>
-                        </div>
-                        <button
-                          type="button"
-                          className="module-card__expand-toggle"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setExpandedMobileItemCards((prev) => ({
-                              ...prev,
-                              [itemCardKey]: !prev[itemCardKey],
-                            }));
-                          }}
-                          aria-label={isExpandedCard ? 'Recolher detalhes do item' : 'Expandir detalhes do item'}
-                          title={isExpandedCard ? 'Recolher detalhes' : 'Expandir detalhes'}
-                        >
-                          {isExpandedCard ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
-                        </button>
-                      </div>
-                      {isExpandedCard ? (
-                        <>
-                          <div className="module-card__row">
-                            <span>Unidade</span>
-                            <strong>{item.Unid_Med_Venda || '-'}</strong>
-                          </div>
-                          <div className="module-card__row">
-                            <span>Qtd</span>
-                            <strong>{formatDecimalString(item.Qtd_Entregar, 3)}</strong>
-                          </div>
-                          {!isRepresentantes ? (
-                            <>
-                              <div className="module-card__row">
-                                <span>Qtd entregue</span>
-                                <strong>{item.Qtd_Entregue || '0'}</strong>
-                              </div>
-                              <div className="module-card__row">
-                                <span>Saldo</span>
-                                <strong>{item.Saldo || '0'}</strong>
-                              </div>
-                            </>
-                          ) : null}
-                          <div className="module-card__row">
-                            <span>Moeda</span>
-                            <strong>{moedaItem}</strong>
-                          </div>
-                          <div className="module-card__row">
-                            <span>Preço</span>
-                            <strong>
-                              {moedaItem + ' '}
-                              {parseNumber(item.Preco_Negociado).toLocaleString('pt-BR', {
-                                minimumFractionDigits: 4,
-                                maximumFractionDigits: 4,
-                              })}
-                            </strong>
-                          </div>
-                          <div className="module-card__row">
-                            <span>Total item</span>
-                            <strong>
-                              {moedaItem + ' '}
-                              {parseNumber(item.Total_Item ?? String(parseNumber(item.Qtd_Entregar) * parseNumber(item.Preco_Negociado))).toLocaleString('pt-BR', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                            </strong>
-                          </div>
-                          <div className="module-card__row">
-                            <span>Pedido cliente</span>
-                            <strong>{item.Pedido_Cliente || '-'}</strong>
-                          </div>
-                          <div className="module-card__row">
-                            <span>Data entrega</span>
-                            <strong>{item.Data_Entrega || '-'}</strong>
-                          </div>
-                          {!isViewOnly ? (
-                            <div className="module-card__actions pedido-venda-item-mobile-actions">
+                            <div className="pedido-venda-item-ficha-actions pedido-venda-item-ficha-actions--inline">
                               <button
                                 className="icon-button module-action-button danger"
                                 type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  handleRemoveItem(index);
-                                }}
+                                onClick={() => handleRemoveItem(index)}
                                 title="Excluir item"
                                 aria-label="Excluir item"
                               >
                                 <IoTrashOutline size={16} />
                               </button>
                             </div>
-                          ) : null}
-                        </>
-                      ) : null}
-                    </article>
-                  );
+                          </div>
+
+                          <div className="pedido-venda-item-ficha-row pedido-venda-item-ficha-row--bottom">
+                            <label className="pedido-venda-item-ficha-field">
+                              <span>Qtd *</span>
+                              <input
+                                value={item.Qtd_Entregar}
+                                onChange={(event) => handleChangeItem(index, 'Qtd_Entregar', event.target.value)}
+                                onBlur={() => handleBlurItem(index, 'Qtd_Entregar')}
+                              />
+                            </label>
+
+                            <label className="pedido-venda-item-ficha-field">
+                              <span>Unidade</span>
+                              <div className="pedido-venda-readonly-value">{item.Unid_Med_Venda || '-'}</div>
+                            </label>
+
+                            <label className="pedido-venda-item-ficha-field">
+                              <span>Moeda</span>
+                              <div className="pedido-venda-readonly-value">{item.Moeda || item.Moeda_Preco || '-'}</div>
+                            </label>
+
+                            <label className="pedido-venda-item-ficha-field">
+                              <span>Preço *</span>
+                              {isRepresentantes ? (
+                                <div className="pedido-venda-readonly-value">
+                                  {parseNumber(item.Preco_Negociado).toLocaleString('pt-BR', {
+                                    minimumFractionDigits: 4,
+                                    maximumFractionDigits: 4,
+                                  })}
+                                </div>
+                              ) : (
+                                <input
+                                  value={item.Preco_Negociado}
+                                  onChange={(event) => handleChangeItem(index, 'Preco_Negociado', event.target.value)}
+                                  onBlur={() => handleBlurItem(index, 'Preco_Negociado')}
+                                />
+                              )}
+                            </label>
+
+                            <label className="pedido-venda-item-ficha-field pedido-venda-item-ficha-field--pedido-cliente">
+                              <span>Pedido cliente</span>
+                              <input
+                                value={item.Pedido_Cliente}
+                                onChange={(event) => handleChangeItem(index, 'Pedido_Cliente', event.target.value)}
+                              />
+                            </label>
+
+                            <label className="pedido-venda-item-ficha-field">
+                              <span>Data entrega</span>
+                              <CustomDatePicker
+                                value={item.Data_Entrega}
+                                onChange={(nextDate) => handleChangeItem(index, 'Data_Entrega', nextDate)}
+                              />
+                            </label>
+
+                            <label className="pedido-venda-item-ficha-field">
+                              <span>Total item</span>
+                              <div className="pedido-venda-readonly-value">
+                                {totalItem.toLocaleString('pt-BR', {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </div>
+                            </label>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="pedido-venda-itens-mobile-list">
+                  {itens.map((item, index) => {
+                    const moedaItem = item.Moeda || item.Moeda_Preco || 'R$';
+                    const itemCardKey = `item-${index}-${item.Codigo_Produto || 'sem-codigo'}`;
+                    const isExpandedCard = Boolean(expandedMobileItemCards[itemCardKey]);
+
+                    return (
+                      <article
+                        className={`module-card${isViewOnly ? '' : ' module-row-clickable'}`}
+                        key={`item-mobile-${index}`}
+                        role={isViewOnly ? undefined : 'button'}
+                        tabIndex={isViewOnly ? undefined : 0}
+                        onClick={() => {
+                          if (isViewOnly) return;
+                          handleEditarItemMobile(index);
+                        }}
+                        onKeyDown={(event) => {
+                          if (isViewOnly) return;
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            handleEditarItemMobile(index);
+                          }
+                        }}
+                      >
+                        <div className="module-card__row module-card__row--split">
+                          <div className="module-card__row-stack">
+                            <span>Produto</span>
+                            <strong className="module-card__product-inline">
+                              {item.Codigo_Produto && item.Descricao_Produto
+                                ? `${item.Codigo_Produto} - ${item.Descricao_Produto}`
+                                : item.Codigo_Produto || item.Descricao_Produto || '-'}
+                            </strong>
+                          </div>
+                          <button
+                            type="button"
+                            className="module-card__expand-toggle"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setExpandedMobileItemCards((prev) => ({
+                                ...prev,
+                                [itemCardKey]: !prev[itemCardKey],
+                              }));
+                            }}
+                            aria-label={isExpandedCard ? 'Recolher detalhes do item' : 'Expandir detalhes do item'}
+                            title={isExpandedCard ? 'Recolher detalhes' : 'Expandir detalhes'}
+                          >
+                            {isExpandedCard ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
+                          </button>
+                        </div>
+                        {isExpandedCard ? (
+                          <>
+                            <div className="module-card__row">
+                              <span>Unidade</span>
+                              <strong>{item.Unid_Med_Venda || '-'}</strong>
+                            </div>
+                            <div className="module-card__row">
+                              <span>Qtd</span>
+                              <strong>{formatDecimalString(item.Qtd_Entregar, 3)}</strong>
+                            </div>
+                            {!isRepresentantes ? (
+                              <>
+                                <div className="module-card__row">
+                                  <span>Qtd entregue</span>
+                                  <strong>{item.Qtd_Entregue || '0'}</strong>
+                                </div>
+                                <div className="module-card__row">
+                                  <span>Saldo</span>
+                                  <strong>{item.Saldo || '0'}</strong>
+                                </div>
+                              </>
+                            ) : null}
+                            <div className="module-card__row">
+                              <span>Moeda</span>
+                              <strong>{moedaItem}</strong>
+                            </div>
+                            <div className="module-card__row">
+                              <span>Preço</span>
+                              <strong>
+                                {moedaItem + ' '}
+                                {parseNumber(item.Preco_Negociado).toLocaleString('pt-BR', {
+                                  minimumFractionDigits: 4,
+                                  maximumFractionDigits: 4,
+                                })}
+                              </strong>
+                            </div>
+                            <div className="module-card__row">
+                              <span>Total item</span>
+                              <strong>
+                                {moedaItem + ' '}
+                                {parseNumber(item.Total_Item ?? String(parseNumber(item.Qtd_Entregar) * parseNumber(item.Preco_Negociado))).toLocaleString('pt-BR', {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </strong>
+                            </div>
+                            <div className="module-card__row">
+                              <span>Pedido cliente</span>
+                              <strong>{item.Pedido_Cliente || '-'}</strong>
+                            </div>
+                            <div className="module-card__row">
+                              <span>Data entrega</span>
+                              <strong>{item.Data_Entrega || '-'}</strong>
+                            </div>
+                            {!isViewOnly ? (
+                              <div className="module-card__actions pedido-venda-item-mobile-actions">
+                                <button
+                                  className="icon-button module-action-button danger"
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    handleRemoveItem(index);
+                                  }}
+                                  title="Excluir item"
+                                  aria-label="Excluir item"
+                                >
+                                  <IoTrashOutline size={16} />
+                                </button>
+                              </div>
+                            ) : null}
+                          </>
+                        ) : null}
+                      </article>
+                    );
                   })}
                 </div>
               </div>
@@ -3588,53 +3590,53 @@ export function PedidoVendaFormPanel({
                                     : '';
 
                           return (
-                          <tr key={`planilha-item-${index}`}>
-                            <td>{item.Codigo_Produto}</td>
-                            <td>
-                              <input
-                                value={item.Qtd_Produto.toLocaleString('pt-BR', { maximumFractionDigits: 4 })}
-                                onChange={(event) => handleChangeQtdPlanilhaPreview(index, event.target.value)}
-                              />
-                            </td>
-                            <td>
-                              {item.Imagem_Status ? (
-                                <div className="pedido-venda-planilha-status-cell">
-                                  <img
-                                    src={item.Imagem_Status}
-                                    alt={`Status ${item.Validacao || ''} do item ${item.Codigo_Produto}`}
-                                    className="pedido-venda-planilha-status-thumb"
-                                  />
-                                  <button
-                                    type="button"
-                                    className="icon-button module-action-button"
-                                    title="Ver imagem"
-                                    aria-label="Ver imagem"
-                                    onClick={() => {
-                                      setImagemStatusSrc(item.Imagem_Status || '');
-                                      setImagemStatusTitulo(`Item ${item.Codigo_Produto} - ${item.Validacao || ''}`);
-                                      setImagemStatusOpen(true);
-                                    }}
-                                  >
-                                    <IoSearchOutline size={14} />
-                                  </button>
+                            <tr key={`planilha-item-${index}`}>
+                              <td>{item.Codigo_Produto}</td>
+                              <td>
+                                <input
+                                  value={item.Qtd_Produto.toLocaleString('pt-BR', { maximumFractionDigits: 4 })}
+                                  onChange={(event) => handleChangeQtdPlanilhaPreview(index, event.target.value)}
+                                />
+                              </td>
+                              <td>
+                                {item.Imagem_Status ? (
+                                  <div className="pedido-venda-planilha-status-cell">
+                                    <img
+                                      src={item.Imagem_Status}
+                                      alt={`Status ${item.Validacao || ''} do item ${item.Codigo_Produto}`}
+                                      className="pedido-venda-planilha-status-thumb"
+                                    />
+                                    <button
+                                      type="button"
+                                      className="icon-button module-action-button"
+                                      title="Ver imagem"
+                                      aria-label="Ver imagem"
+                                      onClick={() => {
+                                        setImagemStatusSrc(item.Imagem_Status || '');
+                                        setImagemStatusTitulo(`Item ${item.Codigo_Produto} - ${item.Validacao || ''}`);
+                                        setImagemStatusOpen(true);
+                                      }}
+                                    >
+                                      <IoSearchOutline size={14} />
+                                    </button>
+                                    <span className={`pedido-venda-planilha-status-text ${statusTextClass}`}>{statusLabel}</span>
+                                  </div>
+                                ) : (
                                   <span className={`pedido-venda-planilha-status-text ${statusTextClass}`}>{statusLabel}</span>
-                                </div>
-                              ) : (
-                                <span className={`pedido-venda-planilha-status-text ${statusTextClass}`}>{statusLabel}</span>
-                              )}
-                            </td>
-                            <td>
-                              <button
-                                className="icon-button module-action-button danger"
-                                type="button"
-                                onClick={() => handleRemoverItemPlanilhaPreview(index)}
-                                title="Excluir item"
-                              >
-                                <IoTrashOutline size={16} />
-                              </button>
-                            </td>
-                          </tr>
-                        );
+                                )}
+                              </td>
+                              <td>
+                                <button
+                                  className="icon-button module-action-button danger"
+                                  type="button"
+                                  onClick={() => handleRemoverItemPlanilhaPreview(index)}
+                                  title="Excluir item"
+                                >
+                                  <IoTrashOutline size={16} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
                         })}
                         {planilhaItensPreviewFiltrados.length === 0 ? (
                           <tr>
@@ -3868,35 +3870,35 @@ export function PedidoVendaFormPanel({
                     </thead>
                     <tbody>
                       {tabelaPrecoRowsFiltradas.map((row, index) => (
-                          <tr key={`${row.codigo}-${index}`}>
-                            <td>{row.codigo}</td>
-                            <td>{row.descricao}</td>
-                            <td>{row.unidade || '-'}</td>
-                            <td>
-                              {row.preco.toLocaleString('pt-BR', {
-                                minimumFractionDigits: 4,
-                                maximumFractionDigits: 4,
-                              })}
-                            </td>
-                            <td className="pedido-venda-tabela-preco-action-cell">
-                              <button
-                                className="icon-button module-action-button module-action-button--primary ordens-servico-material-add pedido-venda-tabela-preco-action-button"
-                                type="button"
-                                onClick={() => {
-                                  if (itemConsultaPrecoIndex === null) {
-                                    handleSelecionarItemTabelaPrecoMobile(row);
-                                    return;
-                                  }
+                        <tr key={`${row.codigo}-${index}`}>
+                          <td>{row.codigo}</td>
+                          <td>{row.descricao}</td>
+                          <td>{row.unidade || '-'}</td>
+                          <td>
+                            {row.preco.toLocaleString('pt-BR', {
+                              minimumFractionDigits: 4,
+                              maximumFractionDigits: 4,
+                            })}
+                          </td>
+                          <td className="pedido-venda-tabela-preco-action-cell">
+                            <button
+                              className="icon-button module-action-button module-action-button--primary ordens-servico-material-add pedido-venda-tabela-preco-action-button"
+                              type="button"
+                              onClick={() => {
+                                if (itemConsultaPrecoIndex === null) {
+                                  handleSelecionarItemTabelaPrecoMobile(row);
+                                  return;
+                                }
 
-                                  handleSelecionarItemTabelaPreco(row);
-                                }}
-                                aria-label={`Selecionar item ${row.codigo}`}
-                                title="Selecionar"
-                              >
-                                <IoAddOutline size={16} />
-                              </button>
-                            </td>
-                          </tr>
+                                handleSelecionarItemTabelaPreco(row);
+                              }}
+                              aria-label={`Selecionar item ${row.codigo}`}
+                              title="Selecionar"
+                            >
+                              <IoAddOutline size={16} />
+                            </button>
+                          </td>
+                        </tr>
                       ))}
                     </tbody>
                   </table>
