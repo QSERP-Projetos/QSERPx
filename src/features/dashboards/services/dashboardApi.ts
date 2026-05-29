@@ -112,10 +112,10 @@ const parseMoedasSemCotacao = (body: Record<string, unknown>) => {
   return Array.isArray(moedasSemCotacaoRaw)
     ? moedasSemCotacaoRaw
     : String(moedasSemCotacaoRaw ?? '')
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .map((item) => ({ moeda: item }));
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((item) => ({ moeda: item }));
 };
 
 export const getDashboardFinanceiro = async ({
@@ -207,4 +207,58 @@ export const getDashboardVendas = async ({
     Atraso: atraso,
     Forecast: forecast,
   };
+};
+
+export type DashboardServicosDestinatario = {
+  codigoDestinatario: number;
+  nomeDestinatario: string;
+  totalFaturado: number;
+  totalImpostos: number;
+  servicos: Array<{
+    codigoServico: number;
+    nomeServico: string;
+    totalFaturado: number;
+    totalImpostos: number;
+  }>;
+};
+
+export type DashboardServicosResponse = {
+  totalFaturado: number;
+  totalImpostos: number;
+  destinatarios: DashboardServicosDestinatario[];
+};
+
+export const getDashboardServicos = async ({
+  baseUrl,
+  token,
+  codigoEmpresa,
+  dataDe,
+  dataAte,
+}: DashboardParams): Promise<DashboardServicosResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/DashboardNFSe`;
+
+  const response = await apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    token ? { Authorization: `Bearer ${token}` } : {},
+    {
+      CodigoEmpresa: codigoEmpresa,
+      dataInicio: dataDe,
+      dataFim: dataAte,
+    },
+    null,
+    { timeoutMs: DASHBOARD_TIMEOUT_MS },
+  );
+
+  if (!response.succeeded) {
+    throw new Error(response.bodyText || 'Erro ao consultar dashboard de servi\u00e7os.');
+  }
+
+  const body = (response.jsonBody ?? response.data ?? {}) as Record<string, unknown>;
+
+  const totalFaturado = typeof body.totalFaturado === 'number' ? body.totalFaturado : 0;
+  const totalImpostos = typeof body.totalImpostos === 'number' ? body.totalImpostos : 0;
+  const destinatarios = Array.isArray(body.destinatarios) ? (body.destinatarios as DashboardServicosDestinatario[]) : [];
+
+  return { totalFaturado, totalImpostos, destinatarios };
 };

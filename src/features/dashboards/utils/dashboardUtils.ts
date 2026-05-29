@@ -97,6 +97,12 @@ export const monthEndPtBr = () => {
   return `${day}/${month}/${year}`;
 };
 
+export const yearStartPtBr = () => {
+  const now = new Date();
+  const year = String(now.getFullYear());
+  return `01/01/${year}`;
+};
+
 export const sortRows = (rows: DashboardRow[], measureKey?: string) => {
   return [...rows].sort((a, b) => {
     const orderA = Number(a.order ?? 0);

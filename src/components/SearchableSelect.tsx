@@ -29,6 +29,8 @@ type SearchableSelectProps = {
   renderOption?: (option: SearchableSelectOption) => React.ReactNode;
   /** Optional header node rendered above the option list */
   listHeader?: React.ReactNode;
+  /** Optional callback for external async search */
+  onSearchInputChange?: (query: string) => void;
 };
 
 const normalizeText = (value: string) =>
@@ -54,6 +56,7 @@ export function SearchableSelect({
   minDropdownWidth,
   renderOption,
   listHeader,
+  onSearchInputChange,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -146,6 +149,7 @@ export function SearchableSelect({
   const close = () => {
     setIsOpen(false);
     setQuery('');
+    onSearchInputChange?.('');
   };
 
   const handleControlKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
@@ -203,7 +207,11 @@ export function SearchableSelect({
           className="search-input"
           type="search"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            const nextQuery = event.target.value;
+            setQuery(nextQuery);
+            onSearchInputChange?.(nextQuery);
+          }}
           onKeyDown={handleSearchKeyDown}
           placeholder={searchPlaceholder}
           aria-label={searchPlaceholder}

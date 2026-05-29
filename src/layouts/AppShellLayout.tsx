@@ -24,6 +24,7 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
   const codeRouteMap: Record<string, string> = {
     DSB002: ROUTES.dashboardFinanceiro,
     DSB003: ROUTES.dashboardVendas,
+    DSB005: ROUTES.dashboardServicos,
     VEN001: ROUTES.pedidoVendaRepresentantes,
     VEN002: ROUTES.pedidoVenda,
     VEN003: ROUTES.pedidoVenda,
@@ -50,7 +51,9 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
       ? ROUTES.dashboardFinanceiro
       : isDashboardCode && normalizedTitle.includes('venda')
         ? ROUTES.dashboardVendas
-        : undefined;
+        : isDashboardCode && normalizedTitle.includes('servic')
+          ? ROUTES.dashboardServicos
+          : undefined;
 
   const routeByCode = codeRouteMap[normalizedCode];
   const routeByTitle =
@@ -58,6 +61,7 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
       ? ROUTES.dashboardFinanceiro
       : undefined) ||
     (normalizedTitle.includes('dashboard') && normalizedTitle.includes('venda') ? ROUTES.dashboardVendas : undefined) ||
+    (normalizedTitle.includes('dashboard') && normalizedTitle.includes('servic') ? ROUTES.dashboardServicos : undefined) ||
     (normalizedTitle.includes('pedido') &&
       normalizedTitle.includes('venda') &&
       (normalizedTitle.includes('representante') || normalizedTitle.includes('represent'))

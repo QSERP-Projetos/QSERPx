@@ -7,6 +7,7 @@ export const ROUTES = {
   home: '/home',
   dashboardFinanceiro: '/dashboards/financeiro',
   dashboardVendas: '/dashboards/vendas',
+  dashboardServicos: '/dashboards/servicos',
   pedidoVenda: '/pedidos-venda',
   pedidoVendaRepresentantes: '/pedidos-venda-representantes',
   pedidoVendaNovo: '/pedidos-venda/novo',

@@ -39,6 +39,12 @@ const DashboardVendasPage = lazy(() =>
   })),
 );
 
+const DashboardServicosPage = lazy(() =>
+  import('../features/dashboards/pages/DashboardServicosPage').then((module) => ({
+    default: module.DashboardServicosPage,
+  })),
+);
+
 export function AppRouter() {
   return (
     <Routes>
@@ -64,6 +70,14 @@ export function AppRouter() {
             element={
               <Suspense fallback={<p className="module-empty">Carregando dashboard de vendas...</p>}>
                 <DashboardVendasPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path={ROUTES.dashboardServicos}
+            element={
+              <Suspense fallback={<p className="module-empty">Carregando dashboard de serviços...</p>}>
+                <DashboardServicosPage />
               </Suspense>
             }
           />

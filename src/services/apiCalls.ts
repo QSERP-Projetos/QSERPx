@@ -2259,6 +2259,59 @@ export const enviarDPSCall = async (
   );
 };
 
+export const atualizarNFSeCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  body: Parameters<typeof enviarDPSCall>[2],
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/AtualizarNFSe`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.PUT,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    body,
+  );
+};
+
+export const cancelarNFSeCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  body: {
+    CodigoEmpresa: number;
+    NumNota: string;
+    SerNota: string;
+    Motivo: string;
+  },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/CancelarNFSe`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    body,
+  );
+};
+
+export const deleteNFSeCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: {
+    CodigoEmpresa: number;
+    NumNota: string;
+    SerNota: string;
+  },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/NFSeDelete`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.DELETE,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    params,
+  );
+};
+
 export const obterNotaFiscalServicoModCall = async (
   baseUrl: string,
   jwtToken: string | undefined,
@@ -2467,6 +2520,9 @@ export default {
   obterNotasFiscaisServicoCall,
   obterNotaFiscalServicoModCall,
   enviarDPSCall,
+  atualizarNFSeCall,
+  cancelarNFSeCall,
+  deleteNFSeCall,
   obterOcorrenciasNotaFiscalCall,
   obterClientesFornecedoresCall,
   obterEmpresasSeriesNFCall,

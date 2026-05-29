@@ -40,6 +40,7 @@ type SellerSlice = {
 type ClientItemTop = {
   key: string;
   label: string;
+  description: string;
   total: number;
 };
 
@@ -140,29 +141,29 @@ const isFornecedorItem = (item: Record<string, any>) => {
 const getAtrasoValue = (item: Record<string, any>) =>
   toNumber(
     item?.Valor_Atraso_Periodo ??
-      item?.valor_Atraso_Periodo ??
-      item?.valorAtrasoPeriodo ??
-      item?.Valor_Atraso ??
-      item?.valor_Atraso ??
-      item?.valorAtraso ??
-      item?.Valor_Total ??
-      item?.valor_Total ??
-      item?.valorTotal ??
-      0,
+    item?.valor_Atraso_Periodo ??
+    item?.valorAtrasoPeriodo ??
+    item?.Valor_Atraso ??
+    item?.valor_Atraso ??
+    item?.valorAtraso ??
+    item?.Valor_Total ??
+    item?.valor_Total ??
+    item?.valorTotal ??
+    0,
   );
 
 const getForecastValue = (item: Record<string, any>) =>
   toNumber(
     item?.Valor_Previsto_Periodo ??
-      item?.valor_Previsto_Periodo ??
-      item?.valorPrevistoPeriodo ??
-      item?.Valor_Forecast ??
-      item?.valor_Forecast ??
-      item?.valorForecast ??
-      item?.Valor_Total ??
-      item?.valor_Total ??
-      item?.valorTotal ??
-      0,
+    item?.valor_Previsto_Periodo ??
+    item?.valorPrevistoPeriodo ??
+    item?.Valor_Forecast ??
+    item?.valor_Forecast ??
+    item?.valorForecast ??
+    item?.Valor_Total ??
+    item?.valor_Total ??
+    item?.valorTotal ??
+    0,
   );
 
 const getMaterials = (item: Record<string, any>) => {
@@ -214,6 +215,16 @@ const getProductLabel = (item: Record<string, any>) => {
   if (codigo) return codigo;
 
   return pickFirstText(item, ['Produto', 'produto'], 'Sem produto');
+};
+
+const getProductDescription = (item: Record<string, any>) => {
+  const descricao = pickFirstText(item, [
+    'Descricao_Material', 'descricao_Material', 'descricaoMaterial',
+    'Descricao_Produto', 'descricao_Produto', 'descricaoProduto',
+    'Nome_Produto', 'nome_Produto', 'nomeProduto',
+  ]);
+  if (descricao) return descricao;
+  return pickFirstText(item, ['Produto', 'produto', 'Codigo_Material', 'codigo_Material', 'codigoMaterial'], 'Sem produto');
 };
 
 export function DashboardVendasPage() {
@@ -384,12 +395,12 @@ export function DashboardVendasPage() {
         acc +
         toNumber(
           item?.Valor_Mercadoria ??
-            item?.valor_Mercadoria ??
-            item?.valorMercadoria ??
-            item?.Valor_Produto ??
-            item?.valor_Produto ??
-            item?.valorProduto ??
-            0,
+          item?.valor_Mercadoria ??
+          item?.valorMercadoria ??
+          item?.Valor_Produto ??
+          item?.valor_Produto ??
+          item?.valorProduto ??
+          0,
         ),
       0,
     );
@@ -490,7 +501,7 @@ export function DashboardVendasPage() {
   }, [filteredFaturamento]);
 
   const topClientsByBillingType = useMemo<TopClientByBillingType[]>(() => {
-    const topClientMap = new Map<string, { client: string; billingType: string; total: number; topItems: Map<string, { label: string; total: number }> }>();
+    const topClientMap = new Map<string, { client: string; billingType: string; total: number; topItems: Map<string, { label: string; description: string; total: number }> }>();
 
     for (const rawItem of filteredFaturamento) {
       const faturamentoItem = (rawItem ?? {}) as Record<string, any>;
@@ -503,7 +514,7 @@ export function DashboardVendasPage() {
           client,
           billingType,
           total: 0,
-          topItems: new Map<string, { label: string; total: number }>(),
+          topItems: new Map<string, { label: string; description: string; total: number }>(),
         };
 
       rowCurrent.total += rowValue;
@@ -514,12 +525,13 @@ export function DashboardVendasPage() {
         for (const materialRaw of materiais) {
           const materialItem = (materialRaw ?? {}) as Record<string, any>;
           const label = getProductLabel(materialItem);
+          const description = getProductDescription(materialItem);
           const key = normalizeText(label) || 'sem-produto';
           const value = toNumber(
             materialItem?.Valor_Total ?? materialItem?.valor_Total ?? materialItem?.valorTotal ?? materialItem?.Valor_Mercadoria ?? materialItem?.valor_Mercadoria ?? 0,
           );
 
-          const topItemCurrent = rowCurrent.topItems.get(key) || { label, total: 0 };
+          const topItemCurrent = rowCurrent.topItems.get(key) || { label, description, total: 0 };
           topItemCurrent.total += value;
           rowCurrent.topItems.set(key, topItemCurrent);
         }
@@ -528,12 +540,13 @@ export function DashboardVendasPage() {
       }
 
       const fallbackLabel = getProductLabel(faturamentoItem);
+      const fallbackDescription = getProductDescription(faturamentoItem);
       const fallbackKey = normalizeText(fallbackLabel) || 'sem-produto';
       const fallbackValue = toNumber(
         faturamentoItem?.Valor_Total ?? faturamentoItem?.valor_Total ?? faturamentoItem?.valorTotal ?? faturamentoItem?.Valor_Mercadoria ?? faturamentoItem?.valor_Mercadoria ?? 0,
       );
 
-      const topItemCurrent = rowCurrent.topItems.get(fallbackKey) || { label: fallbackLabel, total: 0 };
+      const topItemCurrent = rowCurrent.topItems.get(fallbackKey) || { label: fallbackLabel, description: fallbackDescription, total: 0 };
       topItemCurrent.total += fallbackValue;
       rowCurrent.topItems.set(fallbackKey, topItemCurrent);
 
@@ -547,7 +560,7 @@ export function DashboardVendasPage() {
         billingType: item.billingType,
         total: item.total,
         topItems: Array.from(item.topItems.entries())
-          .map(([itemKey, topItem]) => ({ key: itemKey, label: topItem.label, total: topItem.total }))
+          .map(([itemKey, topItem]) => ({ key: itemKey, label: topItem.label, description: topItem.description, total: topItem.total }))
           .sort((a, b) => b.total - a.total)
           .slice(0, 5),
       }))
@@ -807,33 +820,33 @@ export function DashboardVendasPage() {
           </label>
 
           <div className="dashboard-vendas-controls-inline__buttons">
-          <button
-            className={`icon-button module-action-button${advancedOpen ? ' module-action-button--primary' : ''}`}
-            type="button"
-            onClick={() => setAdvancedOpen(true)}
-            title="Filtros avançados"
-            aria-label="Filtros avançados"
-          >
-            <IoFilterOutline size={16} />
-          </button>
+            <button
+              className={`icon-button module-action-button${advancedOpen ? ' module-action-button--primary' : ''}`}
+              type="button"
+              onClick={() => setAdvancedOpen(true)}
+              title="Filtros avançados"
+              aria-label="Filtros avançados"
+            >
+              <IoFilterOutline size={16} />
+            </button>
 
-          <button
-            className="icon-button module-action-button"
-            type="button"
-            onClick={() => {
-              if (!appliedDataDe || !appliedDataAte) {
-                setAdvancedOpen(true);
-                return;
-              }
+            <button
+              className="icon-button module-action-button"
+              type="button"
+              onClick={() => {
+                if (!appliedDataDe || !appliedDataAte) {
+                  setAdvancedOpen(true);
+                  return;
+                }
 
-              void fetchDashboard({ dataDe: appliedDataDe, dataAte: appliedDataAte });
-            }}
-            title="Atualizar"
-            aria-label="Atualizar"
-            disabled={loading}
-          >
-            <IoRefreshOutline size={16} />
-          </button>
+                void fetchDashboard({ dataDe: appliedDataDe, dataAte: appliedDataAte });
+              }}
+              title="Atualizar"
+              aria-label="Atualizar"
+              disabled={loading}
+            >
+              <IoRefreshOutline size={16} />
+            </button>
           </div>
         </div>
 
@@ -1096,13 +1109,11 @@ export function DashboardVendasPage() {
 
                               {isExpanded ? (
                                 <div className="dashboard-vendas-top-client__details">
-                                  <p>Top 5 itens do faturamento</p>
                                   {item.topItems.length > 0 ? (
                                     <ol>
-                                      {item.topItems.map((topItem, topItemIndex) => (
-                                        <li key={`${item.key}-${topItem.key}`}>
-                                          <span className="dashboard-vendas-top-client__rank">{String(topItemIndex + 1).padStart(2, '0')}</span>
-                                          <span>{topItem.label}</span>
+                                      {item.topItems.map((topItem) => (
+                                        <li key={`${item.key}-${topItem.key}`} style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}>
+                                          <span>{topItem.description}</span>
                                           <strong>{formatCurrencyBRL(topItem.total)}</strong>
                                         </li>
                                       ))}
