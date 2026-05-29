@@ -21,7 +21,7 @@ import { DashboardKpiCards } from '../components/DashboardKpiCards';
 import { DashboardSummaryTable } from '../components/DashboardSummaryTable';
 import { getDashboardVendas, type DashboardVendasResponse } from '../services/dashboardApi';
 import type { DashboardDateErrors, DashboardKpiCard, DashboardRow, DashboardTableColumn, Option } from '../types';
-import { chartPalette, formatCurrencyBRL, monthEndPtBr, monthStartPtBr, normalizeText, parseDateStrict, toApiDate, toNumber } from '../utils/dashboardUtils';
+import { chartPalette, formatCurrencyBRL, normalizeText, parseDateStrict, toApiDate, toNumber } from '../utils/dashboardUtils';
 
 type RegionSlice = {
   key: string;
@@ -50,6 +50,14 @@ type TopClientByBillingType = {
   billingType: string;
   total: number;
   topItems: ClientItemTop[];
+};
+
+type AccumulatedBillingRow = {
+  key: string;
+  label: string;
+  order: number;
+  total: number;
+  topClients: Array<{ label: string; total: number }>;
 };
 
 const getText = (value: unknown) => String(value ?? '').trim();
@@ -217,26 +225,149 @@ const getProductLabel = (item: Record<string, any>) => {
   return pickFirstText(item, ['Produto', 'produto'], 'Sem produto');
 };
 
-const getProductDescription = (item: Record<string, any>) => {
-  const descricao = pickFirstText(item, [
-    'Descricao_Material', 'descricao_Material', 'descricaoMaterial',
-    'Descricao_Produto', 'descricao_Produto', 'descricaoProduto',
-    'Nome_Produto', 'nome_Produto', 'nomeProduto',
-  ]);
-  if (descricao) return descricao;
-  return pickFirstText(item, ['Produto', 'produto', 'Codigo_Material', 'codigo_Material', 'codigoMaterial'], 'Sem produto');
+const parseVendasDate = (value: unknown): Date | null => {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+
+  const ptBr = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (ptBr) {
+    const day = Number(ptBr[1]);
+    const month = Number(ptBr[2]) - 1;
+    const year = Number(ptBr[3]);
+    const parsed = new Date(year, month, day);
+
+    if (parsed.getFullYear() === year && parsed.getMonth() === month && parsed.getDate() === day) {
+      return parsed;
+    }
+  }
+
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) {
+    const year = Number(iso[1]);
+    const month = Number(iso[2]) - 1;
+    const day = Number(iso[3]);
+    const parsed = new Date(year, month, day);
+
+    if (parsed.getFullYear() === year && parsed.getMonth() === month && parsed.getDate() === day) {
+      return parsed;
+    }
+  }
+
+  const fallback = new Date(raw);
+  return Number.isNaN(fallback.getTime()) ? null : fallback;
+};
+
+const getVendasMonthDate = (item: Record<string, any>): Date | null => {
+  const orderRaw = toNumber(item?.Ordenacao_Mes_Ano ?? item?.ordenacao_Mes_Ano ?? item?.OrdenacaoMesAno ?? 0);
+  if (orderRaw > 0) {
+    const asText = String(Math.trunc(orderRaw));
+    if (asText.length === 6) {
+      const year = Number(asText.slice(0, 4));
+      const month = Number(asText.slice(4, 6));
+      if (year >= 1900 && month >= 1 && month <= 12) {
+        return new Date(year, month - 1, 1);
+      }
+    }
+  }
+
+  const monthYearText = String(
+    item?.Mes_Ano_Faturamento ??
+    item?.mes_Ano_Faturamento ??
+    item?.mesAnoFaturamento ??
+    item?.Mes_Ano_Mov ??
+    item?.mes_Ano_Mov ??
+    item?.MesAnoMov ??
+    item?.mesAnoMov ??
+    '',
+  ).trim();
+
+  const match = monthYearText.match(/(\d{1,2})\/(\d{4})/);
+  if (!match) return null;
+
+  const month = Number(match[1]);
+  const year = Number(match[2]);
+  if (!year || !month || month < 1 || month > 12) return null;
+
+  return new Date(year, month - 1, 1);
+};
+
+const getVendasItemDate = (item: Record<string, any>, options?: { allowMonthFallback?: boolean }): Date | null => {
+  const candidates = [
+    item?.Data_Emissao,
+    item?.data_Emissao,
+    item?.dataEmissao,
+    item?.Dt_Emissao,
+    item?.dt_Emissao,
+    item?.dtEmissao,
+    item?.Data_Movimento,
+    item?.data_Movimento,
+    item?.dataMovimento,
+    item?.Data_Mov,
+    item?.data_Mov,
+    item?.dataMov,
+    item?.Data,
+    item?.data,
+    item?.Data_Faturamento,
+    item?.data_Faturamento,
+    item?.dataFaturamento,
+    item?.Data_Fat,
+    item?.data_Fat,
+    item?.dataFat,
+    item?.Data_Nota,
+    item?.data_Nota,
+    item?.dataNota,
+    item?.Data_Pedido,
+    item?.data_Pedido,
+    item?.dataPedido,
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = parseVendasDate(candidate);
+    if (parsed) return parsed;
+  }
+
+  // Fallback para cenario de mudanca de contrato em campos de data.
+  for (const [key, rawValue] of Object.entries(item ?? {})) {
+    const normalizedKey = normalizeText(key).replace(/[^a-z0-9]/g, '');
+    if (!normalizedKey.includes('data') && !normalizedKey.includes('dt')) {
+      continue;
+    }
+
+    const parsed = parseVendasDate(rawValue);
+    if (parsed) return parsed;
+  }
+
+  if (options?.allowMonthFallback === false) {
+    return null;
+  }
+
+  return getVendasMonthDate(item);
+};
+
+const toPtBrDateString = (date: Date) => {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear());
+  return `${day}/${month}/${year}`;
 };
 
 export function DashboardVendasPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const today = new Date();
+  const currentYearStart = new Date(today.getFullYear(), 0, 1);
+  const currentYearEnd = new Date(today.getFullYear(), 11, 31);
 
   const codigoEmpresa = useMemo(() => String(GlobalConfig.getCodEmpresa() ?? ''), []);
 
-  const [appliedDataDe, setAppliedDataDe] = useState(monthStartPtBr());
-  const [appliedDataAte, setAppliedDataAte] = useState(monthEndPtBr());
-  const [draftDataDe, setDraftDataDe] = useState(monthStartPtBr());
-  const [draftDataAte, setDraftDataAte] = useState(monthEndPtBr());
+  const [appliedDataDe, setAppliedDataDe] = useState(() => toPtBrDateString(currentYearStart));
+  const [appliedDataAte, setAppliedDataAte] = useState(() => toPtBrDateString(currentYearEnd));
+  const [draftDataDe, setDraftDataDe] = useState(() => toPtBrDateString(currentYearStart));
+  const [draftDataAte, setDraftDataAte] = useState(() => toPtBrDateString(currentYearEnd));
   const [errors, setErrors] = useState<DashboardDateErrors>({});
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -244,6 +375,7 @@ export function DashboardVendasPage() {
   const [topChartCollapsed, setTopChartCollapsed] = useState(false);
   const [activeRegionKey, setActiveRegionKey] = useState<string | null>(null);
   const [activeSellerKey, setActiveSellerKey] = useState<string | null>(null);
+  const [activeAccumulatedKey, setActiveAccumulatedKey] = useState<string | null>(null);
   const [expandedTopClients, setExpandedTopClients] = useState<string[]>([]);
   const [destinatarioScope, setDestinatarioScope] = useState<'todos' | 'clientes'>('todos');
 
@@ -255,6 +387,7 @@ export function DashboardVendasPage() {
     Faturamento: [],
     Atraso: [],
     Forecast: [],
+    FaturamentoAcumulado: null,
   });
 
   const initialFetchRef = useRef(false);
@@ -267,6 +400,13 @@ export function DashboardVendasPage() {
     ],
     [],
   );
+
+  useEffect(() => {
+    if (!advancedOpen) return;
+    setDraftDataDe(appliedDataDe);
+    setDraftDataAte(appliedDataAte);
+    setErrors({});
+  }, [advancedOpen, appliedDataAte, appliedDataDe]);
 
   const filteredFaturamento = useMemo(() => {
     const source = payload.Faturamento ?? [];
@@ -289,19 +429,11 @@ export function DashboardVendasPage() {
   const validateFilters = useCallback(() => {
     const nextErrors: DashboardDateErrors = {};
 
-    if (!String(draftDataDe).trim()) {
-      nextErrors.dataDe = 'Informe Data de.';
-    }
-
-    if (!String(draftDataAte).trim()) {
-      nextErrors.dataAte = 'Informe Data até.';
-    }
-
     const parsedDe = parseDateStrict(draftDataDe);
     const parsedAte = parseDateStrict(draftDataAte);
 
-    if (draftDataDe.trim() && !parsedDe) nextErrors.dataDe = 'Data de inválida.';
-    if (draftDataAte.trim() && !parsedAte) nextErrors.dataAte = 'Data até inválida.';
+    if (!parsedDe) nextErrors.dataDe = 'Data de inválida.';
+    if (!parsedAte) nextErrors.dataAte = 'Data até inválida.';
 
     if (parsedDe && parsedAte && parsedDe.getTime() > parsedAte.getTime()) {
       nextErrors.dataDe = 'Data de não pode ser maior que Data até.';
@@ -437,6 +569,198 @@ export function DashboardVendasPage() {
       { key: 'qtd-clientes-faturados', label: 'Clientes faturados', value: clientesFaturados.size, format: 'number' },
     ];
   }, [filteredAtraso, filteredFaturamento, filteredForecast]);
+
+  const faturamentoAcumuladoTipo = useMemo(() => {
+    const api = payload.FaturamentoAcumulado as Record<string, any> | null | undefined;
+    const tipo = String(api?.periodicidade ?? api?.Periodicidade ?? '').trim();
+    return tipo || 'Mensal';
+  }, [payload.FaturamentoAcumulado]);
+
+  const faturamentoAcumuladoRows = useMemo<AccumulatedBillingRow[]>(() => {
+    const faturamentoAcumuladoApi = payload.FaturamentoAcumulado as Record<string, any> | null | undefined;
+    const acumuladoApiRaw = faturamentoAcumuladoApi?.acumulado ?? faturamentoAcumuladoApi?.Acumulado;
+
+    if (Array.isArray(acumuladoApiRaw) && acumuladoApiRaw.length > 0) {
+      const top3ApiRaw = faturamentoAcumuladoApi?.top3Clientes ?? faturamentoAcumuladoApi?.Top3Clientes;
+      const top3Clientes = Array.isArray(top3ApiRaw)
+        ? top3ApiRaw
+          .map((item) => ({
+            label: String(item?.nome_Cliente ?? item?.nomeCliente ?? item?.Nome_Cliente ?? item?.nome_Fantasia ?? item?.nomeFantasia ?? 'Sem cliente').trim() || 'Sem cliente',
+            total: toNumber(item?.valor_Acumulado ?? item?.valorAcumulado ?? item?.Valor_Acumulado ?? item?.valor_Total ?? item?.valorTotal ?? 0),
+          }))
+          .sort((a, b) => b.total - a.total)
+          .slice(0, 3)
+        : [];
+
+      return acumuladoApiRaw
+        .map((rawItem, index) => {
+          const item = (rawItem ?? {}) as Record<string, any>;
+          const label = String(item?.periodo ?? item?.Periodo ?? item?.label ?? item?.Label ?? `Período ${index + 1}`).trim() || `Período ${index + 1}`;
+          const startDate = parseVendasDate(item?.data_Inicial ?? item?.dataInicial ?? item?.Data_Inicial ?? item?.DataInicial);
+          const endDate = parseVendasDate(item?.data_Final ?? item?.dataFinal ?? item?.Data_Final ?? item?.DataFinal);
+          const fallbackMonthDate = parseVendasDate(`01/${label}`);
+          const order = startDate?.getTime() ?? endDate?.getTime() ?? fallbackMonthDate?.getTime() ?? index + 1;
+
+          return {
+            key: `${order}-${index}`,
+            label,
+            order,
+            total: toNumber(item?.valor_Acumulado ?? item?.valorAcumulado ?? item?.Valor_Acumulado ?? item?.valor_Total ?? item?.valorTotal ?? 0),
+            topClients: top3Clientes,
+          } as AccumulatedBillingRow;
+        })
+        .sort((a, b) => a.order - b.order);
+    }
+
+    const parsedDe = parseDateStrict(appliedDataDe);
+    const parsedAte = parseDateStrict(appliedDataAte);
+
+    const grouped = new Map<string, { key: string; label: string; order: number; total: number; clients: Map<string, number> }>();
+
+    const buildTopClients = (clientsMap: Map<string, number>) => {
+      return Array.from(clientsMap.entries())
+        .map(([label, total]) => ({ label, total }))
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 3);
+    };
+
+    const includeItemInBucket = (bucket: { key: string; label: string; order: number }, item: Record<string, any>, value: number) => {
+      const clientLabel = getClientLabel(item);
+      const current = grouped.get(bucket.key) || { ...bucket, total: 0, clients: new Map<string, number>() };
+      current.total += value;
+      current.clients.set(clientLabel, (current.clients.get(clientLabel) ?? 0) + value);
+      grouped.set(bucket.key, current);
+    };
+
+    if (!parsedDe || !parsedAte || parsedDe.getTime() > parsedAte.getTime()) {
+      return [];
+    }
+
+    const start = new Date(parsedDe.getFullYear(), parsedDe.getMonth(), parsedDe.getDate()).getTime();
+    const end = new Date(parsedAte.getFullYear(), parsedAte.getMonth(), parsedAte.getDate()).getTime();
+
+    for (const rawItem of payload.Faturamento ?? []) {
+      const item = (rawItem ?? {}) as Record<string, any>;
+      const value = toNumber(item?.Valor_Total ?? item?.valor_Total ?? item?.valorTotal ?? 0);
+      if (value === 0) continue;
+
+      const date = getVendasItemDate(item, { allowMonthFallback: true });
+      if (!date) continue;
+
+      const current = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+      if (current < start || current > end) continue;
+
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const monthText = String(month + 1).padStart(2, '0');
+
+      includeItemInBucket(
+        {
+          key: `${year}-${monthText}`,
+          label: `${monthText}/${year}`,
+          order: new Date(year, month, 1).getTime(),
+        },
+        item,
+        value,
+      );
+    }
+
+    const rows: AccumulatedBillingRow[] = [];
+    const monthCursor = new Date(parsedDe.getFullYear(), parsedDe.getMonth(), 1);
+    const monthLast = new Date(parsedAte.getFullYear(), parsedAte.getMonth(), 1);
+
+    while (monthCursor.getTime() <= monthLast.getTime()) {
+      const year = monthCursor.getFullYear();
+      const month = monthCursor.getMonth();
+      const monthText = String(month + 1).padStart(2, '0');
+
+      const key = `${year}-${monthText}`;
+      const existing = grouped.get(key);
+
+      rows.push(
+        existing
+          ? { key: existing.key, label: existing.label, order: existing.order, total: existing.total, topClients: buildTopClients(existing.clients) }
+          : {
+            key,
+            label: `${monthText}/${year}`,
+            order: new Date(year, month, 1).getTime(),
+            total: 0,
+            topClients: [],
+          },
+      );
+
+      monthCursor.setMonth(monthCursor.getMonth() + 1);
+    }
+
+    return rows.sort((a, b) => a.order - b.order);
+  }, [appliedDataAte, appliedDataDe, payload.Faturamento, payload.FaturamentoAcumulado]);
+
+  const faturamentoAcumuladoMax = useMemo(() => {
+    return Math.max(1, ...faturamentoAcumuladoRows.map((row) => Math.abs(Number(row.total ?? 0))));
+  }, [faturamentoAcumuladoRows]);
+
+  const faturamentoAcumuladoChart = useMemo(() => {
+    const minWidth = 1280;
+    const minStepBetweenPoints = 160;
+    const dynamicWidth =
+      faturamentoAcumuladoRows.length > 1
+        ? (faturamentoAcumuladoRows.length - 1) * minStepBetweenPoints + 300
+        : minWidth;
+    const width = Math.max(minWidth, dynamicWidth);
+    const height = 300;
+    const padX = 150;
+    const padY = 18;
+    const stepX = faturamentoAcumuladoRows.length > 1 ? (width - padX * 2) / (faturamentoAcumuladoRows.length - 1) : 0;
+
+    const points = faturamentoAcumuladoRows.map((row, index) => {
+      const value = Math.max(0, Number(row.total ?? 0));
+      const x = padX + index * stepX;
+      const y = height - padY - (value / faturamentoAcumuladoMax) * (height - padY * 2);
+      return { x, y, value, key: row.key, label: row.label };
+    });
+
+    const line = points.map((point) => `${point.x},${point.y}`).join(' ');
+    const endX = points.length > 0 ? points[points.length - 1].x : padX;
+    const area = `${padX},${height - padY} ${line} ${endX},${height - padY}`;
+
+    return {
+      width,
+      height,
+      padX,
+      padY,
+      points,
+      line,
+      area,
+    };
+  }, [faturamentoAcumuladoMax, faturamentoAcumuladoRows]);
+
+  const faturamentoAcumuladoTicks = useMemo(() => {
+    const steps = 5;
+    return Array.from({ length: steps + 1 }, (_, index) => {
+      const value = (faturamentoAcumuladoMax / steps) * (steps - index);
+      const y = faturamentoAcumuladoChart.padY + ((faturamentoAcumuladoChart.height - faturamentoAcumuladoChart.padY * 2) / steps) * index;
+      return { value, y };
+    });
+  }, [faturamentoAcumuladoChart.height, faturamentoAcumuladoChart.padY, faturamentoAcumuladoMax]);
+
+  useEffect(() => {
+    if (!faturamentoAcumuladoRows.length) {
+      setActiveAccumulatedKey(null);
+      return;
+    }
+
+    const hasActive = activeAccumulatedKey && faturamentoAcumuladoRows.some((row) => row.key === activeAccumulatedKey);
+    if (hasActive) return;
+
+    const firstWithValue = faturamentoAcumuladoRows.find((row) => Number(row.total ?? 0) > 0) ?? faturamentoAcumuladoRows[0];
+    setActiveAccumulatedKey(firstWithValue.key);
+  }, [activeAccumulatedKey, faturamentoAcumuladoRows]);
+
+  const activeAccumulatedRow = useMemo(() => {
+    if (!faturamentoAcumuladoRows.length) return null;
+    const found = faturamentoAcumuladoRows.find((row) => row.key === activeAccumulatedKey);
+    return found ?? faturamentoAcumuladoRows[0];
+  }, [activeAccumulatedKey, faturamentoAcumuladoRows]);
 
   const regionSlices = useMemo<RegionSlice[]>(() => {
     const regionMap = new Map<string, { label: string; total: number; clients: Map<string, number> }>();
@@ -753,7 +1077,8 @@ export function DashboardVendasPage() {
 
       const fileDateDe = String(appliedDataDe || '').replace(/\//g, '-');
       const fileDateAte = String(appliedDataAte || '').replace(/\//g, '-');
-      XLSX.writeFile(workbook, `dashboard-vendas-${fileDateDe}-a-${fileDateAte}.xlsx`);
+      const modeSuffix = `${fileDateDe}-a-${fileDateAte}`;
+      XLSX.writeFile(workbook, `dashboard-vendas-${modeSuffix}.xlsx`);
       showToast('Arquivo Excel exportado com sucesso.', 'success');
     } catch (error: any) {
       showToast(String(error?.message || 'Falha ao exportar Excel.'), 'error');
@@ -791,15 +1116,24 @@ export function DashboardVendasPage() {
         cancelLabel="Fechar"
       >
         <div className="dashboard-vendas-advanced-grid dashboard-vendas-advanced-grid--dates-only">
+
           <label className="list-layout-field list-layout-field--date dashboard-field dashboard-vendas-date-field">
             <span>Data de</span>
-            <CustomDatePicker value={draftDataDe} onChange={setDraftDataDe} className={errors.dataDe ? 'pcp-date-error' : undefined} />
+            <CustomDatePicker
+              value={draftDataDe}
+              onChange={setDraftDataDe}
+              className={errors.dataDe ? 'pcp-date-error' : undefined}
+            />
             <small className={`module-field-error${errors.dataDe ? '' : ' dashboard-error-empty'}`}>{errors.dataDe || ' '}</small>
           </label>
 
           <label className="list-layout-field list-layout-field--date dashboard-field dashboard-vendas-date-field">
             <span>Data até</span>
-            <CustomDatePicker value={draftDataAte} onChange={setDraftDataAte} className={errors.dataAte ? 'pcp-date-error' : undefined} />
+            <CustomDatePicker
+              value={draftDataAte}
+              onChange={setDraftDataAte}
+              className={errors.dataAte ? 'pcp-date-error' : undefined}
+            />
             <small className={`module-field-error${errors.dataAte ? '' : ' dashboard-error-empty'}`}>{errors.dataAte || ' '}</small>
           </label>
         </div>
@@ -850,7 +1184,7 @@ export function DashboardVendasPage() {
           </div>
         </div>
 
-        <p className="dashboard-period-range">Período: {appliedDataDe} - {appliedDataAte}</p>
+        <p className="dashboard-period-range">{`Período: ${appliedDataDe} - ${appliedDataAte}`}</p>
 
         {errorMessage ? <p className="status-box status-box--error">{errorMessage}</p> : null}
         {loading ? <p className="module-empty">Carregando dashboard de vendas...</p> : null}
@@ -872,6 +1206,132 @@ export function DashboardVendasPage() {
         {!loading && !errorMessage && hasFetched && hasAnyData ? (
           <>
             <DashboardKpiCards cards={kpis} />
+
+            <article className="card dashboard-chart-card dashboard-vendas-acumulado-card">
+              <header className="dashboard-section-header dashboard-section-header--collapsible">
+                <div>
+                  <h2>Faturamento acumulado de clientes por mês</h2>
+                  <p>{`Total faturado acumulado de clientes (${String(faturamentoAcumuladoTipo).toLowerCase()}) no intervalo selecionado.`}</p>
+                </div>
+              </header>
+
+              {faturamentoAcumuladoRows.length === 0 ? (
+                <p className="module-empty">Sem dados para montar o faturamento acumulado.</p>
+              ) : (
+                <div className="dashboard-vendas-acumulado">
+                  <div className="dashboard-native-svg-wrap dashboard-vendas-acumulado__chart-wrap">
+                    <svg
+                      viewBox={`0 0 ${faturamentoAcumuladoChart.width} ${faturamentoAcumuladoChart.height}`}
+                      className="dashboard-native-svg"
+                      style={{ width: '100%', minWidth: `${faturamentoAcumuladoChart.width}px` }}
+                    >
+                      <line
+                        x1={faturamentoAcumuladoChart.padX}
+                        y1={faturamentoAcumuladoChart.padY}
+                        x2={faturamentoAcumuladoChart.padX}
+                        y2={faturamentoAcumuladoChart.height - faturamentoAcumuladoChart.padY}
+                        className="dashboard-vendas-acumulado__axis"
+                      />
+
+                      {Array.from({ length: 5 }).map((_, index) => {
+                        const y = faturamentoAcumuladoChart.padY + ((faturamentoAcumuladoChart.height - faturamentoAcumuladoChart.padY * 2) / 4) * index;
+                        return (
+                          <line
+                            key={`grid-${index}`}
+                            x1={faturamentoAcumuladoChart.padX}
+                            y1={y}
+                            x2={faturamentoAcumuladoChart.width - faturamentoAcumuladoChart.padX}
+                            y2={y}
+                            className="dashboard-vendas-acumulado__grid"
+                          />
+                        );
+                      })}
+
+                      {faturamentoAcumuladoTicks.map((tick, index) => (
+                        <text
+                          key={`tick-${index}`}
+                          x={faturamentoAcumuladoChart.padX - 8}
+                          y={tick.y + 3}
+                          textAnchor="end"
+                          className="dashboard-vendas-acumulado__tick-text"
+                        >
+                          {formatCurrencyBRL(tick.value)}
+                        </text>
+                      ))}
+
+                      <polygon points={faturamentoAcumuladoChart.area} className="dashboard-vendas-acumulado__fill" />
+                      <polyline points={faturamentoAcumuladoChart.line} className="dashboard-vendas-acumulado__line" />
+
+                      {faturamentoAcumuladoChart.points.map((point) => {
+                        const row = faturamentoAcumuladoRows.find((item) => item.key === point.key);
+                        const topClients = row?.topClients ?? [];
+                        const topClientsTooltip =
+                          topClients.length > 0
+                            ? topClients.map((client, index) => `${index + 1}. ${client.label} (${formatCurrencyBRL(Number(client.total ?? 0))})`).join(' | ')
+                            : 'Sem clientes no período';
+
+                        return (
+                          <g key={`fat-${point.key}`}>
+                            <circle
+                              cx={point.x}
+                              cy={point.y}
+                              r="4"
+                              className={`dashboard-vendas-acumulado__dot${activeAccumulatedRow?.key === point.key ? ' is-active' : ''}`}
+                              onMouseEnter={() => setActiveAccumulatedKey(point.key)}
+                              onFocus={() => setActiveAccumulatedKey(point.key)}
+                              tabIndex={0}
+                            >
+                              <title>{`${point.label}: ${formatCurrencyBRL(point.value)} | Top 3 clientes: ${topClientsTooltip}`}</title>
+                            </circle>
+                          </g>
+                        );
+                      })}
+                    </svg>
+
+                    <div
+                      className="dashboard-native-xlabels"
+                      style={{ width: '100%', minWidth: `${faturamentoAcumuladoChart.width}px` }}
+                    >
+                      {faturamentoAcumuladoChart.points.map((point, index) => {
+                        const row = faturamentoAcumuladoRows[index];
+                        if (!row) return null;
+
+                        return (
+                          <span
+                            key={`xlabel-${row.key}`}
+                            className="dashboard-vendas-acumulado__xlabel-item"
+                            style={{ left: `${point.x}px` }}
+                          >
+                            <strong className="dashboard-vendas-acumulado__xlabel-value">{formatCurrencyBRL(point.value)}</strong>
+                            <small className="dashboard-vendas-acumulado__xlabel-date">{row.label}</small>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {activeAccumulatedRow ? (
+                    <div className="dashboard-vendas-region-tooltip dashboard-vendas-acumulado-tooltip" role="status" aria-live="polite">
+                      <p>{`Top 3 clientes - ${String(activeAccumulatedRow.label ?? '-')}`}</p>
+                      <ol>
+                        {activeAccumulatedRow.topClients.length > 0 ? (
+                          activeAccumulatedRow.topClients.map((client) => (
+                            <li key={`${activeAccumulatedRow.key}-${client.label}`}>
+                              <span>{client.label}</span>
+                              <strong>{formatCurrencyBRL(Number(client.total ?? 0))}</strong>
+                            </li>
+                          ))
+                        ) : (
+                          <li>
+                            <span>Sem clientes para este período</span>
+                          </li>
+                        )}
+                      </ol>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </article>
 
             <section className="dashboard-chart-grid">
               <article className="card dashboard-chart-card">
