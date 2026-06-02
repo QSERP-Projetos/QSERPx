@@ -28,4 +28,5 @@ export const ROUTES = {
   manutencaoOrdens: '/manutencao/ordens',
   qualidadeFichaProcesso: '/qualidade/ficha-inspecao-processo',
   qualidadeFichaRecebimento: '/qualidade/ficha-inspecao-recebimento',
+  financeiroContasReceber: '/financeiro/contas-receber',
 } as const;

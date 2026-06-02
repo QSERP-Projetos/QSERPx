@@ -44,6 +44,7 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
     SER002: ROUTES.servicoOrdens,
     SER003: ROUTES.servicoNotaFiscal,
     MAN001: ROUTES.manutencaoOrdens,
+    FIN001: ROUTES.financeiroContasReceber,
   };
 
   const dashboardRouteByTitle =
@@ -103,6 +104,9 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
       : undefined) ||
     (normalizedTitle.includes('ficha') && normalizedTitle.includes('inspec') && normalizedTitle.includes('receb')
       ? ROUTES.qualidadeFichaRecebimento
+      : undefined) ||
+    (normalizedTitle.includes('conta') && normalizedTitle.includes('receber')
+      ? ROUTES.financeiroContasReceber
       : undefined);
 
   return dashboardRouteByTitle || routeByCode || routeByTitle;

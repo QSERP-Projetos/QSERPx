@@ -1200,7 +1200,7 @@ body {
   overflow: visible;
 }
 
-.filters-panel__content:has(.dashboard-vendas-advanced-grid--period) > * {
+.filters-panel__content:has(.dashboard-vendas-advanced-grid--period)>* {
   min-width: 0;
 }
 
@@ -7817,6 +7817,474 @@ select.text-field:focus {
   max-height: min(56dvh, 520px);
 }
 
+/* ============================================
+   Contas a Receber
+   ============================================ */
+
+/* O painel usa flex para garantir que as guias sempre apareçam acima da tabela */
+.contas-receber-panel {
+  display: flex !important;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.contas-receber-panel .advanced-filters-panel {
+  flex-shrink: 0;
+}
+
+.contas-receber-panel .list-layout-table {
+  flex: 1 1 0;
+  min-height: 200px;
+  margin-top: 0;
+}
+
+.contas-receber-panel .contas-receber-footer {
+  flex-shrink: 0;
+}
+
+/* Guias (tabs) */
+.contas-receber-tabs {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 2px solid var(--color-border);
+  padding: 0 12px;
+  gap: 0;
+  background: var(--color-surface);
+}
+
+.contas-receber-tab {
+  padding: 7px 18px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.contas-receber-tab:hover {
+  color: var(--color-text);
+}
+
+.contas-receber-tab--active {
+  color: var(--color-primary, #2563eb);
+  border-bottom-color: var(--color-primary, #2563eb);
+}
+
+/* Barra "Selecionar todas" */
+.contas-receber-select-all {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  flex-shrink: 0;
+  padding: 6px 14px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.contas-receber-select-all__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.contas-receber-select-all__checkbox {
+  width: 0.85rem;
+  height: 0.85rem;
+  cursor: pointer;
+  accent-color: var(--color-primary, #2563eb);
+}
+
+.contas-receber-select-all__count {
+  font-size: 0.78rem;
+  color: var(--color-primary, #2563eb);
+  font-weight: 600;
+}
+
+.contas-receber-select-all--disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ===== Modal de Abatimento ===== */
+/* ===== Modal de Abatimento — layout específico (usa modal-backdrop/modal-card do sistema) ===== */
+
+.modal-card--abatimento {
+  width: min(920px, 96vw);
+  max-height: 92vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.modal-card--abatimento .modal-card__header h2 {
+  font-size: 0.94rem;
+  margin: 0;
+}
+
+/* Bloco de informações do título */
+.abatimento-info {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm, 10px);
+  padding: 12px 14px;
+  background: var(--color-surface-alt);
+}
+
+.abatimento-info__left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Grade 4 colunas: label | campo | label | campo — alinha Emissão com Vencimento */
+.abatimento-info__grid {
+  display: grid;
+  grid-template-columns: max-content max-content max-content max-content;
+  align-items: center;
+  gap: 5px 10px;
+}
+
+.abatimento-field-row__nf-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.abatimento-info__right {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-left: 1px solid var(--color-border-soft);
+  padding-left: 16px;
+  min-width: 230px;
+}
+
+.abatimento-field-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.abatimento-field-row__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  white-space: nowrap;
+  min-width: 68px;
+  text-align: right;
+}
+
+.abatimento-field-row__label--gap {
+  margin-left: 10px;
+}
+
+.abatimento-field-row__sep {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+
+.abatimento-field-row__input {
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+  font-size: 0.8rem;
+  padding: 3px 7px;
+  height: 26px;
+  line-height: 1;
+  color: var(--color-text);
+  border-radius: 6px;
+  font-family: inherit;
+}
+
+.abatimento-field-row__input[readonly] {
+  background: var(--color-surface);
+  cursor: default;
+}
+
+.abatimento-field-row__input--wide {
+  width: 260px;
+}
+
+.abatimento-field-row__input--sm {
+  width: 88px;
+}
+
+.abatimento-field-row__input--xs {
+  width: 38px;
+}
+
+.abatimento-field-row__input--date {
+  width: 72px;
+}
+
+.abatimento-field-row__input--valor {
+  width: 110px;
+  text-align: right;
+}
+
+.abatimento-valor-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.abatimento-valor-row__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+/* Tabela de itens */
+.abatimento-table-wrap {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 10px);
+  overflow: hidden;
+  overflow-x: auto;
+  flex: 1;
+  min-height: 100px;
+}
+
+.abatimento-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.abatimento-table thead tr {
+  background: var(--table-head-bg);
+  color: var(--table-head-fg);
+}
+
+.abatimento-table th {
+  padding: 7px 10px;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--table-head-border);
+}
+
+.abatimento-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--color-border-soft);
+  color: var(--color-text);
+}
+
+.abatimento-table tbody tr:nth-child(odd) {
+  background: var(--table-row-odd);
+}
+
+.abatimento-table tbody tr:nth-child(even) {
+  background: var(--table-row-even);
+}
+
+.abatimento-table tbody tr:hover {
+  background: var(--table-row-hover);
+}
+
+.abatimento-table tbody tr.module-row-selected {
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent) !important;
+}
+
+/* Rodapé do modal */
+.abatimento-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.abatimento-footer__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.abatimento-footer__fechar {
+  width: auto !important;
+  min-width: 90px;
+  background: #222 !important;
+  color: #fff !important;
+  border-color: #222 !important;
+}
+
+.abatimento-footer__fechar:hover {
+  background: #000 !important;
+  border-color: #000 !important;
+}
+
+.abatimento-footer .secondary-button {
+  width: auto;
+  min-width: 90px;
+}
+
+.contas-receber-panel .module-table th,
+.contas-receber-panel .module-table td {
+  padding: 12px 8px !important;
+  font-size: 0.82rem !important;
+  line-height: 1.4;
+}
+
+.contas-receber-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
+  border-radius: 0 0 12px 12px;
+}
+
+/* Fieldset com borda arredondada */
+.contas-receber-footer__saldo-box {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 2px 10px 8px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+}
+
+.contas-receber-footer__saldo-legend {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  padding: 0 4px;
+}
+
+.contas-receber-footer__field-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Grid de 3 colunas dentro do fieldset Saldo para abater */
+.contas-receber-footer__saldo-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.contas-receber-footer__saldo-grid {
+  display: grid;
+  grid-template-columns: max-content 155px auto;
+  align-items: center;
+  gap: 5px 8px;
+}
+
+.contas-receber-footer__saldo-label-text {
+  font-size: 0.79rem;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.contas-receber-footer__input--saldo {
+  width: 155px;
+}
+
+.contas-receber-footer__input.contas-receber-footer__input--saldo {
+  width: 155px;
+  text-align: right;
+}
+
+.contas-receber-footer__btn--saldo {
+  width: 100%;
+  min-width: 70px;
+}
+
+.contas-receber-footer__field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.79rem;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.contas-receber-footer__field--stack {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.contas-receber-footer__input {
+  width: 80px;
+  height: 24px;
+  border-radius: 5px;
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  padding: 0 5px;
+  font-size: 0.79rem;
+}
+
+.contas-receber-footer__btn {
+  min-height: 26px;
+  height: 26px;
+  padding: 0 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 5px;
+  width: auto;
+  white-space: nowrap;
+}
+
+.contas-receber-footer__btn--adiant {
+  height: auto;
+  min-height: 54px;
+  padding: 6px 14px;
+  text-align: center;
+  line-height: 1.4;
+  align-self: center;
+}
+
+/* Abater e Estornar mesma largura */
+.contas-receber-footer__saldo-box .contas-receber-footer__btn {
+  min-width: 70px;
+}
+
+.contas-receber-footer__actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.contas-receber-footer__actions-row {
+  display: contents;
+}
+
+.contas-receber-footer__actions .contas-receber-footer__btn {
+  min-height: 34px;
+  height: 34px;
+  font-size: 0.82rem;
+  justify-content: center;
+  width: 100%;
+}
+
+.contas-receber-footer__btn--wide {
+  grid-column: span 2;
+}
+
 .pedido-venda-tabela-preco-table-wrap table {
   width: 100%;
   table-layout: fixed;
@@ -8868,6 +9336,29 @@ select.text-field:focus {
     grid-template-rows: auto minmax(0, 1fr);
     overflow: hidden;
     gap: 4px;
+  }
+
+  /* Contas a receber tem guias extras — usa flex para que a tabela sempre ocupe o espaço restante */
+  .list-layout-page .contas-receber-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .list-layout-page .contas-receber-panel .contas-receber-tabs {
+    flex-shrink: 0;
+  }
+
+  .list-layout-page .contas-receber-panel .list-layout-table {
+    flex: 1;
+    min-height: 0;
+    margin-top: 0;
+  }
+
+  .list-layout-page .contas-receber-panel .contas-receber-footer {
+    flex-shrink: 0;
   }
 
   .list-layout-page .list-layout-panel__top {

@@ -501,7 +501,7 @@ export function PedidoVendaFormPanel({
   const [tipoPedido, setTipoPedido] = useState('3');
   const [codigoTransportadora, setCodigoTransportadora] = useState('0');
   const [fretePorConta, setFretePorConta] = useState('0');
-  const [destinoPedido, setDestinoPedido] = useState('Consumo');
+  const [destinoPedido, setDestinoPedido] = useState(() => isRepresentantes ? 'Revenda' : 'Consumo');
   const [codigoRepresentante, setCodigoRepresentante] = useState('');
   const [percComissaoRep, setPercComissaoRep] = useState('0');
   const [codigoTabela, setCodigoTabela] = useState('0');
@@ -552,7 +552,7 @@ export function PedidoVendaFormPanel({
     setTipoPedido('3');
     setCodigoTransportadora('0');
     setFretePorConta('0');
-    setDestinoPedido('Consumo');
+    setDestinoPedido(isRepresentantes ? 'Revenda' : 'Consumo');
     setCodigoRepresentante('');
     setPercComissaoRep('0');
     setCodigoTabela('0');
@@ -584,7 +584,7 @@ export function PedidoVendaFormPanel({
       tipoPedido: '3',
       codigoTransportadora: '0',
       fretePorConta: '0',
-      destinoPedido: 'Consumo',
+      destinoPedido: isRepresentantes ? 'Revenda' : 'Consumo',
       codigoRepresentante: '',
       percComissaoRep: '0',
       codigoTabela: '0',

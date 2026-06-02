@@ -2410,8 +2410,134 @@ export const obterEmpresasSeriesNFCall = async (
 };
 
 // ============================================
+// API: Contas a Receber
+// ============================================
+export const listContasReceberCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: {
+    codigoEmpresa: number | string;
+    dataInicio?: string;
+    dataFim?: string;
+    numNf?: string;
+    codCedente?: string | number;
+    tipoCedente?: string;
+  },
+): Promise<ApiCallResponse> => {
+  let url =
+    `${normalizeBaseUrl(baseUrl)}/api/v1/ContasReceber` +
+    `?CodigoEmpresa=${encodeURIComponent(String(params.codigoEmpresa ?? ''))}` +
+    `&dataInicio=${encodeURIComponent(String(params.dataInicio ?? ''))}` +
+    `&dataFim=${encodeURIComponent(String(params.dataFim ?? ''))}` +
+    `&NumNf=${encodeURIComponent(String(params.numNf ?? ''))}`;
+
+  if (params.codCedente != null && String(params.codCedente).trim() !== '') {
+    url += `&CodCedente=${encodeURIComponent(String(params.codCedente))}`;
+    url += `&TipoCedente=${encodeURIComponent(String(params.tipoCedente ?? ''))}`;
+  }
+
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+// ============================================
 // TEMPLATE: Adicione mais APIs aqui seguindo o padrão acima
 // ============================================
+
+export const listContasReceberNCCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: {
+    codigoEmpresa: number | string;
+    codCedente?: string | number;
+    tipoCedente?: string;
+  },
+): Promise<ApiCallResponse> => {
+  let url =
+    `${normalizeBaseUrl(baseUrl)}/api/v1/ContasReceberNC` +
+    `?CodigoEmpresa=${encodeURIComponent(String(params.codigoEmpresa ?? ''))}`;
+
+  if (params.codCedente != null && String(params.codCedente).trim() !== '') {
+    url += `&CodCedente=${encodeURIComponent(String(params.codCedente))}`;
+    url += `&TipoCedente=${encodeURIComponent(String(params.tipoCedente ?? ''))}`;
+  }
+
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+export const contasReceberSaldoAbaterCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: {
+    codigoEmpresa: number | string;
+    codigoCedente: string | number;
+    tipoCedente: string;
+  },
+): Promise<ApiCallResponse> => {
+  const url =
+    `${normalizeBaseUrl(baseUrl)}/api/v1/ContasReceberSaldoAbater` +
+    `?CodigoEmpresa=${encodeURIComponent(String(params.codigoEmpresa ?? ''))}` +
+    `&codigoCedente=${encodeURIComponent(String(params.codigoCedente))}` +
+    `&tipoCedente=${encodeURIComponent(String(params.tipoCedente))}`;
+
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+export const abatimentoDocCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  body: {
+    CodigoEmpresa: number;
+    NumLanc: number;
+    NumLancAbatimento: number;
+    ValorAbatimento: number;
+    ValorSaldo: number;
+    ValorCalculado: number;
+    Usuario: string;
+  },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/AbatimentoDoc`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    undefined,
+    body,
+  );
+};
+
+export const listContasReceberAbatimentoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: {
+    codigoEmpresa: number | string;
+    codigoCedente: number | string;
+    tipoCedente: string;
+  },
+): Promise<ApiCallResponse> => {
+  const url =
+    `${normalizeBaseUrl(baseUrl)}/api/v1/ContasReceberAbatimento` +
+    `?CodigoEmpresa=${encodeURIComponent(String(params.codigoEmpresa ?? ''))}` +
+    `&CodigoCedente=${encodeURIComponent(String(params.codigoCedente))}` +
+    `&tipoCedente=${encodeURIComponent(String(params.tipoCedente))}`;
+
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
 
 /*
 EXEMPLO DE COMO ADICIONAR NOVA API:

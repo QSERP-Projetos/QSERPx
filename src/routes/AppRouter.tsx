@@ -25,6 +25,7 @@ import { UsuariosPage } from '../features/seguranca/pages/UsuariosPage';
 import { OrdensManutencaoPage } from '../features/manutencao/pages/OrdensManutencaoPage';
 import { FichaInspecaoProcessoPage } from '../features/qualidade/pages/FichaInspecaoProcessoPage';
 import { FichaInspecaoRecebimentoPage } from '../features/qualidade/pages/FichaInspecaoRecebimentoPage';
+import { ContasReceberPage } from '../features/financeiro/pages/ContasReceberPage';
 import { AppShellLayout } from '../layouts/AppShellLayout';
 
 const DashboardFinanceiroPage = lazy(() =>
@@ -101,6 +102,7 @@ export function AppRouter() {
           <Route path={ROUTES.manutencaoOrdens} element={<OrdensManutencaoPage />} />
           <Route path={ROUTES.qualidadeFichaProcesso} element={<FichaInspecaoProcessoPage />} />
           <Route path={ROUTES.qualidadeFichaRecebimento} element={<FichaInspecaoRecebimentoPage />} />
+          <Route path={ROUTES.financeiroContasReceber} element={<ContasReceberPage />} />
         </Route>
       </Route>
 
