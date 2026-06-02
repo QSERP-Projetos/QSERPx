@@ -1475,7 +1475,7 @@ export function PedidoVendaFormPanel({
     const nextTipoPedido = getRowLabel(clienteRow, ['tipo_Pedido', 'Tipo_Pedido', 'tipoPedido']) || '3';
     const nextFretePorConta = getRowLabel(clienteRow, ['frete_Por_Conta', 'Frete_Por_Conta', 'fretePorConta']) || '0';
     const nextDestinoPedido = normalizeDestinoPedidoValue(
-      getRowLabel(clienteRow, ['destinoPedido', 'Destino_Pedido', 'destino_Pedido']) || 'Consumo',
+      getRowLabel(clienteRow, ['destinoPedido', 'Destino_Pedido', 'destino_Pedido']) || (isRepresentantes ? 'Revenda' : 'Consumo'),
     );
     const nextCodigoTabela = getRowLabel(clienteRow, [
       'codigo_Tabela',
