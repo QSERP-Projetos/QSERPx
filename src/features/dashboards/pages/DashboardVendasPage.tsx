@@ -849,7 +849,7 @@ export function DashboardVendasPage() {
         for (const materialRaw of materiais) {
           const materialItem = (materialRaw ?? {}) as Record<string, any>;
           const label = getProductLabel(materialItem);
-          const description = getProductDescription(materialItem);
+          const description = getProductLabel(materialItem);
           const key = normalizeText(label) || 'sem-produto';
           const value = toNumber(
             materialItem?.Valor_Total ?? materialItem?.valor_Total ?? materialItem?.valorTotal ?? materialItem?.Valor_Mercadoria ?? materialItem?.valor_Mercadoria ?? 0,
@@ -864,7 +864,7 @@ export function DashboardVendasPage() {
       }
 
       const fallbackLabel = getProductLabel(faturamentoItem);
-      const fallbackDescription = getProductDescription(faturamentoItem);
+      const fallbackDescription = getProductLabel(faturamentoItem);
       const fallbackKey = normalizeText(fallbackLabel) || 'sem-produto';
       const fallbackValue = toNumber(
         faturamentoItem?.Valor_Total ?? faturamentoItem?.valor_Total ?? faturamentoItem?.valorTotal ?? faturamentoItem?.Valor_Mercadoria ?? faturamentoItem?.valor_Mercadoria ?? 0,
