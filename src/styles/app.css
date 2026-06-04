@@ -6609,6 +6609,23 @@ select.text-field:focus {
   align-self: stretch;
 }
 
+.clientes-status-consulta {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.clientes-status-consulta.is-ok {
+  color: #166534;
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+.clientes-status-consulta.is-error {
+  color: #991b1b;
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
 .ordens-servico-produto-input {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

@@ -1,7 +1,7 @@
 export const APP_IDENTITY = {
   name: 'QSERPx',
   versions: {
-    web: '2.9.3.2',
+    web: '2.9.3.3',
   },
 } as const;
 
