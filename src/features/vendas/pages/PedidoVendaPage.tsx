@@ -499,7 +499,12 @@ export function PedidoVendaPage({ isRepresentantes = false }: PedidoVendaPagePro
     }
   };
 
-  const handleExcluir = async (numPedido: number) => {
+  const handleExcluir = async (numPedido: number, situacaoPedido = '') => {
+    if (isRepresentantes && !isSituacaoElaboracao(situacaoPedido)) {
+      showToast('Não é permitido excluir pedidos fora da situação "Em elaboração".', 'info');
+      return;
+    }
+
     const allowed = await checkAcao('4', 'Você não possui permissão para excluir pedidos.');
     if (!allowed) return;
 
@@ -787,7 +792,7 @@ export function PedidoVendaPage({ isRepresentantes = false }: PedidoVendaPagePro
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation();
-                              void handleExcluir(numPedido);
+                              void handleExcluir(numPedido, situ.label);
                             }}
                             title="Excluir"
                           >
@@ -906,7 +911,7 @@ export function PedidoVendaPage({ isRepresentantes = false }: PedidoVendaPagePro
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          void handleExcluir(numPedido);
+                          void handleExcluir(numPedido, situ.label);
                         }}
                         title="Excluir"
                       >
