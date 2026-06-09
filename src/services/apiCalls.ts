@@ -1750,6 +1750,22 @@ export const consultarCepCall = async (
 };
 
 // ============================================
+// API: Consultar CNPJ
+// ============================================
+export const consultarCnpjCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  cnpj: string,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ConsultaCnpj/${cnpj}`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+// ============================================
 // API: Incluir Cliente
 // ============================================
 export const incluirClienteCall = async (
@@ -2857,6 +2873,7 @@ export default {
   listMotivoDemeritoCall,
   listMotivoParadaMaquinaCall,
   listParadasMaquinaCall,
+  consultarCnpjCall,
   listaInspetoresCall,
   listaEquipamentosCall,
   incluirFichaInspecaoCall,

@@ -16,6 +16,7 @@ import { GlobalConfig } from '../../../services/globalConfig';
 import {
   acoesUsuariosCall,
   consultarCepCall,
+  consultarCnpjCall,
   incluirClienteCall,
   listaClientesCall,
   obterUsuariosTransacoesSistemaAcaoCall,
@@ -79,6 +80,13 @@ const formatDocumento = (value: string, pessoa: '1' | '2') => {
   return pessoa === '1' ? formatCpf(value) : formatCnpj(value);
 };
 
+const limitComplemento = (value: string) => asText(value).slice(0, 20);
+
+const formatDocumentoAuto = (value: string) => {
+  const digits = onlyDigits(value).slice(0, 14);
+  return digits.length > 11 ? formatCnpj(digits) : formatCpf(digits);
+};
+
 const formatCep = (value: string) => {
   const digits = onlyDigits(value).slice(0, 8);
   if (digits.length <= 5) return digits;
@@ -106,6 +114,11 @@ const PESSOA_OPTIONS = [
   { value: '2', label: 'Jurídica' },
 ];
 
+const MODO_CADASTRO_OPTIONS = [
+  { value: 'manual', label: 'Manual' },
+  { value: 'documento', label: 'Buscar por CNPJ/CPF' },
+];
+
 export function ClientesPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -124,6 +137,7 @@ export function ClientesPage() {
 
   const [formNome, setFormNome] = useState('');
   const [formRazaoSocial, setFormRazaoSocial] = useState('');
+  const [formModoCadastro, setFormModoCadastro] = useState<'manual' | 'documento'>('manual');
   const [formPessoa, setFormPessoa] = useState<'1' | '2'>('1');
   const [formCpfCnpj, setFormCpfCnpj] = useState('');
   const [formCep, setFormCep] = useState('');
@@ -136,7 +150,9 @@ export function ClientesPage() {
   const [formTelefone, setFormTelefone] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formIbge, setFormIbge] = useState('');
+  const [statusConsultaDocumento, setStatusConsultaDocumento] = useState('');
   const [formErrors, setFormErrors] = useState<ClienteFormErrors>({});
+  const [buscandoDocumento, setBuscandoDocumento] = useState(false);
 
   const registrarAcoesUsuario = useCallback(async () => {
     const baseUrl = GlobalConfig.getBaseUrl();
@@ -260,6 +276,7 @@ export function ClientesPage() {
   const limparFormulario = () => {
     setFormNome('');
     setFormRazaoSocial('');
+    setFormModoCadastro('manual');
     setFormPessoa('1');
     setFormCpfCnpj('');
     setFormCep('');
@@ -272,6 +289,7 @@ export function ClientesPage() {
     setFormTelefone('');
     setFormEmail('');
     setFormIbge('');
+    setStatusConsultaDocumento('');
     setFormErrors({});
   };
 
@@ -280,6 +298,7 @@ export function ClientesPage() {
     const pessoa: '1' | '2' = pessoaRaw === '1' || pessoaRaw.toUpperCase().startsWith('F') ? '1' : '2';
 
     setModoConsulta(consulta);
+    setFormModoCadastro('manual');
     setFormNome(asText(cliente?.nome_Fantasia));
     setFormRazaoSocial(asText(cliente?.razao_Social));
     setFormPessoa(pessoa);
@@ -294,6 +313,7 @@ export function ClientesPage() {
     setFormTelefone(asText(cliente?.num_Telefone));
     setFormEmail(asText(cliente?.endereco_Eletronico));
     setFormIbge(asText(cliente?.ibge));
+    setStatusConsultaDocumento('');
     setFormErrors({});
   };
 
@@ -376,6 +396,105 @@ export function ClientesPage() {
     setFormCpfCnpj((prev) => formatDocumento(prev, nextPessoa));
   };
 
+  const preencherFormularioComDocumento = (data: any, documentoDigitado: string) => {
+    const documentoRetorno = asText(data?.cnpj) || documentoDigitado;
+    const pessoa: '1' | '2' = onlyDigits(documentoRetorno).length > 11 ? '2' : '1';
+    const nomeFantasia = asText(data?.fantasia);
+    const razaoSocial = asText(data?.nome);
+    const endereco = asText(data?.logradouro);
+    const numero = asText(data?.numero);
+    const complemento = asText(data?.complemento);
+    const bairro = asText(data?.bairro);
+    const cidade = asText(data?.municipio || data?.cidade);
+    const uf = asText(data?.uf);
+    const cep = asText(data?.cep);
+    const telefone = asText(data?.telefone);
+    const email = asText(data?.email);
+    const ibge = asText(data?.ibge || data?.codigo_municipio_ibge);
+
+    setFormPessoa(pessoa);
+    setFormCpfCnpj(formatDocumento(documentoRetorno, pessoa));
+    setFormNome(nomeFantasia || razaoSocial);
+    setFormRazaoSocial(razaoSocial || nomeFantasia);
+    setFormEndereco(endereco);
+    setFormNumero(numero);
+    setFormComplemento(limitComplemento(complemento));
+    setFormBairro(bairro);
+    setFormCidade(cidade);
+    setFormUf(uf);
+    setFormCep(formatCep(cep));
+    setFormTelefone(telefone);
+    setFormEmail(email);
+    setFormIbge(ibge);
+    setFormErrors({});
+  };
+
+  const consultarIbgePorCep = async (baseUrl: string, token: string, cepInformado: string) => {
+    const cep = onlyDigits(cepInformado);
+    if (cep.length !== 8) return;
+
+    try {
+      const resp = await consultarCepCall(baseUrl, token, cep);
+      if (!resp.succeeded) return;
+
+      const data = resp.jsonBody ?? resp.data ?? {};
+      const ibge = asText(data?.ibge);
+      if (ibge) {
+        setFormIbge(ibge);
+      }
+    } catch {
+      // Silencioso para não interromper o preenchimento principal vindo da consulta de CNPJ.
+    }
+  };
+
+  const buscarPorDocumento = async () => {
+    if (buscandoDocumento || modoConsulta) return;
+
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+
+    if (!baseUrl || !token) {
+      showToast('Informações de sessão não encontradas.', 'error');
+      return;
+    }
+
+    const documento = onlyDigits(formCpfCnpj);
+    if (documento.length !== 11 && documento.length !== 14) {
+      setStatusConsultaDocumento('ERROR');
+      showToast('Informe um CPF ou CNPJ válido.', 'error');
+      return;
+    }
+
+    setBuscandoDocumento(true);
+    try {
+      const resp = await consultarCnpjCall(baseUrl, token, documento);
+      if (!resp.succeeded) {
+        setStatusConsultaDocumento('ERROR');
+        const apiMessage = getApiErrorMessage(resp, 'Não foi possível consultar o documento.');
+        showToast(apiMessage || 'Não foi possível consultar o documento.', 'error');
+        return;
+      }
+
+      const data = resp.jsonBody ?? resp.data ?? {};
+      const status = asText(data?.status).toUpperCase();
+      setStatusConsultaDocumento(status || 'ERROR');
+
+      if (status !== 'OK') {
+        showToast(asText(data?.message) || 'Não foi possível consultar o documento.', 'error');
+        return;
+      }
+
+      preencherFormularioComDocumento(data, documento);
+      await consultarIbgePorCep(baseUrl, token, asText(data?.cep));
+      showToast('Dados preenchidos com sucesso.', 'success');
+    } catch (error: any) {
+      setStatusConsultaDocumento('ERROR');
+      showToast(error?.message || 'Erro ao consultar documento.', 'error');
+    } finally {
+      setBuscandoDocumento(false);
+    }
+  };
+
   const salvarCliente = async () => {
     if (saving) return;
 
@@ -396,7 +515,7 @@ export function ClientesPage() {
     const estado = formUf.trim().toUpperCase();
     const bairro = formBairro.trim();
     const cidade = formCidade.trim();
-    const complemento = formComplemento.trim();
+    const complemento = formComplemento.trim().slice(0, 20);
     const cnpjCpf = onlyDigits(formCpfCnpj);
     const telefone = onlyDigits(formTelefone);
     const email = formEmail.trim();
@@ -478,6 +597,9 @@ export function ClientesPage() {
       setSaving(false);
     }
   };
+
+  const bloqueadoPorBuscaDocumento = !modoConsulta && formModoCadastro === 'documento';
+  const camposSomenteLeitura = modoConsulta || bloqueadoPorBuscaDocumento;
 
   return (
     <main className="clientes-page list-layout-page">
@@ -679,7 +801,85 @@ export function ClientesPage() {
 
             <section className="module-form">
               <div className="form-grid-3">
-                <label className="form-grid-3__full">
+                {!modoConsulta && (
+                  <label className="form-grid-3__full">
+                    <span>Modo de cadastro</span>
+                    <SearchableSelect
+                      value={formModoCadastro}
+                      onChange={(nextValue) => {
+                        const modo = (nextValue as 'manual' | 'documento') || 'manual';
+                        setFormModoCadastro(modo);
+                        setStatusConsultaDocumento('');
+                        if (modo === 'documento') {
+                          setFormErrors({});
+                        }
+                      }}
+                      options={MODO_CADASTRO_OPTIONS}
+                      ariaLabel="Modo de cadastro"
+                      searchPlaceholder="Pesquisar modo"
+                      disabled={saving}
+                    />
+                  </label>
+                )}
+
+                <label>
+                  <span>Documento (CPF/CNPJ)</span>
+                  <div className={`clientes-cep-input${modoConsulta ? ' is-readonly' : ''}`}>
+                    <input
+                      className={formErrors.cpfCnpj ? 'module-input-error' : ''}
+                      value={formCpfCnpj}
+                      onChange={(event) => {
+                        const nextValue = event.target.value;
+
+                        if (formModoCadastro === 'documento') {
+                          const digits = onlyDigits(nextValue);
+                          setFormPessoa(digits.length > 11 ? '2' : '1');
+                          setFormCpfCnpj(formatDocumentoAuto(nextValue));
+                        } else {
+                          setFormCpfCnpj(formatDocumento(nextValue, formPessoa));
+                        }
+
+                        if (formErrors.cpfCnpj) setFormErrors((prev) => ({ ...prev, cpfCnpj: undefined }));
+                      }}
+                      readOnly={modoConsulta}
+                      inputMode="numeric"
+                      maxLength={18}
+                    />
+
+                    {!modoConsulta && formModoCadastro === 'documento' && (
+                      <button
+                        className="icon-button module-action-button clientes-cep-search"
+                        type="button"
+                        onClick={() => void buscarPorDocumento()}
+                        disabled={saving || buscandoDocumento}
+                        aria-label="Buscar documento"
+                        title="Buscar documento"
+                      >
+                        <IoSearchOutline size={16} />
+                      </button>
+                    )}
+                  </div>
+                  {formErrors.cpfCnpj && !modoConsulta ? <small className="module-field-error">{formErrors.cpfCnpj}</small> : null}
+                </label>
+
+                {formModoCadastro === 'documento' && (
+                  <label>
+                    <span>Status da consulta</span>
+                    <input
+                      className={`clientes-status-consulta ${
+                        statusConsultaDocumento === 'OK'
+                          ? 'is-ok'
+                          : statusConsultaDocumento
+                            ? 'is-error'
+                            : ''
+                      }`}
+                      value={statusConsultaDocumento || '-'}
+                      readOnly
+                    />
+                  </label>
+                )}
+
+                <label>
                   <span>Nome</span>
                   <input
                     className={formErrors.nome ? 'module-input-error' : ''}
@@ -688,7 +888,7 @@ export function ClientesPage() {
                       setFormNome(event.target.value);
                       if (formErrors.nome) setFormErrors((prev) => ({ ...prev, nome: undefined }));
                     }}
-                    readOnly={modoConsulta}
+                    readOnly={camposSomenteLeitura}
                   />
                   {formErrors.nome && !modoConsulta ? <small className="module-field-error">{formErrors.nome}</small> : null}
                 </label>
@@ -702,7 +902,7 @@ export function ClientesPage() {
                       setFormRazaoSocial(event.target.value);
                       if (formErrors.razaoSocial) setFormErrors((prev) => ({ ...prev, razaoSocial: undefined }));
                     }}
-                    readOnly={modoConsulta}
+                    readOnly={camposSomenteLeitura}
                   />
                   {formErrors.razaoSocial && !modoConsulta ? <small className="module-field-error">{formErrors.razaoSocial}</small> : null}
                 </label>
@@ -715,29 +915,13 @@ export function ClientesPage() {
                     options={PESSOA_OPTIONS}
                     ariaLabel="Tipo pessoa"
                     searchPlaceholder="Pesquisar tipo"
-                    disabled={modoConsulta}
+                    disabled={camposSomenteLeitura}
                   />
-                </label>
-
-                <label>
-                  <span>{formPessoa === '1' ? 'CPF' : 'CNPJ'}</span>
-                  <input
-                    className={formErrors.cpfCnpj ? 'module-input-error' : ''}
-                    value={formCpfCnpj}
-                    onChange={(event) => {
-                      setFormCpfCnpj(formatDocumento(event.target.value, formPessoa));
-                      if (formErrors.cpfCnpj) setFormErrors((prev) => ({ ...prev, cpfCnpj: undefined }));
-                    }}
-                    readOnly={modoConsulta}
-                    inputMode="numeric"
-                    maxLength={formPessoa === '1' ? 14 : 18}
-                  />
-                  {formErrors.cpfCnpj && !modoConsulta ? <small className="module-field-error">{formErrors.cpfCnpj}</small> : null}
                 </label>
 
                 <label>
                   <span>CEP</span>
-                  <div className={`clientes-cep-input${modoConsulta ? ' is-readonly' : ''}`}>
+                  <div className={`clientes-cep-input${camposSomenteLeitura ? ' is-readonly' : ''}`}>
                     <input
                       className={formErrors.cep ? 'module-input-error' : ''}
                       value={formCep}
@@ -745,12 +929,12 @@ export function ClientesPage() {
                         setFormCep(formatCep(event.target.value));
                         if (formErrors.cep) setFormErrors((prev) => ({ ...prev, cep: undefined }));
                       }}
-                      readOnly={modoConsulta}
+                      readOnly={camposSomenteLeitura}
                       inputMode="numeric"
                       maxLength={9}
                     />
 
-                    {!modoConsulta && (
+                    {!camposSomenteLeitura && (
                       <button
                         className="icon-button module-action-button clientes-cep-search"
                         type="button"
@@ -831,7 +1015,7 @@ export function ClientesPage() {
                       setFormNumero(event.target.value);
                       if (formErrors.numero) setFormErrors((prev) => ({ ...prev, numero: undefined }));
                     }}
-                    readOnly={modoConsulta}
+                    readOnly={camposSomenteLeitura}
                   />
                   {formErrors.numero && !modoConsulta ? <small className="module-field-error">{formErrors.numero}</small> : null}
                 </label>
@@ -840,8 +1024,9 @@ export function ClientesPage() {
                   <span>Complemento</span>
                   <input
                     value={formComplemento}
-                    onChange={(event) => setFormComplemento(event.target.value)}
-                    readOnly={modoConsulta}
+                    onChange={(event) => setFormComplemento(limitComplemento(event.target.value))}
+                    readOnly={camposSomenteLeitura}
+                    maxLength={20}
                   />
                 </label>
 
@@ -850,7 +1035,7 @@ export function ClientesPage() {
                   <input
                     value={formTelefone}
                     onChange={(event) => setFormTelefone(event.target.value)}
-                    readOnly={modoConsulta}
+                    readOnly={camposSomenteLeitura}
                   />
                 </label>
 
@@ -863,13 +1048,13 @@ export function ClientesPage() {
                       setFormEmail(event.target.value);
                       if (formErrors.email) setFormErrors((prev) => ({ ...prev, email: undefined }));
                     }}
-                    readOnly={modoConsulta}
+                    readOnly={camposSomenteLeitura}
                   />
                   {formErrors.email && !modoConsulta ? <small className="module-field-error">{formErrors.email}</small> : null}
                 </label>
 
                 <label>
-                  <span>IBGE</span>
+                  <span>Código da Cidade</span>
                   <input value={formIbge} onChange={(event) => setFormIbge(event.target.value)} readOnly />
                 </label>
               </div>
@@ -879,7 +1064,7 @@ export function ClientesPage() {
                   className="secondary-button"
                   type="button"
                   onClick={() => setClienteOpen(false)}
-                  disabled={saving}
+                  disabled={saving || buscandoDocumento}
                 >
                   Cancelar
                 </button>
@@ -889,7 +1074,7 @@ export function ClientesPage() {
                     className="primary-button"
                     type="button"
                     onClick={() => void salvarCliente()}
-                    disabled={saving}
+                    disabled={saving || buscandoDocumento}
                   >
                     {saving ? 'Salvando...' : 'Salvar'}
                   </button>

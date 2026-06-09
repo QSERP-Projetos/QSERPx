@@ -213,7 +213,11 @@ body {
 }
 
 .pedido-venda-status-image-modal {
-  width: min(760px, 96vw);
+  width: min(920px, 98vw);
+}
+
+.modal-backdrop.pedido-venda-status-image-backdrop {
+  z-index: 10040;
 }
 
 .pedido-venda-status-image-body {
@@ -6609,6 +6613,23 @@ select.text-field:focus {
   align-self: stretch;
 }
 
+.clientes-status-consulta {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.clientes-status-consulta.is-ok {
+  color: #166534;
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+.clientes-status-consulta.is-error {
+  color: #991b1b;
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
 .ordens-servico-produto-input {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -7802,7 +7823,19 @@ select.text-field:focus {
 }
 
 .pedido-venda-tabela-preco-modal {
+  --pedido-venda-bulk-date-width: 230px;
   width: min(980px, 100%);
+}
+
+.pedido-venda-tabela-preco-search-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.pedido-venda-tabela-preco-search-button {
+  min-width: 150px;
 }
 
 .pedido-venda-tabela-preco-backdrop {
@@ -7810,7 +7843,65 @@ select.text-field:focus {
 }
 
 .pedido-venda-tabela-preco-actions {
-  justify-content: flex-start;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.pedido-venda-tabela-preco-actions__include-selected {
+  min-width: var(--pedido-venda-bulk-date-width, 230px) !important;
+}
+
+.pedido-venda-tabela-preco-bulk-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) var(--pedido-venda-bulk-date-width);
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.pedido-venda-tabela-preco-bulk-field--date {
+  width: 100%;
+}
+
+.pedido-venda-tabela-preco-bulk-field {
+  min-width: 0;
+}
+
+.pedido-venda-tabela-preco-bulk-field input,
+.pedido-venda-tabela-preco-bulk-field .date-picker__control,
+.pedido-venda-tabela-preco-bulk-field .date-picker__control input {
+  min-height: 40px;
+}
+
+.pedido-venda-tabela-preco-bulk-field .date-picker {
+  width: 100%;
+}
+
+.pedido-venda-tabela-preco-bulk-field .date-picker__control {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+}
+
+.pedido-venda-tabela-preco-bulk-field .date-picker__control input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+}
+
+.pedido-venda-tabela-preco-bulk-field .date-picker__control input::placeholder {
+  color: var(--color-muted);
+  opacity: 0.72;
+}
+
+.pedido-venda-tabela-preco-bulk-field .date-picker__control input:focus {
+  outline: none;
+}
+
+.pedido-venda-tabela-preco-bulk-field .date-picker__control:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
 }
 
 .pedido-venda-tabela-preco-table-wrap {
@@ -8385,34 +8476,112 @@ select.text-field:focus {
   table-layout: fixed;
 }
 
-.pedido-venda-tabela-preco-table-wrap th:nth-child(1),
-.pedido-venda-tabela-preco-table-wrap td:nth-child(1) {
-  width: 16%;
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral th:nth-child(1),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral td:nth-child(1) {
+  width: 8%;
+  text-align: center;
 }
 
-.pedido-venda-tabela-preco-table-wrap th:nth-child(2),
-.pedido-venda-tabela-preco-table-wrap td:nth-child(2) {
-  width: 42%;
-}
-
-.pedido-venda-tabela-preco-table-wrap th:nth-child(3),
-.pedido-venda-tabela-preco-table-wrap td:nth-child(3) {
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral th:nth-child(2),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral td:nth-child(2) {
   width: 14%;
 }
 
-.pedido-venda-tabela-preco-table-wrap th:nth-child(4),
-.pedido-venda-tabela-preco-table-wrap td:nth-child(4) {
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral th:nth-child(3),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral td:nth-child(3) {
+  width: 36%;
+}
+
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral th:nth-child(4),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral td:nth-child(4) {
+  width: 12%;
+}
+
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral th:nth-child(5),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral td:nth-child(5) {
+  width: 21%;
+}
+
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral th:nth-child(6),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral td:nth-child(6) {
+  width: 9%;
+  text-align: center;
+}
+
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item th:nth-child(1),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item td:nth-child(1) {
+  width: 14%;
+}
+
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item th:nth-child(2),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item td:nth-child(2) {
+  width: 40%;
+}
+
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item th:nth-child(3),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item td:nth-child(3) {
+  width: 12%;
+}
+
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item th:nth-child(4),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item td:nth-child(4) {
   width: 16%;
 }
 
-.pedido-venda-tabela-preco-table-wrap th:nth-child(5),
-.pedido-venda-tabela-preco-table-wrap td:nth-child(5) {
-  width: 12%;
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item th:nth-child(5),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item td:nth-child(5) {
+  width: 9%;
   text-align: center;
+}
+
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item th:nth-child(6),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item td:nth-child(6) {
+  width: 9%;
+  text-align: center;
+}
+
+.pedido-venda-tabela-preco-selection-cell {
+  text-align: center;
+}
+
+.pedido-venda-tabela-preco-selection-cell input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary, #2563eb);
 }
 
 .pedido-venda-tabela-preco-action-cell {
   text-align: center;
+}
+
+.pedido-venda-tabela-preco-thumb-cell {
+  text-align: center;
+}
+
+.pedido-venda-tabela-preco-thumb-button {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  background: var(--color-surface-alt);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.pedido-venda-tabela-preco-thumb {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.pedido-venda-tabela-preco-thumb-empty {
+  color: var(--color-muted);
+  font-size: 0.78rem;
 }
 
 .pedido-venda-tabela-preco-action-button {
