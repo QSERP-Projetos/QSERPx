@@ -8141,6 +8141,101 @@ select.text-field:focus {
   line-height: 1.4;
 }
 
+.contas-receber-panel .module-table td:has(> input[type="checkbox"]) {
+  width: 1px;
+  padding: 0 8px !important;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* ===== Modal Adiantamentos Recebidos ===== */
+
+.modal-card--adiantamentos {
+  width: min(820px, 96vw);
+  height: 560px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal-card--adiantamentos .modal-card__header h2 {
+  font-size: 0.94rem;
+  margin: 0;
+}
+
+/* Tab bar — mesmo estilo das guias de Contas a Receber */
+.adiantamento-tabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0;
+  border-bottom: 2px solid var(--color-border);
+  padding: 0 4px;
+  background: var(--color-surface);
+}
+
+.adiantamento-tab {
+  padding: 7px 18px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.adiantamento-tab:hover {
+  color: var(--color-text);
+}
+
+.adiantamento-tab--active {
+  color: var(--color-primary, #2563eb);
+  border-bottom-color: var(--color-primary, #2563eb);
+}
+
+.modal-card--adiantamentos .abatimento-table-wrap {
+  overflow-y: auto;
+}
+
+/* Rodapé */
+.adiantamento-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.adiantamento-footer__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adiantamento-footer__devolver-box {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 4px 12px 6px;
+  margin: 0;
+}
+
+.adiantamento-footer__devolver-legend {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  padding: 0 4px;
+}
+
+.adiantamento-footer__devolver-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .contas-receber-footer {
   display: flex;
   flex-wrap: wrap;
@@ -8341,6 +8436,329 @@ select.text-field:focus {
 
 .pedido-venda-tabela-preco-card-actions {
   justify-content: flex-end;
+}
+
+/* ============================================
+   Modal Lançamento de Contas a Receber
+   ============================================ */
+
+.modal-card--lancamento {
+  width: min(900px, 96vw);
+  max-height: 94vh;
+  overflow: hidden;
+  display: flex !important;
+  flex-direction: column;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+.lancamento-modal-header {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-border-soft);
+  flex-shrink: 0;
+}
+
+.lancamento-modal-header h2 {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.lancamento-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-primary-border);
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+.lancamento-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Two-column layout */
+.lancamento-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.lancamento-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 4-column form grid: lbl | inp | lbl | inp */
+.lancamento-form-grid4 {
+  display: grid;
+  grid-template-columns: max-content 1fr max-content 1fr;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+/* 2-column form grid: lbl | control */
+.lancamento-form-grid2 {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+/* Labels */
+.lancamento-lbl {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* Compact inputs */
+.lancamento-inp {
+  height: 34px;
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.lancamento-inp:focus {
+  outline: none;
+  border-color: var(--color-primary-border);
+  background: var(--color-input-bg-focus);
+}
+
+.lancamento-inp[readonly] {
+  background: var(--color-surface);
+  cursor: default;
+}
+
+.lancamento-inp--right {
+  text-align: right;
+}
+
+.lancamento-inp--sm {
+  width: 60px;
+  min-width: 60px;
+  flex: 0 0 60px;
+}
+
+.lancamento-inp--desc {
+  flex: 1 1 100px;
+  min-width: 80px;
+}
+
+.lancamento-inp--nf {
+  width: 100px;
+  min-width: 60px;
+  flex: 0 0 100px;
+}
+
+.lancamento-inp--tipo {
+  width: 90px;
+  min-width: 90px;
+  flex: 0 0 90px;
+  text-align: center;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+/* Compact select */
+.lancamento-select {
+  height: 26px;
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  border-radius: 5px;
+  padding: 0 6px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  width: 100%;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.lancamento-select:focus {
+  outline: none;
+  border-color: var(--color-primary-border);
+}
+
+/* SearchableSelect override within lancamento modal */
+.modal-card--lancamento .searchable-select__control {
+  padding: 4px 10px !important;
+  border-radius: 8px !important;
+  min-height: 34px !important;
+  height: 34px !important;
+  font-size: 0.8rem !important;
+  gap: 6px !important;
+}
+
+.modal-card--lancamento .searchable-select__chevron {
+  width: 14px;
+  height: 14px;
+}
+
+/* DatePicker override — style the inner input to match lancamento-inp */
+.modal-card--lancamento .date-picker {
+  width: 100%;
+}
+
+.modal-card--lancamento .date-picker__control input {
+  height: 34px;
+  min-height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  font-size: 0.8rem;
+  font-family: inherit;
+  padding: 0 42px 0 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modal-card--lancamento .date-picker__control input:focus {
+  outline: none;
+  border-color: var(--color-primary-border);
+  background: var(--color-input-bg-focus);
+}
+
+/* Combo + code/desc field group */
+.lancamento-combo-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.lancamento-combo-group .searchable-select {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Financial values section */
+.lancamento-values-box {
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm, 10px);
+  padding: 8px 10px;
+  background: var(--color-surface-alt);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lancamento-values-grid {
+  display: grid;
+  grid-template-columns: max-content 90px max-content 90px;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.lancamento-calcular-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.lancamento-calcular-row .lancamento-select,
+.lancamento-calcular-row .searchable-select {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Textareas */
+.lancamento-textarea-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lancamento-textarea {
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 56px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.lancamento-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary-border);
+  background: var(--color-input-bg-focus);
+}
+
+.lancamento-textarea-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+/* Footer */
+.lancamento-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
+  border-radius: 0 0 var(--radius-md, 14px) var(--radius-md, 14px);
+  flex-shrink: 0;
+}
+
+.lancamento-parcelas-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.lancamento-parcelas-hint {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lancamento-modal-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.lancamento-modal-actions .secondary-button,
+.lancamento-modal-actions .primary-button {
+  min-width: 80px;
+  width: auto;
 }
 
 @media (max-width: 1024px) {

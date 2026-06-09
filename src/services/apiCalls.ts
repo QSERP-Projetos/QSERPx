@@ -2510,7 +2510,7 @@ export const abatimentoDocCall = async (
   const url = `${normalizeBaseUrl(baseUrl)}/api/v1/AbatimentoDoc`;
   return apiManager.makeApiCall(
     url,
-    ApiCallType.POST,
+    ApiCallType.PUT,
     jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
     undefined,
     body,
@@ -2536,6 +2536,246 @@ export const listContasReceberAbatimentoCall = async (
     url,
     ApiCallType.GET,
     jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+export const estornarDocumentoAbatCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  body: {
+    CodigoEmpresa: number;
+    NumLancOriginal: number;
+    NumLancAbatimento: number;
+    ValorEstornar: number;
+    ValorAbatido: number;
+  },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/EstornarDocumentoAbat`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.PUT,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    undefined,
+    body,
+  );
+};
+
+export const adiantamentosRecebidosCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: {
+    codigoEmpresa: number | string;
+    codigoCedente: number | string;
+    tipoCedente: string;
+    tipoAdiantamento: 'A' | 'E';
+  },
+): Promise<ApiCallResponse> => {
+  const url =
+    `${normalizeBaseUrl(baseUrl)}/api/v1/AdiantamentosRecebidos` +
+    `?codigoEmpresa=${encodeURIComponent(String(params.codigoEmpresa))}` +
+    `&codigoCedente=${encodeURIComponent(String(params.codigoCedente))}` +
+    `&tipoCedente=${encodeURIComponent(String(params.tipoCedente))}` +
+    `&tipoAdiantamento=${encodeURIComponent(params.tipoAdiantamento)}`;
+
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+export const cabecalhoEstornoAbatCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: {
+    codigoEmpresa: number | string;
+    numLanc: number;
+  },
+): Promise<ApiCallResponse> => {
+  const url =
+    `${normalizeBaseUrl(baseUrl)}/api/v1/CabecalhoEstornoAbat` +
+    `?codigoEmpresa=${encodeURIComponent(String(params.codigoEmpresa))}` +
+    `&numLanc=${encodeURIComponent(String(params.numLanc))}`;
+
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+export const listContasReceberEstornoAbatNCCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: {
+    codigoEmpresa: number | string;
+    codCedente: number | string;
+    tipoCedente: string;
+    numLancPrincipal: number;
+  },
+): Promise<ApiCallResponse> => {
+  const url =
+    `${normalizeBaseUrl(baseUrl)}/api/v1/ContasReceberEstornoAbatNC` +
+    `?codigoEmpresa=${encodeURIComponent(String(params.codigoEmpresa))}` +
+    `&codCedente=${encodeURIComponent(String(params.codCedente))}` +
+    `&tipoCedente=${encodeURIComponent(String(params.tipoCedente))}` +
+    `&NumLancPrincipal=${encodeURIComponent(String(params.numLancPrincipal))}`;
+
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+export const encerrarReabrirAdiantamentoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: {
+    codigoEmpresa: number | string;
+    numLanc: number;
+    encerrar: boolean;
+    temDevolv: boolean;
+  },
+): Promise<ApiCallResponse> => {
+  const url =
+    `${normalizeBaseUrl(baseUrl)}/api/v1/EncerrarReabrirAdiantamentos` +
+    `?codigoEmpresa=${encodeURIComponent(String(params.codigoEmpresa))}` +
+    `&NumLanc=${encodeURIComponent(String(params.numLanc))}` +
+    `&encerrar=${params.encerrar}` +
+    `&temDevolv=${params.temDevolv}`;
+
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.PUT,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+export const devolverSaldoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: {
+    codigoEmpresa: number | string;
+    numLanc: number;
+    dataDevolucao: string;
+    usuario: string;
+    devolver: boolean;
+    temDevolv: boolean;
+  },
+): Promise<ApiCallResponse> => {
+  const url =
+    `${normalizeBaseUrl(baseUrl)}/api/v1/DevolverSaldo` +
+    `?codigoEmpresa=${encodeURIComponent(String(params.codigoEmpresa))}` +
+    `&NumLanc=${encodeURIComponent(String(params.numLanc))}` +
+    `&dataDevolucao=${encodeURIComponent(params.dataDevolucao)}` +
+    `&Usuario=${encodeURIComponent(params.usuario)}` +
+    `&devolver=${params.devolver}` +
+    `&temDevolv=${params.temDevolv}`;
+
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.PUT,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+export const cancelarContasReceberCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  body: {
+    codigoEmpresa: number | string;
+    docs: { CodigoEmpresa: number; NumLanc: number; TipoDoc: number }[];
+    cancelaLote: boolean;
+    excluirOutros: boolean;
+    descricao: string;
+    usuario: string;
+  },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/CancelaContasReceber`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.PUT,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    undefined,
+    body,
+  );
+};
+
+export const consultaPortadorCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ConsultaPortador`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+export const contasFinanceirasCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ContasFinanceiras`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+export const consultaPedidoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: { codigoEmpresa: number | string; numPedido: string | number },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ConsultaPedido`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    { codigoEmpresa: params.codigoEmpresa, numPedido: params.numPedido },
+  );
+};
+
+export const consultaNotaClienteCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: { codigoEmpresa: number | string; numNota: string; serNota: string; tipoDest: string; codigoDest: string | number },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ConsultaNotaCliente`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    { codigoEmpresa: params.codigoEmpresa, numNota: params.numNota, serNota: params.serNota, tipoDest: params.tipoDest, codigoDest: params.codigoDest },
+  );
+};
+
+export const atualizaValorCalculadoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: {
+    ValorReceber: number;
+    ValorAbatimento: number;
+    ValorAbatido: number;
+    ValorPis: number;
+    ValorCofins: number;
+    ValorDesconto: number;
+    ValorJuros: number;
+    ValorOutrasDesp: number;
+    ValorCalculado: number;
+    Calcular: boolean;
+  },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/AtualizaValorCalculado`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    params,
   );
 };
 
@@ -2652,4 +2892,9 @@ export default {
   obterOcorrenciasNotaFiscalCall,
   obterClientesFornecedoresCall,
   obterEmpresasSeriesNFCall,
+  consultaPortadorCall,
+  contasFinanceirasCall,
+  atualizaValorCalculadoCall,
+  consultaPedidoCall,
+  consultaNotaClienteCall,
 };
