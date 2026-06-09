@@ -92,6 +92,7 @@ type TabelaPrecoItem = {
   unidade: string;
   moeda: string;
   preco: number;
+  imagemUrl?: string;
 };
 
 type PlanilhaItemPreview = {
@@ -140,6 +141,22 @@ const formatQtdPlanilhaInput = (value: string) => {
 const parseStringArrayFromUnknown = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];
   return value.map((entry) => String(entry ?? '').trim()).filter(Boolean);
+};
+
+const normalizeImageSrc = (value: unknown) => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+
+  if (/^https?:\/\//i.test(raw) || /^data:image\//i.test(raw) || /^blob:/i.test(raw) || raw.startsWith('/') || /^gxdbfile:/i.test(raw)) {
+    return raw;
+  }
+
+  const base64Only = raw.replace(/^base64,/i, '').trim();
+  if (/^[A-Za-z0-9+/]+={0,2}$/.test(base64Only) && base64Only.length > 100) {
+    return `data:image/jpeg;base64,${base64Only}`;
+  }
+
+  return raw;
 };
 
 const parseNumber = (value: string) => {
@@ -509,7 +526,6 @@ export function PedidoVendaFormPanel({
   const [clienteSelectionVersion, setClienteSelectionVersion] = useState(0);
   const [precoModalOpen, setPrecoModalOpen] = useState(false);
   const [modoTabelaPreco, setModoTabelaPreco] = useState<'item' | 'geral'>('item');
-  const [itemConsultaPrecoIndex, setItemConsultaPrecoIndex] = useState<number | null>(null);
   const [loadingTabelaPreco, setLoadingTabelaPreco] = useState(false);
   const [tabelaPrecoRows, setTabelaPrecoRows] = useState<TabelaPrecoItem[]>([]);
   const [tabelaPrecoTermo, setTabelaPrecoTermo] = useState('');
@@ -562,7 +578,6 @@ export function PedidoVendaFormPanel({
     setPercComissaoRep('0');
     setCodigoTabela('0');
     setItens([emptyItem()]);
-    setItemConsultaPrecoIndex(null);
     setModoTabelaPreco('item');
     setTabelaPrecoRows([]);
     setTabelaPrecoTermo('');
@@ -2291,7 +2306,7 @@ export function PedidoVendaFormPanel({
         ? [['Item', 'Código', 'Descrição', 'Unid.', 'Qtd', 'Entr.', 'Saldo', 'Preço', 'Total item', 'Pedido cliente', 'Data entrega']]
         : [['Item', 'Código', 'Descrição', 'Unid.', 'Qtd', 'Preço', 'Total item', 'Pedido cliente', 'Data entrega']];
 
-      const itensTableColumnStyles = includeEntregueSaldoPdf
+      const itensTableColumnStyles: Record<string, any> = includeEntregueSaldoPdf
         ? {
           0: { cellWidth: 11, halign: 'right' as const },
           1: { cellWidth: 20 },
@@ -2514,17 +2529,26 @@ export function PedidoVendaFormPanel({
     setMobileItemModalOpen(true);
   };
 
+  const handleAbrirImagemTabelaPreco = (row: TabelaPrecoItem) => {
+    if (!row.imagemUrl) return;
+    setImagemStatusSrc(row.imagemUrl);
+    setImagemStatusTitulo(`Item ${row.codigo} - ${row.descricao}`);
+    setImagemStatusOpen(true);
+  };
+
   const mapTabelaPrecoRows = useCallback((payload: any): TabelaPrecoItem[] => {
     const rows = getRows(payload);
-    return rows
-      .map((item: any) => {
+    const mappedRows: TabelaPrecoItem[] = [];
+
+    rows.forEach((item: any) => {
         const codigo = String(item?.codigo_Produto ?? item?.Codigo_Produto ?? item?.codigo ?? item?.material ?? '').trim();
         const descricao = String(
           item?.Descricao_Portug
           ?? item?.descricao_Portug
+          ?? item?.Descricao
+          ?? item?.descricao
           ?? item?.descr_Produto
           ?? item?.Descr_Produto
-          ?? item?.descricao
           ?? item?.descMaterial
           ?? '',
         ).trim();
@@ -2533,17 +2557,31 @@ export function PedidoVendaFormPanel({
         const preco = parseNumber(
           String(item?.Preco_Tabela ?? item?.preco_Tabela ?? item?.preco_Venda ?? item?.Preco_Venda ?? item?.preco ?? item?.valor ?? 0),
         );
+        const imagemUrl = normalizeImageSrc(
+          item?.imagem_Arquivo_GXI
+          ?? item?.Imagem_Arquivo_GXI
+          ?? item?.url_Imagem
+          ?? item?.Url_Imagem
+          ?? item?.imagemArquivo
+          ?? item?.ImagemArquivo
+          ?? item?.imagem
+          ?? item?.codigo_Arquivo_Foto
+          ?? item?.Codigo_Arquivo_Foto
+          ?? '',
+        );
 
-        if (!codigo) return null;
-        return {
+        if (!codigo) return;
+        mappedRows.push({
           codigo,
           descricao: descricao || 'Sem descrição',
           unidade,
           moeda,
           preco,
-        };
-      })
-      .filter((item): item is TabelaPrecoItem => Boolean(item));
+          imagemUrl,
+        });
+      });
+
+    return mappedRows;
   }, []);
 
   const carregarTabelaPreco = useCallback(
@@ -2585,13 +2623,14 @@ export function PedidoVendaFormPanel({
       return;
     }
 
-    setItemConsultaPrecoIndex(index);
+    const source = itens.find((item) => item.Pedido_Cliente?.trim() || item.Data_Entrega?.trim()) || itens[index] || itens[0] || emptyItem();
+
     setModoTabelaPreco('item');
     setTabelaPrecoTermo('');
     setTabelaPrecoRows([]);
     setTabelaPrecoSelecionados([]);
-    setTabelaPrecoPedidoCliente('');
-    setTabelaPrecoDataEntrega('');
+    setTabelaPrecoPedidoCliente(source.Pedido_Cliente || '');
+    setTabelaPrecoDataEntrega(source.Data_Entrega || '');
     setPrecoModalOpen(true);
   };
 
@@ -2603,7 +2642,6 @@ export function PedidoVendaFormPanel({
 
     const source = itens.find((item) => item.Pedido_Cliente?.trim() || item.Data_Entrega?.trim()) || itens[0] || emptyItem();
 
-    setItemConsultaPrecoIndex(null);
     setModoTabelaPreco('geral');
     setTabelaPrecoTermo('');
     setTabelaPrecoRows([]);
@@ -2664,10 +2702,10 @@ export function PedidoVendaFormPanel({
           ...emptyItem(),
           Codigo_Produto: row.codigo,
           Descricao_Produto: row.descricao,
-          Qtd_Entregar: '1.000',
+          Qtd_Entregar: '0.000',
           Preco_Negociado: formatFixedNumber(discounted.price, 4),
           Preco_Base: formatDecimalString(row.preco, 4),
-          Total_Item: formatFixedNumber(discounted.price, 2),
+          Total_Item: '0.00',
           Unid_Med_Venda: row.unidade || '',
           Moeda: row.moeda || 'R$',
           Moeda_Preco: row.moeda || 'R$',
@@ -2745,56 +2783,6 @@ export function PedidoVendaFormPanel({
     incluirProdutosDaTabelaPreco(selectedRows);
   };
 
-  const handleSelecionarItemTabelaPreco = (item: TabelaPrecoItem) => {
-    if (itemConsultaPrecoIndex === null) return;
-    const discounted = calculateDiscountedPrice(item.preco);
-
-    setItens((prev) => {
-      const next = [...prev];
-      const current = next[itemConsultaPrecoIndex];
-      if (!current) return prev;
-
-      next[itemConsultaPrecoIndex] = {
-        ...current,
-        Codigo_Produto: item.codigo,
-        Descricao_Produto: item.descricao,
-        Preco_Negociado: formatFixedNumber(discounted.price, 4),
-        Preco_Base: formatDecimalString(item.preco, 4),
-        Unid_Med_Venda: item.unidade || current.Unid_Med_Venda,
-        Moeda: item.moeda || current.Moeda,
-        Moeda_Preco: item.moeda || current.Moeda_Preco,
-      };
-      return next;
-    });
-
-    if (discounted.applied) {
-      setDescontoAplicadoNosItens(true);
-    }
-
-    setPrecoModalOpen(false);
-  };
-
-  const handleSelecionarItemTabelaPrecoMobile = (item: TabelaPrecoItem) => {
-    const discounted = calculateDiscountedPrice(item.preco);
-
-    setMobileItemDraft((prev) => ({
-      ...prev,
-      Codigo_Produto: item.codigo,
-      Descricao_Produto: item.descricao,
-      Preco_Negociado: formatFixedNumber(discounted.price, 4),
-      Preco_Base: formatDecimalString(item.preco, 4),
-      Unid_Med_Venda: item.unidade || prev.Unid_Med_Venda,
-      Moeda: item.moeda || prev.Moeda,
-      Moeda_Preco: item.moeda || prev.Moeda_Preco,
-    }));
-
-    if (discounted.applied) {
-      setDescontoAplicadoNosItens(true);
-    }
-
-    setPrecoModalOpen(false);
-  };
-
   const handleConfirmarItemMobile = () => {
     const codigoProduto = mobileItemDraft.Codigo_Produto.trim();
     const qtd = parseNumber(mobileItemDraft.Qtd_Entregar);
@@ -2846,7 +2834,6 @@ export function PedidoVendaFormPanel({
       return;
     }
 
-    setItemConsultaPrecoIndex(null);
     setModoTabelaPreco('item');
     setTabelaPrecoTermo('');
     setTabelaPrecoRows([]);
@@ -4012,16 +3999,16 @@ export function PedidoVendaFormPanel({
       ) : null}
 
       {imagemStatusOpen ? (
-        <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Visualização da imagem de validação">
+        <section className="modal-backdrop pedido-venda-status-image-backdrop" role="dialog" aria-modal="true" aria-label="Visualização de imagem">
           <article className="modal-card pedido-venda-status-image-modal">
             <header className="modal-card__header">
-              <h2>{imagemStatusTitulo || 'Imagem de validação'}</h2>
+              <h2>{imagemStatusTitulo || 'Visualização de imagem'}</h2>
               <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setImagemStatusOpen(false)}>
                 <IoCloseOutline size={18} />
               </button>
             </header>
             <section className="module-form pedido-venda-status-image-body">
-              {imagemStatusSrc ? <img src={imagemStatusSrc} alt={imagemStatusTitulo || 'Imagem de validação'} /> : <p className="module-empty">Imagem não disponível.</p>}
+              {imagemStatusSrc ? <img src={imagemStatusSrc} alt={imagemStatusTitulo || 'Visualização de imagem'} /> : <p className="module-empty">Imagem não disponível.</p>}
             </section>
           </article>
         </section>
@@ -4170,51 +4157,47 @@ export function PedidoVendaFormPanel({
               </button>
             </div>
 
-            {modoTabelaPreco === 'geral' ? (
-              <div className="pedido-venda-tabela-preco-bulk-row">
-                <label className="list-layout-field pedido-venda-tabela-preco-bulk-field" aria-label="Número do pedido para inclusão">
-                  <span>Pedido cliente</span>
-                  <input
-                    value={tabelaPrecoPedidoCliente}
-                    onChange={(event) => setTabelaPrecoPedidoCliente(event.target.value)}
-                    placeholder="Informe o pedido"
-                  />
-                </label>
-                <label className="list-layout-field list-layout-field--date pedido-venda-tabela-preco-bulk-field pedido-venda-tabela-preco-bulk-field--date" aria-label="Data de entrega para inclusão">
-                  <span>Data entrega</span>
-                  <CustomDatePicker value={tabelaPrecoDataEntrega} onChange={setTabelaPrecoDataEntrega} />
-                </label>
-              </div>
-            ) : null}
+            <div className="pedido-venda-tabela-preco-bulk-row">
+              <label className="list-layout-field pedido-venda-tabela-preco-bulk-field" aria-label="Número do pedido para inclusão">
+                <span>Pedido cliente</span>
+                <input
+                  value={tabelaPrecoPedidoCliente}
+                  onChange={(event) => setTabelaPrecoPedidoCliente(event.target.value)}
+                  placeholder="Informe o pedido"
+                />
+              </label>
+              <label className="list-layout-field list-layout-field--date pedido-venda-tabela-preco-bulk-field pedido-venda-tabela-preco-bulk-field--date" aria-label="Data de entrega para inclusão">
+                <span>Data entrega</span>
+                <CustomDatePicker value={tabelaPrecoDataEntrega} onChange={setTabelaPrecoDataEntrega} />
+              </label>
+            </div>
 
-            {modoTabelaPreco === 'geral' ? (
-              <div className="form-actions pedido-venda-tabela-preco-actions">
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={handleLimparSelecaoTabelaPreco}
-                  disabled={loadingTabelaPreco || tabelaPrecoSelecionados.length === 0}
-                >
-                  Limpar seleção
-                </button>
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={handleIncluirTodosTabelaPreco}
-                  disabled={loadingTabelaPreco || tabelaPrecoRows.length === 0}
-                >
-                  Incluir todos
-                </button>
-                <button
-                  className="primary-button pedido-venda-tabela-preco-actions__include-selected"
-                  type="button"
-                  onClick={handleIncluirSelecionadosTabelaPreco}
-                  disabled={loadingTabelaPreco || tabelaPrecoSelecionados.length === 0}
-                >
-                  Incluir selecionados ({tabelaPrecoSelecionados.length})
-                </button>
-              </div>
-            ) : null}
+            <div className="form-actions pedido-venda-tabela-preco-actions">
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={handleLimparSelecaoTabelaPreco}
+                disabled={loadingTabelaPreco || tabelaPrecoSelecionados.length === 0}
+              >
+                Limpar seleção
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={handleIncluirTodosTabelaPreco}
+                disabled={loadingTabelaPreco || tabelaPrecoRows.length === 0}
+              >
+                Incluir todos
+              </button>
+              <button
+                className="primary-button pedido-venda-tabela-preco-actions__include-selected"
+                type="button"
+                onClick={handleIncluirSelecionadosTabelaPreco}
+                disabled={loadingTabelaPreco || tabelaPrecoSelecionados.length === 0}
+              >
+                Incluir selecionados ({tabelaPrecoSelecionados.length})
+              </button>
+            </div>
 
             {loadingTabelaPreco ? (
               <p className="module-empty">Carregando tabela de preços...</p>
@@ -4225,30 +4208,28 @@ export function PedidoVendaFormPanel({
             ) : (
               <div className="module-table pedido-venda-tabela-preco-table">
                 <div className="table-scroll pedido-venda-tabela-preco-table-wrap">
-                  <table className={modoTabelaPreco === 'geral' ? 'pedido-venda-tabela-preco-table--geral' : 'pedido-venda-tabela-preco-table--item'}>
+                  <table className="pedido-venda-tabela-preco-table--geral">
                     <thead>
                       <tr>
-                        {modoTabelaPreco === 'geral' ? <th>Selecionar</th> : null}
+                        <th>Sel.</th>
                         <th>Código</th>
                         <th>Descrição</th>
                         <th>Unidade</th>
                         <th>Preço</th>
-                        {modoTabelaPreco === 'item' ? <th>Ação</th> : null}
+                        <th>Imagem</th>
                       </tr>
                     </thead>
                     <tbody>
                       {tabelaPrecoRowsFiltradas.map((row, index) => (
                         <tr key={`${row.codigo}-${index}`}>
-                          {modoTabelaPreco === 'geral' ? (
-                            <td className="pedido-venda-tabela-preco-selection-cell">
-                              <input
-                                type="checkbox"
-                                checked={tabelaPrecoSelecionados.includes(getTabelaPrecoSelectionKey(row))}
-                                onChange={() => handleToggleTabelaPrecoSelecao(row)}
-                                aria-label={`Selecionar item ${row.codigo}`}
-                              />
-                            </td>
-                          ) : null}
+                          <td className="pedido-venda-tabela-preco-selection-cell">
+                            <input
+                              type="checkbox"
+                              checked={tabelaPrecoSelecionados.includes(getTabelaPrecoSelectionKey(row))}
+                              onChange={() => handleToggleTabelaPrecoSelecao(row)}
+                              aria-label={`Selecionar item ${row.codigo}`}
+                            />
+                          </td>
                           <td>{row.codigo}</td>
                           <td>{row.descricao}</td>
                           <td>{row.unidade || '-'}</td>
@@ -4258,26 +4239,21 @@ export function PedidoVendaFormPanel({
                               maximumFractionDigits: 4,
                             })}
                           </td>
-                          {modoTabelaPreco === 'item' ? (
-                            <td className="pedido-venda-tabela-preco-action-cell">
+                          <td className="pedido-venda-tabela-preco-thumb-cell">
+                            {row.imagemUrl ? (
                               <button
-                                className="icon-button module-action-button module-action-button--primary ordens-servico-material-add pedido-venda-tabela-preco-action-button"
+                                className="pedido-venda-tabela-preco-thumb-button"
                                 type="button"
-                                onClick={() => {
-                                  if (itemConsultaPrecoIndex === null) {
-                                    handleSelecionarItemTabelaPrecoMobile(row);
-                                    return;
-                                  }
-
-                                  handleSelecionarItemTabelaPreco(row);
-                                }}
-                                aria-label={`Adicionar item ${row.codigo}`}
-                                title="Adicionar item"
+                                onClick={() => handleAbrirImagemTabelaPreco(row)}
+                                aria-label={`Visualizar imagem do item ${row.codigo}`}
+                                title="Visualizar imagem"
                               >
-                                <IoAddOutline size={16} />
+                                <img src={row.imagemUrl} alt={`Imagem do item ${row.codigo}`} className="pedido-venda-tabela-preco-thumb" />
                               </button>
-                            </td>
-                          ) : null}
+                            ) : (
+                              <span className="pedido-venda-tabela-preco-thumb-empty">-</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -4294,6 +4270,22 @@ export function PedidoVendaFormPanel({
                         </strong>
                       </div>
                       <div className="module-card__row">
+                        <span>Imagem</span>
+                        {row.imagemUrl ? (
+                          <button
+                            className="pedido-venda-tabela-preco-thumb-button"
+                            type="button"
+                            onClick={() => handleAbrirImagemTabelaPreco(row)}
+                            aria-label={`Visualizar imagem do item ${row.codigo}`}
+                            title="Visualizar imagem"
+                          >
+                            <img src={row.imagemUrl} alt={`Imagem do item ${row.codigo}`} className="pedido-venda-tabela-preco-thumb" />
+                          </button>
+                        ) : (
+                          <strong>-</strong>
+                        )}
+                      </div>
+                      <div className="module-card__row">
                         <span>Unidade</span>
                         <strong>{row.unidade || '-'}</strong>
                       </div>
@@ -4306,36 +4298,15 @@ export function PedidoVendaFormPanel({
                           })}
                         </strong>
                       </div>
-                      {modoTabelaPreco === 'geral' ? (
-                        <div className="module-card__row">
-                          <span>Selecionar</span>
-                          <input
-                            type="checkbox"
-                            checked={tabelaPrecoSelecionados.includes(getTabelaPrecoSelectionKey(row))}
-                            onChange={() => handleToggleTabelaPrecoSelecao(row)}
-                            aria-label={`Selecionar item ${row.codigo}`}
-                          />
-                        </div>
-                      ) : (
-                        <div className="module-card__actions pedido-venda-tabela-preco-card-actions">
-                          <button
-                            className="icon-button module-action-button module-action-button--primary ordens-servico-material-add pedido-venda-tabela-preco-action-button"
-                            type="button"
-                            onClick={() => {
-                              if (itemConsultaPrecoIndex === null) {
-                                handleSelecionarItemTabelaPrecoMobile(row);
-                                return;
-                              }
-
-                              handleSelecionarItemTabelaPreco(row);
-                            }}
-                            aria-label={`Adicionar item ${row.codigo}`}
-                            title="Adicionar item"
-                          >
-                            <IoAddOutline size={16} />
-                          </button>
-                        </div>
-                      )}
+                      <div className="module-card__row">
+                        <span>Sel.</span>
+                        <input
+                          type="checkbox"
+                          checked={tabelaPrecoSelecionados.includes(getTabelaPrecoSelectionKey(row))}
+                          onChange={() => handleToggleTabelaPrecoSelecao(row)}
+                          aria-label={`Selecionar item ${row.codigo}`}
+                        />
+                      </div>
                     </article>
                   ))}
                 </div>
