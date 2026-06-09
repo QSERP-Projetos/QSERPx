@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { IoAddOutline, IoChevronDownOutline, IoChevronForwardOutline, IoCloseCircleOutline, IoCloseOutline, IoDocumentTextOutline, IoDownloadOutline, IoSaveOutline, IoSearchOutline, IoTrashOutline } from 'react-icons/io5';
+import { IoAddOutline, IoChevronDownOutline, IoChevronForwardOutline, IoCloseCircleOutline, IoCloseOutline, IoDocumentTextOutline, IoDownloadOutline, IoPricetagsOutline, IoSaveOutline, IoSearchOutline, IoTrashOutline } from 'react-icons/io5';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -210,7 +210,7 @@ const cleanLabelText = (value: unknown) => String(value ?? '').replace(/[\t\r\n]
 
 const normalizeDestinoPedidoValue = (value: unknown) => {
   const raw = cleanLabelText(value);
-  if (!raw) return 'Consumo';
+  if (!raw) return 'Revenda';
 
   if (/^1$/.test(raw)) return 'Consumo';
   if (/^2$/.test(raw)) return 'Revenda';
@@ -501,17 +501,21 @@ export function PedidoVendaFormPanel({
   const [tipoPedido, setTipoPedido] = useState('3');
   const [codigoTransportadora, setCodigoTransportadora] = useState('0');
   const [fretePorConta, setFretePorConta] = useState('0');
-  const [destinoPedido, setDestinoPedido] = useState(() => isRepresentantes ? 'Revenda' : 'Consumo');
+  const [destinoPedido, setDestinoPedido] = useState(() => 'Revenda');
   const [codigoRepresentante, setCodigoRepresentante] = useState('');
   const [percComissaoRep, setPercComissaoRep] = useState('0');
   const [codigoTabela, setCodigoTabela] = useState('0');
   const [itens, setItens] = useState<ItemForm[]>([emptyItem()]);
   const [clienteSelectionVersion, setClienteSelectionVersion] = useState(0);
   const [precoModalOpen, setPrecoModalOpen] = useState(false);
+  const [modoTabelaPreco, setModoTabelaPreco] = useState<'item' | 'geral'>('item');
   const [itemConsultaPrecoIndex, setItemConsultaPrecoIndex] = useState<number | null>(null);
   const [loadingTabelaPreco, setLoadingTabelaPreco] = useState(false);
   const [tabelaPrecoRows, setTabelaPrecoRows] = useState<TabelaPrecoItem[]>([]);
   const [tabelaPrecoTermo, setTabelaPrecoTermo] = useState('');
+  const [tabelaPrecoSelecionados, setTabelaPrecoSelecionados] = useState<string[]>([]);
+  const [tabelaPrecoPedidoCliente, setTabelaPrecoPedidoCliente] = useState('');
+  const [tabelaPrecoDataEntrega, setTabelaPrecoDataEntrega] = useState('');
   const [isMobileLayout, setIsMobileLayout] = useState(() => window.matchMedia('(max-width: 1024px)').matches);
   const [mobileItemModalOpen, setMobileItemModalOpen] = useState(false);
   const [mobileItemDraft, setMobileItemDraft] = useState<ItemForm>(emptyItem());
@@ -534,6 +538,7 @@ export function PedidoVendaFormPanel({
   const fileInputPlanilhaRef = useRef<HTMLInputElement | null>(null);
   const initialDraftSignatureRef = useRef('');
   const createFormInitializedRef = useRef(false);
+  const loadedFormSignatureRef = useRef('');
 
   const fretePorContaSelectOptions = useMemo(() => {
     if (!fretePorConta) return fretePorContaOptions;
@@ -552,14 +557,18 @@ export function PedidoVendaFormPanel({
     setTipoPedido('3');
     setCodigoTransportadora('0');
     setFretePorConta('0');
-    setDestinoPedido(isRepresentantes ? 'Revenda' : 'Consumo');
+    setDestinoPedido('Revenda');
     setCodigoRepresentante('');
     setPercComissaoRep('0');
     setCodigoTabela('0');
     setItens([emptyItem()]);
     setItemConsultaPrecoIndex(null);
+    setModoTabelaPreco('item');
     setTabelaPrecoRows([]);
     setTabelaPrecoTermo('');
+    setTabelaPrecoSelecionados([]);
+    setTabelaPrecoPedidoCliente('');
+    setTabelaPrecoDataEntrega('');
     setMobileItemEditIndex(null);
     setMobileItemDraft(emptyItem());
     setMobileItemModalOpen(false);
@@ -584,7 +593,7 @@ export function PedidoVendaFormPanel({
       tipoPedido: '3',
       codigoTransportadora: '0',
       fretePorConta: '0',
-      destinoPedido: isRepresentantes ? 'Revenda' : 'Consumo',
+      destinoPedido: 'Revenda',
       codigoRepresentante: '',
       percComissaoRep: '0',
       codigoTabela: '0',
@@ -678,6 +687,9 @@ export function PedidoVendaFormPanel({
   const handleClickBaixarPlanilha = useCallback(() => {
     window.open(PLANILHA_MODELO_URL, '_blank', 'noopener,noreferrer');
   }, []);
+
+  const canEditFrete = !isRepresentantes && !isViewOnly;
+  const canEditDescontoCliente = false;
 
   const handleConfirmarDadosImportacao = useCallback(() => {
     if (!pedidoClienteImportacao.trim() || !dataEntregaImportacao.trim()) {
@@ -1113,6 +1125,43 @@ export function PedidoVendaFormPanel({
     setDescontoAplicadoNosItens(false);
   };
 
+  const handleChangeDescontoCliente = useCallback(
+    (value: string) => {
+      const sanitized = sanitizePercentInput(value);
+      setDesconto(sanitized);
+
+      if (!canEditDescontoCliente) return;
+
+      const percentualCliente = parseNumber(sanitized);
+      const percentualAplicado = parseNumber(descontoAplicado);
+
+      const clienteValido = Number.isFinite(percentualCliente) && percentualCliente >= 0 && percentualCliente <= 100;
+      const aplicadoValido = Number.isFinite(percentualAplicado) && percentualAplicado >= 0 && percentualAplicado <= 100;
+      const fatorCliente = clienteValido ? 1 - percentualCliente / 100 : 1;
+      const fatorAplicado = aplicadoValido ? 1 - percentualAplicado / 100 : 1;
+
+      setItens((prev) =>
+        prev.map((item) => {
+          const precoBase = parseNumber(item.Preco_Base ?? item.Preco_Negociado);
+          const precoComDesconto = Math.max(0, precoBase * fatorCliente * fatorAplicado);
+          return {
+            ...item,
+            Preco_Base: formatFixedNumber(precoBase, 4),
+            Preco_Negociado: formatFixedNumber(precoComDesconto, 4),
+          };
+        }),
+      );
+      setDescontoAplicadoNosItens(true);
+    },
+    [canEditDescontoCliente, descontoAplicado],
+  );
+
+  const handleBlurDescontoCliente = useCallback(() => {
+    if (!canEditDescontoCliente) return;
+    if (desconto.trim()) return;
+    handleChangeDescontoCliente('0');
+  }, [canEditDescontoCliente, desconto, handleChangeDescontoCliente]);
+
   const handleBlurDescontoAplicado = () => {
     if (isViewOnly) return;
     if (!descontoAplicado.trim()) {
@@ -1437,7 +1486,7 @@ export function PedidoVendaFormPanel({
   }, [isRepresentantes, showToast]);
 
   useEffect(() => {
-    if (!open || isViewOnly) return;
+    if (!open || isViewOnly || isEdit) return;
 
     const selectedCode = normalizeCode(codigoCliente);
     const clienteRowByCode = selectedCode ? clienteRowsMap[selectedCode] : null;
@@ -1475,7 +1524,7 @@ export function PedidoVendaFormPanel({
     const nextTipoPedido = getRowLabel(clienteRow, ['tipo_Pedido', 'Tipo_Pedido', 'tipoPedido']) || '3';
     const nextFretePorConta = getRowLabel(clienteRow, ['frete_Por_Conta', 'Frete_Por_Conta', 'fretePorConta']) || '0';
     const nextDestinoPedido = normalizeDestinoPedidoValue(
-      getRowLabel(clienteRow, ['destinoPedido', 'Destino_Pedido', 'destino_Pedido']) || (isRepresentantes ? 'Revenda' : 'Consumo'),
+      getRowLabel(clienteRow, ['destinoPedido', 'Destino_Pedido', 'destino_Pedido']) || 'Revenda',
     );
     const nextCodigoTabela = getRowLabel(clienteRow, [
       'codigo_Tabela',
@@ -1652,6 +1701,39 @@ export function PedidoVendaFormPanel({
   }, [carregarListas, isViewOnly, open]);
 
   useEffect(() => {
+    if (!open || isViewOnly || !isEdit) return;
+
+    const currentRaw = normalizeCode(codigoTransportadora);
+    if (!currentRaw || currentRaw === '0') return;
+
+    const currentNumeric = normalizeNumericCode(currentRaw);
+    const hasExact = transportadoraOptions.some((option) => {
+      const optionRaw = normalizeCode(option.value);
+      const optionNumeric = normalizeNumericCode(optionRaw);
+      return optionRaw === currentRaw || (currentNumeric && optionNumeric === currentNumeric);
+    });
+
+    if (hasExact) return;
+
+    const candidate = resolveOptionValue(
+      transportadoraOptions,
+      lookupLabels.transportadora || currentRaw,
+    );
+    const normalizedCandidate = normalizeNumericCode(candidate) || normalizeCode(candidate);
+
+    if (!normalizedCandidate || normalizedCandidate === currentRaw) return;
+
+    setCodigoTransportadora(normalizedCandidate);
+  }, [
+    codigoTransportadora,
+    isEdit,
+    isViewOnly,
+    lookupLabels.transportadora,
+    open,
+    transportadoraOptions,
+  ]);
+
+  useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 1024px)');
     const syncLayout = () => setIsMobileLayout(mediaQuery.matches);
     syncLayout();
@@ -1663,12 +1745,26 @@ export function PedidoVendaFormPanel({
   useEffect(() => {
     if (!open) {
       createFormInitializedRef.current = false;
+      loadedFormSignatureRef.current = '';
     }
   }, [open]);
 
   useEffect(() => {
     const loadPedido = async () => {
       if (!open) return;
+
+      const initialNumFromPedido = Number((initialPedido as any)?.num_Pedido ?? (initialPedido as any)?.numPedido ?? 0);
+      const currentSignature = [
+        isEdit ? 'edit' : 'create',
+        isViewOnly ? 'view' : 'write',
+        String(numPedido ?? ''),
+        String(initialNumFromPedido),
+        String(Boolean(initialPedido)),
+      ].join('|');
+
+      if (loadedFormSignatureRef.current === currentSignature) {
+        return;
+      }
 
       const hasInitialPedido = Boolean(initialPedido);
 
@@ -1680,6 +1776,7 @@ export function PedidoVendaFormPanel({
 
           resetForm();
           createFormInitializedRef.current = true;
+          loadedFormSignatureRef.current = currentSignature;
           return;
         }
       }
@@ -1777,17 +1874,28 @@ export function PedidoVendaFormPanel({
           ?? pedido.Codigo_Transportadora
           ?? pedido.cod_Transportadora
           ?? pedido.Cod_Transportadora
+          ?? pedido.codigo_Transportador
+          ?? pedido.Codigo_Transportador
+          ?? pedido.cod_Transportador
+          ?? pedido.Cod_Transportador
+          ?? pedido.transportadora_Codigo
+          ?? pedido.Transportadora_Codigo
+          ?? pedido.id_Transportadora
+          ?? pedido.Id_Transportadora
           ?? pedido.codigoTransportadora
           ?? '',
         ).trim();
-        const nextCodigoTransportadora = rawCodigoTransportadora || resolveOptionValue(
+        const transportadoraDescricaoPedido = String(
+          pedido.transportadora
+          ?? pedido.nome_Transportadora
+          ?? pedido.Nome_Transportadora
+          ?? pedido.nomeTransportadora
+          ?? pedido.NomeTransportadora
+          ?? '',
+        );
+        const nextCodigoTransportadora = (normalizeNumericCode(rawCodigoTransportadora) || rawCodigoTransportadora) || resolveOptionValue(
           transportadoraOptions,
-          String(
-            pedido.transportadora
-            ?? pedido.nome_Transportadora
-            ?? pedido.Nome_Transportadora
-            ?? '',
-          ),
+          transportadoraDescricaoPedido,
         );
 
         const clienteNomeLabel = cleanLabelText(
@@ -1834,9 +1942,9 @@ export function PedidoVendaFormPanel({
         setDescontoAplicadoNosItens(false);
         setFrete(String(pedido.valor_Frete ?? pedido.valorFrete ?? '0'));
         setTipoPedido(String(pedido.Tipo_Pedido ?? pedido.tipo_Pedido ?? pedido.tipoPedido ?? '3'));
-        setCodigoTransportadora(nextCodigoTransportadora || '0');
+        setCodigoTransportadora(normalizeNumericCode(nextCodigoTransportadora) || nextCodigoTransportadora || '0');
         setFretePorConta(String(pedido.frete_Por_Conta ?? pedido.fretePorConta ?? '0'));
-        setDestinoPedido(normalizeDestinoPedidoValue(pedido.destinoPedido ?? pedido.Destino_Pedido ?? 'Consumo'));
+        setDestinoPedido(normalizeDestinoPedidoValue(pedido.destinoPedido ?? pedido.Destino_Pedido ?? 'Revenda'));
         setCodigoRepresentante(String(pedido.codigo_Representante ?? pedido.Codigo_Representante ?? ''));
         setPercComissaoRep(String(pedido.percComissaoRepresentante ?? pedido.Perc_Comissao_Representante ?? '0'));
         setCodigoTabela(String(pedido.Codigo_Tabela ?? pedido.codigo_Tabela ?? pedido.codigoTabela ?? '0'));
@@ -1895,7 +2003,7 @@ export function PedidoVendaFormPanel({
           ?? pedido.nomeTransportadora
           ?? pedido.NomeTransportadora
           ?? pedido.transportadora
-          ?? (nextCodigoTransportadora === '0' ? 'Sem transportadora' : ''),
+          ?? ((normalizeNumericCode(nextCodigoTransportadora) || nextCodigoTransportadora) === '0' ? 'Sem transportadora' : ''),
         ).trim();
 
         if (nextCondicaoPagto) {
@@ -1916,13 +2024,13 @@ export function PedidoVendaFormPanel({
 
         if (nextCodigoTransportadora) {
           setTransportadoraOptions((prev) =>
-            prev.some((option) => option.value === nextCodigoTransportadora)
+            prev.some((option) => normalizeNumericCode(option.value) === (normalizeNumericCode(nextCodigoTransportadora) || '') || option.value === nextCodigoTransportadora)
               ? prev
               : [...prev, { value: nextCodigoTransportadora, label: transportadoraLabelFromPedido || nextCodigoTransportadora }],
           );
         }
 
-        if (!isEdit && !isViewOnly) {
+        if (!isViewOnly) {
           await resolveLookupLabels(
             nextCondicaoPagto,
             nextCodigoVendedor,
@@ -1999,7 +2107,7 @@ export function PedidoVendaFormPanel({
           tipoPedido: String(pedido.Tipo_Pedido ?? pedido.tipo_Pedido ?? pedido.tipoPedido ?? '3'),
           codigoTransportadora: nextCodigoTransportadora || '0',
           fretePorConta: String(pedido.frete_Por_Conta ?? pedido.fretePorConta ?? '0'),
-          destinoPedido: String(pedido.destinoPedido ?? pedido.Destino_Pedido ?? 'Consumo'),
+          destinoPedido: String(pedido.destinoPedido ?? pedido.Destino_Pedido ?? 'Revenda'),
           codigoRepresentante: String(pedido.codigo_Representante ?? pedido.Codigo_Representante ?? ''),
           percComissaoRep: String(pedido.percComissaoRepresentante ?? pedido.Perc_Comissao_Representante ?? '0'),
           codigoTabela: String(pedido.Codigo_Tabela ?? pedido.codigo_Tabela ?? pedido.codigoTabela ?? '0'),
@@ -2013,6 +2121,8 @@ export function PedidoVendaFormPanel({
             Moeda: String(item.Moeda ?? '').trim(),
           })),
         });
+
+        loadedFormSignatureRef.current = currentSignature;
       } catch (error: any) {
         showToast(error?.message || 'Erro ao carregar pedido para edição.', 'error');
       } finally {
@@ -2105,6 +2215,7 @@ export function PedidoVendaFormPanel({
 
       const formatNumber = (value: number) => value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const formatQuantity = (value: number) => value.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+      const formatPercent = (value: number) => `${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -2122,6 +2233,7 @@ export function PedidoVendaFormPanel({
         ['Cliente', cliente, 'Vendedor', vendedor],
         ['Condição Pagto', condicao, 'Transportadora', transportadora],
         ['Destino', destino, 'Frete', `R$ ${formatNumber(parseNumber(frete))}`],
+        ['Desconto cliente', formatPercent(parseNumber(desconto)), 'Desconto aplicado', formatPercent(parseNumber(descontoAplicado))],
       ];
 
       autoTable(doc, {
@@ -2140,44 +2252,82 @@ export function PedidoVendaFormPanel({
         margin: { left: 14, right: 14 },
       });
 
+      const includeEntregueSaldoPdf = true;
+
       const itensTableRows = itens.length
         ? itens.map((item, index) => {
           const totalItem = parseNumber(item.Total_Item ?? String(parseNumber(item.Qtd_Entregar) * parseNumber(item.Preco_Negociado)));
-          return [
+          const rowBase = [
             String(item.Num_Item ?? index + 1),
             item.Codigo_Produto || '-',
             item.Descricao_Produto || '-',
             item.Unid_Med_Venda || '-',
             String(item.Qtd_Entregar || '0'),
+          ];
+
+          const rowEntregueSaldo = includeEntregueSaldoPdf
+            ? [
+              formatQuantity(parseNumber(item.Qtd_Entregue ?? '0')),
+              formatQuantity(parseNumber(item.Saldo ?? '0')),
+            ]
+            : [];
+
+          return [
+            ...rowBase,
+            ...rowEntregueSaldo,
             formatNumber(parseNumber(item.Preco_Negociado)),
             formatNumber(totalItem),
             item.Pedido_Cliente || '-',
             item.Data_Entrega || '-',
           ];
         })
-        : [['-', '-', 'Sem itens no pedido', '-', '-', '-', '-', '-', '-']];
+        : [
+          includeEntregueSaldoPdf
+            ? ['-', '-', 'Sem itens no pedido', '-', '-', '-', '-', '-', '-', '-', '-']
+            : ['-', '-', 'Sem itens no pedido', '-', '-', '-', '-', '-', '-'],
+        ];
+
+      const itensTableHead = includeEntregueSaldoPdf
+        ? [['Item', 'Código', 'Descrição', 'Unid.', 'Qtd', 'Entr.', 'Saldo', 'Preço', 'Total item', 'Pedido cliente', 'Data entrega']]
+        : [['Item', 'Código', 'Descrição', 'Unid.', 'Qtd', 'Preço', 'Total item', 'Pedido cliente', 'Data entrega']];
+
+      const itensTableColumnStyles = includeEntregueSaldoPdf
+        ? {
+          0: { cellWidth: 11, halign: 'right' as const },
+          1: { cellWidth: 20 },
+          2: { cellWidth: 106 },
+          3: { cellWidth: 12, halign: 'center' as const },
+          4: { cellWidth: 14, halign: 'right' as const },
+          5: { cellWidth: 14, halign: 'right' as const },
+          6: { cellWidth: 14, halign: 'right' as const },
+          7: { cellWidth: 19, halign: 'right' as const },
+          8: { cellWidth: 21, halign: 'right' as const },
+          9: { cellWidth: 20 },
+          10: { cellWidth: 18, halign: 'center' as const },
+        }
+        : {
+          0: { cellWidth: 12, halign: 'right' as const },
+          1: { cellWidth: 24 },
+          2: { cellWidth: 112 },
+          3: { cellWidth: 14, halign: 'center' as const },
+          4: { cellWidth: 16, halign: 'right' as const },
+          5: { cellWidth: 21, halign: 'right' as const },
+          6: { cellWidth: 24, halign: 'right' as const },
+          7: { cellWidth: 24 },
+          8: { cellWidth: 22, halign: 'center' as const },
+        };
 
       const metaTableFinalY = (doc as any).lastAutoTable?.finalY ?? 40;
       autoTable(doc, {
         startY: metaTableFinalY + 3,
         theme: 'grid',
-        head: [['Item', 'Código', 'Descrição', 'Unid.', 'Qtd', 'Preço', 'Total item', 'Pedido cliente', 'Data entrega']],
+        head: itensTableHead,
         body: itensTableRows,
         styles: { fontSize: 8, cellPadding: 1.5, textColor: [17, 24, 39] },
         headStyles: { fillColor: [96, 104, 118], textColor: [255, 255, 255], fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [245, 246, 248] },
         tableWidth: pageWidth - 28,
-        columnStyles: {
-          0: { cellWidth: 12, halign: 'right' },
-          1: { cellWidth: 24 },
-          2: { cellWidth: 112 },
-          3: { cellWidth: 14, halign: 'center' },
-          4: { cellWidth: 16, halign: 'right' },
-          5: { cellWidth: 21, halign: 'right' },
-          6: { cellWidth: 24, halign: 'right' },
-          7: { cellWidth: 24 },
-          8: { cellWidth: 22, halign: 'center' },
-        },
+        columnStyles: itensTableColumnStyles,
         margin: { left: 14, right: 14 },
       });
 
@@ -2231,6 +2381,7 @@ export function PedidoVendaFormPanel({
     destinoPedido,
     frete,
     initialPedido,
+    isRepresentantes,
     itens,
     lookupLabels,
     numPedido,
@@ -2435,9 +2586,163 @@ export function PedidoVendaFormPanel({
     }
 
     setItemConsultaPrecoIndex(index);
+    setModoTabelaPreco('item');
     setTabelaPrecoTermo('');
     setTabelaPrecoRows([]);
+    setTabelaPrecoSelecionados([]);
+    setTabelaPrecoPedidoCliente('');
+    setTabelaPrecoDataEntrega('');
     setPrecoModalOpen(true);
+  };
+
+  const handleAbrirTabelaPrecoGeral = async () => {
+    if (!codigoCliente.trim()) {
+      showToast('Informe o cliente antes de buscar itens.', 'error');
+      return;
+    }
+
+    const source = itens.find((item) => item.Pedido_Cliente?.trim() || item.Data_Entrega?.trim()) || itens[0] || emptyItem();
+
+    setItemConsultaPrecoIndex(null);
+    setModoTabelaPreco('geral');
+    setTabelaPrecoTermo('');
+    setTabelaPrecoRows([]);
+    setTabelaPrecoSelecionados([]);
+    setTabelaPrecoPedidoCliente(source.Pedido_Cliente || '');
+    setTabelaPrecoDataEntrega(source.Data_Entrega || '');
+    setPrecoModalOpen(true);
+    await carregarTabelaPreco('');
+  };
+
+  const handleFecharTabelaPrecoModal = () => {
+    if (loadingTabelaPreco) return;
+    setPrecoModalOpen(false);
+    setTabelaPrecoSelecionados([]);
+    setTabelaPrecoPedidoCliente('');
+    setTabelaPrecoDataEntrega('');
+    setModoTabelaPreco('item');
+  };
+
+  const getTabelaPrecoSelectionKey = (row: TabelaPrecoItem) => normalizeCode(row.codigo);
+
+  const handleToggleTabelaPrecoSelecao = (row: TabelaPrecoItem) => {
+    const key = getTabelaPrecoSelectionKey(row);
+    if (!key) return;
+    setTabelaPrecoSelecionados((prev) => (
+      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
+    ));
+  };
+
+  const handleLimparSelecaoTabelaPreco = () => setTabelaPrecoSelecionados([]);
+
+  const incluirProdutosDaTabelaPreco = useCallback(
+    (rows: TabelaPrecoItem[]) => {
+      if (rows.length === 0) {
+        showToast('Nenhum item disponível para inclusão.', 'info');
+        return;
+      }
+
+      const source = itens.find((item) => item.Pedido_Cliente?.trim() || item.Data_Entrega?.trim()) || itens[0] || emptyItem();
+      const pedidoClientePadrao = tabelaPrecoPedidoCliente.trim() || source.Pedido_Cliente || '';
+      const dataEntregaPadrao = tabelaPrecoDataEntrega.trim() || source.Data_Entrega || '';
+      const existingCodes = new Set(itens.map((item) => normalizeCode(item.Codigo_Produto)).filter(Boolean));
+      let adicionados = 0;
+      let ignorados = 0;
+      let houveDesconto = false;
+
+      const novosItens = rows.reduce<ItemForm[]>((acc, row) => {
+        const codigo = normalizeCode(row.codigo);
+        if (!codigo || existingCodes.has(codigo)) {
+          ignorados += 1;
+          return acc;
+        }
+
+        const discounted = calculateDiscountedPrice(row.preco);
+        if (discounted.applied) houveDesconto = true;
+
+        acc.push({
+          ...emptyItem(),
+          Codigo_Produto: row.codigo,
+          Descricao_Produto: row.descricao,
+          Qtd_Entregar: '1.000',
+          Preco_Negociado: formatFixedNumber(discounted.price, 4),
+          Preco_Base: formatDecimalString(row.preco, 4),
+          Total_Item: formatFixedNumber(discounted.price, 2),
+          Unid_Med_Venda: row.unidade || '',
+          Moeda: row.moeda || 'R$',
+          Moeda_Preco: row.moeda || 'R$',
+          Pedido_Cliente: pedidoClientePadrao,
+          Data_Entrega: dataEntregaPadrao,
+        });
+
+        existingCodes.add(codigo);
+        adicionados += 1;
+        return acc;
+      }, []);
+
+      if (novosItens.length === 0) {
+        showToast('Todos os produtos selecionados já estão no pedido.', 'info');
+        return;
+      }
+
+      setItens((prev) => {
+        const placeholderIndex = prev.findIndex((item) => {
+          const codigoVazio = !normalizeCode(item.Codigo_Produto);
+          const descricaoVazia = !normalizeCode(item.Descricao_Produto);
+          const qtdPadrao = formatDecimalString(item.Qtd_Entregar ?? '0', 3) === '0.000';
+          const precoPadrao = formatDecimalString(item.Preco_Negociado ?? '0', 4) === '0.0000';
+          return codigoVazio && descricaoVazia && qtdPadrao && precoPadrao;
+        });
+
+        if (placeholderIndex < 0) {
+          return [...prev, ...novosItens];
+        }
+
+        const next = [...prev];
+        const [firstNovo, ...restantes] = novosItens;
+        if (!firstNovo) return prev;
+
+        next[placeholderIndex] = {
+          ...next[placeholderIndex],
+          ...firstNovo,
+        };
+
+        if (restantes.length > 0) {
+          next.push(...restantes);
+        }
+
+        return next;
+      });
+      if (houveDesconto) setDescontoAplicadoNosItens(true);
+
+      const detalheIgnorados = ignorados > 0 ? ` (${ignorados} ignorado${ignorados > 1 ? 's' : ''})` : '';
+      showToast(`${adicionados} item(ns) incluído(s) com sucesso${detalheIgnorados}.`, 'success');
+      setPrecoModalOpen(false);
+      setTabelaPrecoSelecionados([]);
+      setTabelaPrecoPedidoCliente('');
+      setTabelaPrecoDataEntrega('');
+      setModoTabelaPreco('item');
+    },
+    [calculateDiscountedPrice, itens, showToast, tabelaPrecoDataEntrega, tabelaPrecoPedidoCliente],
+  );
+
+  const handleIncluirTodosTabelaPreco = () => {
+    incluirProdutosDaTabelaPreco(tabelaPrecoRows);
+  };
+
+  const getTabelaPrecoSelecionadosRows = () => {
+    const selectedKeys = new Set(tabelaPrecoSelecionados);
+    return tabelaPrecoRows.filter((row) => selectedKeys.has(getTabelaPrecoSelectionKey(row)));
+  };
+
+  const handleIncluirSelecionadosTabelaPreco = () => {
+    const selectedRows = getTabelaPrecoSelecionadosRows();
+    if (selectedRows.length === 0) {
+      showToast('Selecione ao menos um item para incluir.', 'info');
+      return;
+    }
+
+    incluirProdutosDaTabelaPreco(selectedRows);
   };
 
   const handleSelecionarItemTabelaPreco = (item: TabelaPrecoItem) => {
@@ -2542,8 +2847,10 @@ export function PedidoVendaFormPanel({
     }
 
     setItemConsultaPrecoIndex(null);
+    setModoTabelaPreco('item');
     setTabelaPrecoTermo('');
     setTabelaPrecoRows([]);
+    setTabelaPrecoSelecionados([]);
     setPrecoModalOpen(true);
   };
 
@@ -2954,11 +3261,25 @@ export function PedidoVendaFormPanel({
                     </label>
                     <label>
                       <span>Desconto do cliente (%)</span>
-                      <input readOnly value={desconto} />
+                      <input
+                        readOnly={!canEditDescontoCliente}
+                        value={desconto}
+                        inputMode="decimal"
+                        onChange={(event) => handleChangeDescontoCliente(event.target.value)}
+                        onBlur={handleBlurDescontoCliente}
+                      />
                     </label>
                     <label>
                       <span>Frete</span>
-                      <input readOnly value={frete} />
+                      <input
+                        readOnly={!canEditFrete}
+                        value={frete}
+                        inputMode="decimal"
+                        onChange={(event) => {
+                          if (!canEditFrete) return;
+                          setFrete(sanitizeDecimalInput(event.target.value, 2));
+                        }}
+                      />
                     </label>
                     <label>
                       <span>Desconto aplicado (%)</span>
@@ -3038,6 +3359,17 @@ export function PedidoVendaFormPanel({
                     >
                       <IoAddOutline size={16} />
                     </button>
+                    {!isRepresentantes ? (
+                      <button
+                        className="icon-button module-action-button module-action-button--primary"
+                        type="button"
+                        onClick={() => void handleAbrirTabelaPrecoGeral()}
+                        aria-label="Tabela de preços"
+                        title="Tabela de preços"
+                      >
+                        <IoPricetagsOutline size={16} />
+                      </button>
+                    ) : null}
                     {isRepresentantes && allowImportSpreadsheet ? (
                       <>
                         <button
@@ -3074,21 +3406,14 @@ export function PedidoVendaFormPanel({
               <div className="pedido-venda-itens-scroll-area" ref={itensScrollAreaRef}>
                 {isViewOnly ? (
                   <div className="pedido-venda-itens-consulta-list" role="list" aria-label="Itens do pedido">
-                    <article
-                      className={`pedido-venda-consulta-row pedido-venda-consulta-row--header${isRepresentantes ? ' pedido-venda-consulta-row--representante' : ''}`}
-                      aria-hidden="true"
-                    >
+                    <article className="pedido-venda-consulta-row pedido-venda-consulta-row--header" aria-hidden="true">
                       <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--item"><strong>Item</strong></div>
                       <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--codigo"><strong>Código</strong></div>
                       <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--descricao"><strong>Descrição</strong></div>
                       <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--unidade"><strong>Unid.</strong></div>
                       <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--qtd"><strong>Qtd</strong></div>
-                      {!isRepresentantes ? (
-                        <>
-                          <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--qtd"><strong>Entregue</strong></div>
-                          <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--qtd"><strong>Saldo</strong></div>
-                        </>
-                      ) : null}
+                      <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--qtd"><strong>Entregue</strong></div>
+                      <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--qtd"><strong>Saldo</strong></div>
                       <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--valor"><strong>Preço</strong></div>
                       <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--valor"><strong>Total item</strong></div>
                       <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--pedido-cliente"><strong>Pedido cliente</strong></div>
@@ -3100,11 +3425,7 @@ export function PedidoVendaFormPanel({
                       );
 
                       return (
-                        <article
-                          key={`item-consulta-${index}`}
-                          className={`pedido-venda-consulta-row${isRepresentantes ? ' pedido-venda-consulta-row--representante' : ''}`}
-                          role="listitem"
-                        >
+                        <article key={`item-consulta-${index}`} className="pedido-venda-consulta-row" role="listitem">
                           <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--item">
                             <span className="pedido-venda-consulta-label">Item</span>
                             <strong>{item.Num_Item ?? index + 1}</strong>
@@ -3125,18 +3446,14 @@ export function PedidoVendaFormPanel({
                             <span className="pedido-venda-consulta-label">Qtd</span>
                             <strong>{formatDecimalString(item.Qtd_Entregar, 3)}</strong>
                           </div>
-                          {!isRepresentantes ? (
-                            <>
-                              <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--qtd">
-                                <span className="pedido-venda-consulta-label">Entregue</span>
-                                <strong>{item.Qtd_Entregue || '0'}</strong>
-                              </div>
-                              <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--qtd">
-                                <span className="pedido-venda-consulta-label">Saldo</span>
-                                <strong>{item.Saldo || '0'}</strong>
-                              </div>
-                            </>
-                          ) : null}
+                          <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--qtd">
+                            <span className="pedido-venda-consulta-label">Entregue</span>
+                            <strong>{item.Qtd_Entregue || '0'}</strong>
+                          </div>
+                          <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--qtd">
+                            <span className="pedido-venda-consulta-label">Saldo</span>
+                            <strong>{item.Saldo || '0'}</strong>
+                          </div>
                           <div className="pedido-venda-consulta-cell pedido-venda-consulta-cell--valor">
                             <span className="pedido-venda-consulta-label">Preço</span>
                             <strong>{formatMoney(item.Preco_Negociado, item.Moeda_Preco || 'R$', 4)}</strong>
@@ -3342,7 +3659,7 @@ export function PedidoVendaFormPanel({
                               <span>Qtd</span>
                               <strong>{formatDecimalString(item.Qtd_Entregar, 3)}</strong>
                             </div>
-                            {!isRepresentantes ? (
+                            {!isRepresentantes || isViewOnly ? (
                               <>
                                 <div className="module-card__row">
                                   <span>Qtd entregue</span>
@@ -3806,41 +4123,45 @@ export function PedidoVendaFormPanel({
       ) : null}
 
       {precoModalOpen && (
-        <section className="modal-backdrop pedido-venda-tabela-preco-backdrop" role="dialog" aria-modal="true" aria-label="Tabela de preços do item">
+        <section
+          className="modal-backdrop pedido-venda-tabela-preco-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label={modoTabelaPreco === 'geral' ? 'Tabela de preços do pedido' : 'Tabela de preços do item'}
+        >
           <article className="modal-card modal-card--wide pedido-venda-tabela-preco-modal">
             <header className="modal-card__header">
-              <h2>Tabela de preços</h2>
-              <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setPrecoModalOpen(false)}>
+              <h2>{modoTabelaPreco === 'geral' ? 'Tabela de preços do pedido' : 'Tabela de preços'}</h2>
+              <button type="button" className="icon-button" aria-label="Fechar" onClick={handleFecharTabelaPrecoModal}>
                 <IoCloseOutline size={18} />
               </button>
             </header>
 
-            <label className="list-layout-field ordens-servico-material-search-field" aria-label="Pesquisar item na tabela">
-              <span>Pesquisar item</span>
-              <div className="clientes-search__input-wrap">
-                <IoSearchOutline size={16} aria-hidden="true" />
-                <input
-                  value={tabelaPrecoTermo}
-                  onChange={(event) => setTabelaPrecoTermo(event.target.value)}
-                  placeholder="Digite código ou descrição"
-                />
-                {tabelaPrecoTermo.trim() ? (
-                  <button
-                    type="button"
-                    className="clientes-search__clear"
-                    onClick={() => setTabelaPrecoTermo('')}
-                    aria-label="Limpar pesquisa"
-                    title="Limpar"
-                  >
-                    <IoCloseCircleOutline size={16} />
-                  </button>
-                ) : null}
-              </div>
-            </label>
-
-            <div className="form-actions pedido-venda-tabela-preco-actions">
+            <div className="pedido-venda-tabela-preco-search-row">
+              <label className="list-layout-field ordens-servico-material-search-field" aria-label="Pesquisar item na tabela">
+                <span>Pesquisar item</span>
+                <div className="clientes-search__input-wrap">
+                  <IoSearchOutline size={16} aria-hidden="true" />
+                  <input
+                    value={tabelaPrecoTermo}
+                    onChange={(event) => setTabelaPrecoTermo(event.target.value)}
+                    placeholder="Digite código ou descrição"
+                  />
+                  {tabelaPrecoTermo.trim() ? (
+                    <button
+                      type="button"
+                      className="clientes-search__clear"
+                      onClick={() => setTabelaPrecoTermo('')}
+                      aria-label="Limpar pesquisa"
+                      title="Limpar"
+                    >
+                      <IoCloseCircleOutline size={16} />
+                    </button>
+                  ) : null}
+                </div>
+              </label>
               <button
-                className="secondary-button"
+                className="secondary-button pedido-venda-tabela-preco-search-button"
                 type="button"
                 onClick={() => void carregarTabelaPreco(tabelaPrecoTermo)}
                 disabled={loadingTabelaPreco || !tabelaPrecoTermo.trim()}
@@ -3848,6 +4169,52 @@ export function PedidoVendaFormPanel({
                 {loadingTabelaPreco ? 'Consultando...' : 'Buscar'}
               </button>
             </div>
+
+            {modoTabelaPreco === 'geral' ? (
+              <div className="pedido-venda-tabela-preco-bulk-row">
+                <label className="list-layout-field pedido-venda-tabela-preco-bulk-field" aria-label="Número do pedido para inclusão">
+                  <span>Pedido cliente</span>
+                  <input
+                    value={tabelaPrecoPedidoCliente}
+                    onChange={(event) => setTabelaPrecoPedidoCliente(event.target.value)}
+                    placeholder="Informe o pedido"
+                  />
+                </label>
+                <label className="list-layout-field list-layout-field--date pedido-venda-tabela-preco-bulk-field pedido-venda-tabela-preco-bulk-field--date" aria-label="Data de entrega para inclusão">
+                  <span>Data entrega</span>
+                  <CustomDatePicker value={tabelaPrecoDataEntrega} onChange={setTabelaPrecoDataEntrega} />
+                </label>
+              </div>
+            ) : null}
+
+            {modoTabelaPreco === 'geral' ? (
+              <div className="form-actions pedido-venda-tabela-preco-actions">
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={handleLimparSelecaoTabelaPreco}
+                  disabled={loadingTabelaPreco || tabelaPrecoSelecionados.length === 0}
+                >
+                  Limpar seleção
+                </button>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={handleIncluirTodosTabelaPreco}
+                  disabled={loadingTabelaPreco || tabelaPrecoRows.length === 0}
+                >
+                  Incluir todos
+                </button>
+                <button
+                  className="primary-button pedido-venda-tabela-preco-actions__include-selected"
+                  type="button"
+                  onClick={handleIncluirSelecionadosTabelaPreco}
+                  disabled={loadingTabelaPreco || tabelaPrecoSelecionados.length === 0}
+                >
+                  Incluir selecionados ({tabelaPrecoSelecionados.length})
+                </button>
+              </div>
+            ) : null}
 
             {loadingTabelaPreco ? (
               <p className="module-empty">Carregando tabela de preços...</p>
@@ -3858,19 +4225,30 @@ export function PedidoVendaFormPanel({
             ) : (
               <div className="module-table pedido-venda-tabela-preco-table">
                 <div className="table-scroll pedido-venda-tabela-preco-table-wrap">
-                  <table>
+                  <table className={modoTabelaPreco === 'geral' ? 'pedido-venda-tabela-preco-table--geral' : 'pedido-venda-tabela-preco-table--item'}>
                     <thead>
                       <tr>
+                        {modoTabelaPreco === 'geral' ? <th>Selecionar</th> : null}
                         <th>Código</th>
                         <th>Descrição</th>
                         <th>Unidade</th>
                         <th>Preço</th>
-                        <th>Ação</th>
+                        {modoTabelaPreco === 'item' ? <th>Ação</th> : null}
                       </tr>
                     </thead>
                     <tbody>
                       {tabelaPrecoRowsFiltradas.map((row, index) => (
                         <tr key={`${row.codigo}-${index}`}>
+                          {modoTabelaPreco === 'geral' ? (
+                            <td className="pedido-venda-tabela-preco-selection-cell">
+                              <input
+                                type="checkbox"
+                                checked={tabelaPrecoSelecionados.includes(getTabelaPrecoSelectionKey(row))}
+                                onChange={() => handleToggleTabelaPrecoSelecao(row)}
+                                aria-label={`Selecionar item ${row.codigo}`}
+                              />
+                            </td>
+                          ) : null}
                           <td>{row.codigo}</td>
                           <td>{row.descricao}</td>
                           <td>{row.unidade || '-'}</td>
@@ -3880,24 +4258,26 @@ export function PedidoVendaFormPanel({
                               maximumFractionDigits: 4,
                             })}
                           </td>
-                          <td className="pedido-venda-tabela-preco-action-cell">
-                            <button
-                              className="icon-button module-action-button module-action-button--primary ordens-servico-material-add pedido-venda-tabela-preco-action-button"
-                              type="button"
-                              onClick={() => {
-                                if (itemConsultaPrecoIndex === null) {
-                                  handleSelecionarItemTabelaPrecoMobile(row);
-                                  return;
-                                }
+                          {modoTabelaPreco === 'item' ? (
+                            <td className="pedido-venda-tabela-preco-action-cell">
+                              <button
+                                className="icon-button module-action-button module-action-button--primary ordens-servico-material-add pedido-venda-tabela-preco-action-button"
+                                type="button"
+                                onClick={() => {
+                                  if (itemConsultaPrecoIndex === null) {
+                                    handleSelecionarItemTabelaPrecoMobile(row);
+                                    return;
+                                  }
 
-                                handleSelecionarItemTabelaPreco(row);
-                              }}
-                              aria-label={`Selecionar item ${row.codigo}`}
-                              title="Selecionar"
-                            >
-                              <IoAddOutline size={16} />
-                            </button>
-                          </td>
+                                  handleSelecionarItemTabelaPreco(row);
+                                }}
+                                aria-label={`Adicionar item ${row.codigo}`}
+                                title="Adicionar item"
+                              >
+                                <IoAddOutline size={16} />
+                              </button>
+                            </td>
+                          ) : null}
                         </tr>
                       ))}
                     </tbody>
@@ -3926,24 +4306,36 @@ export function PedidoVendaFormPanel({
                           })}
                         </strong>
                       </div>
-                      <div className="module-card__actions pedido-venda-tabela-preco-card-actions">
-                        <button
-                          className="icon-button module-action-button module-action-button--primary ordens-servico-material-add pedido-venda-tabela-preco-action-button"
-                          type="button"
-                          onClick={() => {
-                            if (itemConsultaPrecoIndex === null) {
-                              handleSelecionarItemTabelaPrecoMobile(row);
-                              return;
-                            }
+                      {modoTabelaPreco === 'geral' ? (
+                        <div className="module-card__row">
+                          <span>Selecionar</span>
+                          <input
+                            type="checkbox"
+                            checked={tabelaPrecoSelecionados.includes(getTabelaPrecoSelectionKey(row))}
+                            onChange={() => handleToggleTabelaPrecoSelecao(row)}
+                            aria-label={`Selecionar item ${row.codigo}`}
+                          />
+                        </div>
+                      ) : (
+                        <div className="module-card__actions pedido-venda-tabela-preco-card-actions">
+                          <button
+                            className="icon-button module-action-button module-action-button--primary ordens-servico-material-add pedido-venda-tabela-preco-action-button"
+                            type="button"
+                            onClick={() => {
+                              if (itemConsultaPrecoIndex === null) {
+                                handleSelecionarItemTabelaPrecoMobile(row);
+                                return;
+                              }
 
-                            handleSelecionarItemTabelaPreco(row);
-                          }}
-                          aria-label={`Selecionar item ${row.codigo}`}
-                          title="Selecionar"
-                        >
-                          <IoAddOutline size={16} />
-                        </button>
-                      </div>
+                              handleSelecionarItemTabelaPreco(row);
+                            }}
+                            aria-label={`Adicionar item ${row.codigo}`}
+                            title="Adicionar item"
+                          >
+                            <IoAddOutline size={16} />
+                          </button>
+                        </div>
+                      )}
                     </article>
                   ))}
                 </div>

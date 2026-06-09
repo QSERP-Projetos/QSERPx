@@ -801,24 +801,26 @@ export function ClientesPage() {
 
             <section className="module-form">
               <div className="form-grid-3">
-                <label className="form-grid-3__full">
-                  <span>Modo de cadastro</span>
-                  <SearchableSelect
-                    value={formModoCadastro}
-                    onChange={(nextValue) => {
-                      const modo = (nextValue as 'manual' | 'documento') || 'manual';
-                      setFormModoCadastro(modo);
-                      setStatusConsultaDocumento('');
-                      if (modo === 'documento') {
-                        setFormErrors({});
-                      }
-                    }}
-                    options={MODO_CADASTRO_OPTIONS}
-                    ariaLabel="Modo de cadastro"
-                    searchPlaceholder="Pesquisar modo"
-                    disabled={modoConsulta || saving}
-                  />
-                </label>
+                {!modoConsulta && (
+                  <label className="form-grid-3__full">
+                    <span>Modo de cadastro</span>
+                    <SearchableSelect
+                      value={formModoCadastro}
+                      onChange={(nextValue) => {
+                        const modo = (nextValue as 'manual' | 'documento') || 'manual';
+                        setFormModoCadastro(modo);
+                        setStatusConsultaDocumento('');
+                        if (modo === 'documento') {
+                          setFormErrors({});
+                        }
+                      }}
+                      options={MODO_CADASTRO_OPTIONS}
+                      ariaLabel="Modo de cadastro"
+                      searchPlaceholder="Pesquisar modo"
+                      disabled={saving}
+                    />
+                  </label>
+                )}
 
                 <label>
                   <span>Documento (CPF/CNPJ)</span>

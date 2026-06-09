@@ -7819,7 +7819,19 @@ select.text-field:focus {
 }
 
 .pedido-venda-tabela-preco-modal {
+  --pedido-venda-bulk-date-width: 230px;
   width: min(980px, 100%);
+}
+
+.pedido-venda-tabela-preco-search-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.pedido-venda-tabela-preco-search-button {
+  min-width: 150px;
 }
 
 .pedido-venda-tabela-preco-backdrop {
@@ -7827,7 +7839,65 @@ select.text-field:focus {
 }
 
 .pedido-venda-tabela-preco-actions {
-  justify-content: flex-start;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.pedido-venda-tabela-preco-actions__include-selected {
+  min-width: var(--pedido-venda-bulk-date-width, 230px) !important;
+}
+
+.pedido-venda-tabela-preco-bulk-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) var(--pedido-venda-bulk-date-width);
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.pedido-venda-tabela-preco-bulk-field--date {
+  width: 100%;
+}
+
+.pedido-venda-tabela-preco-bulk-field {
+  min-width: 0;
+}
+
+.pedido-venda-tabela-preco-bulk-field input,
+.pedido-venda-tabela-preco-bulk-field .date-picker__control,
+.pedido-venda-tabela-preco-bulk-field .date-picker__control input {
+  min-height: 40px;
+}
+
+.pedido-venda-tabela-preco-bulk-field .date-picker {
+  width: 100%;
+}
+
+.pedido-venda-tabela-preco-bulk-field .date-picker__control {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+}
+
+.pedido-venda-tabela-preco-bulk-field .date-picker__control input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+}
+
+.pedido-venda-tabela-preco-bulk-field .date-picker__control input::placeholder {
+  color: var(--color-muted);
+  opacity: 0.72;
+}
+
+.pedido-venda-tabela-preco-bulk-field .date-picker__control input:focus {
+  outline: none;
+}
+
+.pedido-venda-tabela-preco-bulk-field .date-picker__control:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
 }
 
 .pedido-venda-tabela-preco-table-wrap {
@@ -8307,30 +8377,66 @@ select.text-field:focus {
   table-layout: fixed;
 }
 
-.pedido-venda-tabela-preco-table-wrap th:nth-child(1),
-.pedido-venda-tabela-preco-table-wrap td:nth-child(1) {
-  width: 16%;
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral th:nth-child(1),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral td:nth-child(1) {
+  width: 10%;
+  text-align: center;
 }
 
-.pedido-venda-tabela-preco-table-wrap th:nth-child(2),
-.pedido-venda-tabela-preco-table-wrap td:nth-child(2) {
-  width: 42%;
-}
-
-.pedido-venda-tabela-preco-table-wrap th:nth-child(3),
-.pedido-venda-tabela-preco-table-wrap td:nth-child(3) {
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral th:nth-child(2),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral td:nth-child(2) {
   width: 14%;
 }
 
-.pedido-venda-tabela-preco-table-wrap th:nth-child(4),
-.pedido-venda-tabela-preco-table-wrap td:nth-child(4) {
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral th:nth-child(3),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral td:nth-child(3) {
+  width: 36%;
+}
+
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral th:nth-child(4),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral td:nth-child(4) {
+  width: 14%;
+}
+
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral th:nth-child(5),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--geral td:nth-child(5) {
+  width: 26%;
+}
+
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item th:nth-child(1),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item td:nth-child(1) {
   width: 16%;
 }
 
-.pedido-venda-tabela-preco-table-wrap th:nth-child(5),
-.pedido-venda-tabela-preco-table-wrap td:nth-child(5) {
-  width: 12%;
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item th:nth-child(2),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item td:nth-child(2) {
+  width: 38%;
+}
+
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item th:nth-child(3),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item td:nth-child(3) {
+  width: 14%;
+}
+
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item th:nth-child(4),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item td:nth-child(4) {
+  width: 18%;
+}
+
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item th:nth-child(5),
+.pedido-venda-tabela-preco-table-wrap table.pedido-venda-tabela-preco-table--item td:nth-child(5) {
+  width: 14%;
   text-align: center;
+}
+
+.pedido-venda-tabela-preco-selection-cell {
+  text-align: center;
+}
+
+.pedido-venda-tabela-preco-selection-cell input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary, #2563eb);
 }
 
 .pedido-venda-tabela-preco-action-cell {
