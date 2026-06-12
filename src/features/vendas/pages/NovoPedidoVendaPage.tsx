@@ -224,6 +224,25 @@ const formatMoney = (value: string | number, currency = 'R$', decimals = 2) => {
 };
 
 const cleanLabelText = (value: unknown) => String(value ?? '').replace(/[\t\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+const onlyDigits = (value: unknown) => String(value ?? '').replace(/\D+/g, '');
+
+const formatCpfCnpj = (value: unknown) => {
+  const digits = onlyDigits(value).slice(0, 14);
+  if (!digits) return '';
+
+  if (digits.length > 11) {
+    return digits
+      .replace(/^(\d{2})(\d)/, '$1.$2')
+      .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+      .replace(/\.(\d{3})(\d)/, '.$1/$2')
+      .replace(/(\d{4})(\d)/, '$1-$2');
+  }
+
+  return digits
+    .replace(/^(\d{3})(\d)/, '$1.$2')
+    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1-$2');
+};
 
 const normalizeDestinoPedidoValue = (value: unknown) => {
   const raw = cleanLabelText(value);
@@ -1377,12 +1396,43 @@ export function PedidoVendaFormPanel({
 
       const nextClienteOptions: SearchableSelectOption[] = [
         { value: '', label: 'Selecione' },
-        ...toOptions(clienteRows, [
-          ['codigo_Cliente', 'nome_Fantasia'],
-          ['Codigo_Cliente', 'Nome_Fantasia'],
-          ['codigo_cliente', 'razao_Social'],
-          ['codCliente', 'nome_Cliente'],
-        ]),
+        ...clienteRows
+          .map((row) => {
+            const value = normalizeCode(
+              getRowLabel(row, [
+                'codigo_Cliente',
+                'Codigo_Cliente',
+                'codigo_cliente',
+                'codCliente',
+                'codigo',
+                'Codigo',
+                'id',
+                'Id',
+              ]),
+            );
+            if (!value) return null;
+
+            const razaoSocial = cleanLabelText(
+              getRowLabel(row, [
+                'razao_Social',
+                'Razao_Social',
+                'nome_Fantasia',
+                'Nome_Fantasia',
+                'nome_Cliente',
+                'Nome_Cliente',
+                'nome',
+                'Nome',
+              ]),
+            );
+            const documento = formatCpfCnpj(
+              getRowLabel(row, ['cgc_Cpf', 'Cgc_Cpf', 'cgcCpf', 'CgcCpf', 'cpf_Cnpj', 'Cpf_Cnpj']),
+            );
+            const labelBase = razaoSocial || value;
+            const label = documento ? `${labelBase} - ${documento}` : labelBase;
+
+            return { value, label };
+          })
+          .filter((item): item is SearchableSelectOption => Boolean(item)),
       ];
       setClienteOptions(nextClienteOptions);
 
@@ -3221,6 +3271,12 @@ export function PedidoVendaFormPanel({
                         options={clienteOptions}
                         searchPlaceholder="Pesquisar cliente"
                         ariaLabel="Cliente"
+                        minDropdownWidth={760}
+                        renderOption={(option) => (
+                          <div className="searchable-select__col-row">
+                            <div>{option.label}</div>
+                          </div>
+                        )}
                         disabled={isViewOnly || isEdit}
                       />
                     </label>
