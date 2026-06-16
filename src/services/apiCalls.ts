@@ -2742,6 +2742,52 @@ export const contasFinanceirasCall = async (
   );
 };
 
+export const adicionaContasReceberCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  body: {
+    codigoEmpesa: number;
+    NumDocumento: string;
+    TipoDoc: number;
+    DataEmissao: string;
+    DataVenciment: string;
+    DataPrevisao: string;
+    Usuario: string;
+    ValorReceber: number;
+    ValorCalculado: number;
+    NumPedido: number;
+    NumSeparacao: number;
+    ValorAbatimento: number;
+    ValorDesconto: number;
+    ValorJuros: number;
+    ValorOutrasDesp: number;
+    ValorPis: number;
+    ValorCofins: number;
+    ValorAbatido: number;
+    SituacaoPagto: number;
+    NumParcelas: number;
+    CodigoSacado: number;
+    TipoSacado: string;
+    CodigoPortador: string;
+    NumConta: number;
+    NumNotaFiscal: string;
+    SerNotaFiscal: string;
+    DescricaoLanc: string;
+    JustAlteracao: string;
+    OrigemChamada?: number;
+    NumLanc?: number;
+  },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/AdicionaContasReceber`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    undefined,
+    body,
+  );
+};
+
 export const consultaPedidoCall = async (
   baseUrl: string,
   jwtToken: string | undefined,
@@ -2787,6 +2833,55 @@ export const atualizaValorCalculadoCall = async (
   },
 ): Promise<ApiCallResponse> => {
   const url = `${normalizeBaseUrl(baseUrl)}/api/v1/AtualizaValorCalculado`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    params,
+  );
+};
+
+export const baixaContasReceberCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  body: {
+    CodigoEmpresa: number;
+    docs: { CodigoEmpresa: number; NumLanc: number; TipoDoc: number }[];
+    Usuario: string;
+    TipoBaixa: number;
+    DataBaixaLote: string;
+  },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/BaixaContasRecebPag`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    undefined,
+    body,
+  );
+};
+
+export const consultaContaSelectCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: { codigoEmpresa: string | number; numLanc: number },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ConsltaContaSelect`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    params,
+  );
+};
+
+export const contasReceberOcorrenciasCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: { codigoEmpresa: string | number; numLanc: number },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ContasReceberOcorrencias`;
   return apiManager.makeApiCall(
     url,
     ApiCallType.GET,
@@ -2914,4 +3009,5 @@ export default {
   atualizaValorCalculadoCall,
   consultaPedidoCall,
   consultaNotaClienteCall,
+  adicionaContasReceberCall,
 };

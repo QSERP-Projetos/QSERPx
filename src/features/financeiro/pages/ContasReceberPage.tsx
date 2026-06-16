@@ -11,7 +11,7 @@ import {
 import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
 import { GlobalConfig } from '../../../services/globalConfig';
-import { listContasReceberCall, listContasReceberNCCall, obterClientesFornecedoresCall, contasReceberSaldoAbaterCall, listContasReceberAbatimentoCall, abatimentoDocCall, cabecalhoEstornoAbatCall, listContasReceberEstornoAbatNCCall, estornarDocumentoAbatCall, adiantamentosRecebidosCall, encerrarReabrirAdiantamentoCall, devolverSaldoCall, cancelarContasReceberCall, consultaPortadorCall, contasFinanceirasCall, atualizaValorCalculadoCall, consultaPedidoCall, consultaNotaClienteCall } from '../../../services/apiCalls';
+import { listContasReceberCall, listContasReceberNCCall, obterClientesFornecedoresCall, contasReceberSaldoAbaterCall, listContasReceberAbatimentoCall, abatimentoDocCall, cabecalhoEstornoAbatCall, listContasReceberEstornoAbatNCCall, estornarDocumentoAbatCall, adiantamentosRecebidosCall, encerrarReabrirAdiantamentoCall, devolverSaldoCall, cancelarContasReceberCall, consultaPortadorCall, contasFinanceirasCall, atualizaValorCalculadoCall, consultaPedidoCall, consultaNotaClienteCall, adicionaContasReceberCall, baixaContasReceberCall, consultaContaSelectCall, contasReceberOcorrenciasCall } from '../../../services/apiCalls';
 import { SearchableSelect, type SearchableSelectOption } from '../../../components/SearchableSelect';
 import { AdvancedFiltersPanel } from '../../../components/AdvancedFiltersPanel';
 import { ListSearchField } from '../../../components/ListSearchField';
@@ -144,6 +144,47 @@ type ContaFinanceiraItem = {
   recebe_Lanc: number;
 };
 
+type ConsultaAlterarMode = 'consulta' | 'alterar';
+
+type ConsultaContaSelectResult = {
+  codigo_Empresa?: number | null;
+  num_Lanc?: number | null;
+  tipo_Documento?: number | null;
+  num_Documento?: string | null;
+  codigo_Portador?: number | null;
+  data_Emissao?: string | null;
+  data_Vencimento?: string | null;
+  data_Prev?: string | null;
+  valor_Receber?: number | null;
+  valor_Abatimento?: number | null;
+  valor_Desconto?: number | null;
+  valor_Juros?: number | null;
+  valor_Outras_Desp?: number | null;
+  valor_PIS?: number | null;
+  valor_Cofins?: number | null;
+  valor_Abatido?: number | null;
+  valor_Recebido?: number | null;
+  tipo_Cedente?: string | null;
+  codigo_Cedente?: number | null;
+  num_Nota_Fiscal?: string | null;
+  ser_Nota_Fiscal?: string | null;
+  num_Pedido?: string | null;
+  descricao_Lanc?: string | null;
+  num_Conta?: number | null;
+  situacao_Pagto?: number | null;
+};
+
+type OcorrenciaItem = {
+  codigo_Empresa?: number | null;
+  num_Lanc?: number | null;
+  num_Ocorrencia?: number | null;
+  data_Ocorrencia?: string | null;
+  tipo_Ocorrencia?: number | null;
+  descricao_Ocorrencia?: string | null;
+  valor_Ocorrencia?: number | null;
+  codigo_Usuario?: string | null;
+};
+
 const TIPO_DOC_OPTIONS = [
   { value: '8', label: 'Adiantamento' },
   { value: '3', label: 'Boleto' },
@@ -257,13 +298,717 @@ const toApiDateFormat = (ddMmYyyy: string): string => {
   return `${match[1]}/${match[2]}/${match[3].slice(2)}`;
 };
 
+const brDateToIso = (ddMmYyyy: string): string => {
+  const str = String(ddMmYyyy ?? '').trim();
+  const match4 = str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (match4) return `${match4[3]}-${match4[2]}-${match4[1]}`;
+  const match2 = str.match(/^(\d{2})\/(\d{2})\/(\d{2})$/);
+  if (match2) return `${2000 + Number(match2[3])}-${match2[2]}-${match2[1]}`;
+  return '';
+};
+
+const tipoOcorrenciaLabel = (tipo: number | null | undefined): string => {
+  switch (tipo) {
+    case 1: return 'Abatimento';
+    case 2: return 'Desconto';
+    case 3: return 'Juros';
+    case 4: return 'Outras Desp.';
+    case 5: return 'PIS';
+    case 6: return 'Cofins';
+    default: return '';
+  }
+};
+
+// ── Consulta / Alterar Contas a Receber ───────────────────────────────────────
+const ConsultaAlterarContasReceberModal = memo(function ConsultaAlterarContasReceberModal({
+  open,
+  mode,
+  numLanc,
+  sacadoNomeInicial,
+  onClose,
+  onSuccess,
+}: {
+  open: boolean;
+  mode: ConsultaAlterarMode;
+  numLanc: number | null;
+  sacadoNomeInicial?: string;
+  onClose: () => void;
+  onSuccess?: () => void;
+}) {
+  const { showToast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [fNumero, setFNumero] = useState('');
+  const [fTipoDoc, setFTipoDoc] = useState('');
+  const [fValorDoc, setFValorDoc] = useState('');
+  const [fEmissao, setFEmissao] = useState('');
+  const [fValorRec, setFValorRec] = useState('');
+  const [fVencto, setFVencto] = useState('');
+  const [fPedido, setFPedido] = useState('');
+  const [fPrevisao, setFPrevisao] = useState('');
+  const [fAbatimento, setFAbatimento] = useState('0,00');
+  const [fPis, setFPis] = useState('0,00');
+  const [fDesconto, setFDesconto] = useState('0,00');
+  const [fCofins, setFCofins] = useState('0,00');
+  const [fJuros, setFJuros] = useState('0,00');
+  const [fAbatido, setFAbatido] = useState('0,00');
+  const [fOutrasDesp, setFOutrasDesp] = useState('0,00');
+  const [fSituacaoPagto, setFSituacaoPagto] = useState('');
+  const [fDescricao, setFDescricao] = useState('');
+  const [fNotaFiscal, setFNotaFiscal] = useState('');
+  const [fSerie, setFSerie] = useState('');
+  const [portadores, setPortadores] = useState<PortadorItem[]>([]);
+  const [portadorValue, setPortadorValue] = useState('');
+  const [portadorCodigo, setPortadorCodigo] = useState('');
+  const [contasFinanceiras, setContasFinanceiras] = useState<ContaFinanceiraItem[]>([]);
+  const [contaFinValue, setContaFinValue] = useState('');
+  const [contaFinDescricao, setContaFinDescricao] = useState('');
+  const [sacadoNome, setSacadoNome] = useState('');
+  const [sacadoTipo, setSacadoTipo] = useState('');
+  const [fJustificativa, setFJustificativa] = useState('');
+  const consultaDataRef = useRef<ConsultaContaSelectResult | null>(null);
+  const [ocorrenciasOpen, setOcorrenciasOpen] = useState(false);
+  const [ocorrenciasRows, setOcorrenciasRows] = useState<OcorrenciaItem[]>([]);
+  const [ocorrenciasLoading, setOcorrenciasLoading] = useState(false);
+  const [abatimentosConsOpen, setAbatimentosConsOpen] = useState(false);
+  const [abatimentosConsRows, setAbatimentosConsRows] = useState<EstornoAbatItem[]>([]);
+  const [abatimentosConsLoading, setAbatimentosConsLoading] = useState(false);
+  const [alterarConfirmOpen, setAlterarConfirmOpen] = useState(false);
+  const [alterarSaving, setAlterarSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open || numLanc == null) return;
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+    const codigoEmpresa = GlobalConfig.getCodEmpresa();
+    if (!baseUrl || !token || !codigoEmpresa) return;
+    setLoading(true);
+    setSacadoNome(sacadoNomeInicial ?? '');
+    consultaDataRef.current = null;
+    void Promise.all([
+      consultaContaSelectCall(baseUrl, token, { codigoEmpresa, numLanc }),
+      consultaPortadorCall(baseUrl, token),
+      contasFinanceirasCall(baseUrl, token),
+    ]).then(async ([consultaResp, portadoresResp, contasFinResp]) => {
+      const portList: PortadorItem[] = [];
+      const contaList: ContaFinanceiraItem[] = [];
+      if (portadoresResp.succeeded) {
+        const body = portadoresResp.jsonBody ?? portadoresResp.data;
+        portList.push(...(Array.isArray(body) ? body : getRows(body)));
+        setPortadores(portList);
+      }
+      if (contasFinResp.succeeded) {
+        const body = contasFinResp.jsonBody ?? contasFinResp.data;
+        contaList.push(...(Array.isArray(body) ? body : getRows(body)));
+        setContasFinanceiras(contaList);
+      }
+      if (!consultaResp.succeeded) {
+        showToast('Erro ao carregar dados do lançamento.', 'error');
+        onClose();
+        return;
+      }
+      const d: ConsultaContaSelectResult = consultaResp.jsonBody ?? consultaResp.data ?? {};
+      consultaDataRef.current = d;
+      setFNumero(String(d.num_Documento ?? ''));
+      setFTipoDoc(String(d.tipo_Documento ?? '6'));
+      setFValorDoc(d.valor_Receber != null ? formatBrFloat(d.valor_Receber) : '');
+      setFEmissao(d.data_Emissao ? formatDateDdMmYy(d.data_Emissao) : '');
+      setFVencto(d.data_Vencimento ? formatDateDdMmYy(d.data_Vencimento) : '');
+      setFPedido(String(d.num_Pedido ?? ''));
+      setFPrevisao(d.data_Prev ? formatDateDdMmYy(d.data_Prev) : '');
+      setFAbatimento(formatBrFloat(d.valor_Abatimento ?? 0));
+      setFPis(formatBrFloat(d.valor_PIS ?? 0));
+      setFDesconto(formatBrFloat(d.valor_Desconto ?? 0));
+      setFCofins(formatBrFloat(d.valor_Cofins ?? 0));
+      setFJuros(formatBrFloat(d.valor_Juros ?? 0));
+      setFAbatido(formatBrFloat(d.valor_Abatido ?? 0));
+      setFOutrasDesp(formatBrFloat(d.valor_Outras_Desp ?? 0));
+      setFSituacaoPagto(d.situacao_Pagto != null ? String(d.situacao_Pagto) : '');
+      setFDescricao(String(d.descricao_Lanc ?? ''));
+      setFJustificativa('');
+      setFNotaFiscal(String(d.num_Nota_Fiscal ?? ''));
+      setFSerie(String(d.ser_Nota_Fiscal ?? ''));
+      const portVal = d.codigo_Portador != null ? String(d.codigo_Portador) : '';
+      setPortadorValue(portVal);
+      setPortadorCodigo(portVal);
+      const contaVal = d.num_Conta != null ? String(d.num_Conta) : '';
+      setContaFinValue(contaVal);
+      const foundConta = contaList.find((c) => String(c.num_Conta) === contaVal);
+      setContaFinDescricao(foundConta ? foundConta.descricao_Conta : '');
+      setSacadoTipo(String(d.tipo_Cedente ?? '').toUpperCase());
+
+      // Calcula valor recebido via API (Calcular=false)
+      try {
+        const calcRes = await atualizaValorCalculadoCall(baseUrl, token, {
+          ValorReceber: d.valor_Receber ?? 0,
+          ValorAbatimento: d.valor_Abatimento ?? 0,
+          ValorAbatido: d.valor_Abatido ?? 0,
+          ValorPis: d.valor_PIS ?? 0,
+          ValorCofins: d.valor_Cofins ?? 0,
+          ValorDesconto: d.valor_Desconto ?? 0,
+          ValorJuros: d.valor_Juros ?? 0,
+          ValorOutrasDesp: d.valor_Outras_Desp ?? 0,
+          ValorCalculado: d.valor_Recebido ?? 0,
+          Calcular: false,
+        });
+        if (calcRes.succeeded) {
+          const calcBody = calcRes.jsonBody ?? calcRes.data;
+          if (calcBody?.valorCalculado != null) setFValorRec(formatBrFloat(Number(calcBody.valorCalculado)));
+          else setFValorRec(d.valor_Recebido != null ? formatBrFloat(d.valor_Recebido) : '');
+        } else {
+          setFValorRec(d.valor_Recebido != null ? formatBrFloat(d.valor_Recebido) : '');
+        }
+      } catch {
+        setFValorRec(d.valor_Recebido != null ? formatBrFloat(d.valor_Recebido) : '');
+      }
+    }).finally(() => setLoading(false));
+  }, [open, numLanc, sacadoNomeInicial]);
+
+  const handleAbrirOcorrencias = useCallback(async () => {
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+    const codigoEmpresa = GlobalConfig.getCodEmpresa();
+    if (!baseUrl || !token || !codigoEmpresa || numLanc == null) return;
+    setOcorrenciasRows([]);
+    setOcorrenciasOpen(true);
+    setOcorrenciasLoading(true);
+    try {
+      const resp = await contasReceberOcorrenciasCall(baseUrl, token, { codigoEmpresa, numLanc });
+      if (resp.succeeded) {
+        const body = resp.jsonBody ?? resp.data;
+        setOcorrenciasRows(Array.isArray(body) ? body : getRows(body));
+      }
+    } catch {
+      setOcorrenciasRows([]);
+    } finally {
+      setOcorrenciasLoading(false);
+    }
+  }, [numLanc]);
+
+  const handleAtualizaValorAlt = useCallback(async () => {
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+    if (!baseUrl || !token) return;
+    try {
+      const res = await atualizaValorCalculadoCall(baseUrl, token, {
+        ValorReceber: parseBrFloat(fValorDoc),
+        ValorAbatimento: parseBrFloat(fAbatimento),
+        ValorAbatido: parseBrFloat(fAbatido),
+        ValorPis: parseBrFloat(fPis),
+        ValorCofins: parseBrFloat(fCofins),
+        ValorDesconto: parseBrFloat(fDesconto),
+        ValorJuros: parseBrFloat(fJuros),
+        ValorOutrasDesp: parseBrFloat(fOutrasDesp),
+        ValorCalculado: parseBrFloat(fValorRec),
+        Calcular: false,
+      });
+      if (res.succeeded) {
+        const body = res.jsonBody ?? res.data;
+        if (body?.valorCalculado != null) setFValorRec(formatBrFloat(Number(body.valorCalculado)));
+      }
+    } catch {
+      // silently ignore
+    }
+  }, [fValorDoc, fAbatimento, fAbatido, fPis, fCofins, fDesconto, fJuros, fOutrasDesp, fValorRec]);
+
+  const handleCalcularAlt = useCallback(async () => {
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+    if (!baseUrl || !token) return;
+    try {
+      const res = await atualizaValorCalculadoCall(baseUrl, token, {
+        ValorReceber: parseBrFloat(fValorDoc),
+        ValorAbatimento: parseBrFloat(fAbatimento),
+        ValorAbatido: parseBrFloat(fAbatido),
+        ValorPis: parseBrFloat(fPis),
+        ValorCofins: parseBrFloat(fCofins),
+        ValorDesconto: parseBrFloat(fDesconto),
+        ValorJuros: parseBrFloat(fJuros),
+        ValorOutrasDesp: parseBrFloat(fOutrasDesp),
+        ValorCalculado: parseBrFloat(fValorRec),
+        Calcular: true,
+      });
+      if (res.succeeded) {
+        const body = res.jsonBody ?? res.data;
+        if (body?.valorAbatimento != null) setFAbatimento(formatBrFloat(Number(body.valorAbatimento)));
+        if (body?.valorJuros != null) setFJuros(formatBrFloat(Number(body.valorJuros)));
+      }
+    } catch {
+      // silently ignore
+    }
+  }, [fValorDoc, fAbatimento, fAbatido, fPis, fCofins, fDesconto, fJuros, fOutrasDesp, fValorRec]);
+
+  const handleConfirmAlterar = useCallback(async () => {
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+    const codEmpresa = GlobalConfig.getCodEmpresa();
+    const usuario = GlobalConfig.getUsuario();
+    if (!baseUrl || !token || !codEmpresa || numLanc == null) return;
+    const d = consultaDataRef.current;
+    setAlterarSaving(true);
+    setAlterarConfirmOpen(false);
+    try {
+      const res = await adicionaContasReceberCall(baseUrl, token, {
+        codigoEmpesa: Number(codEmpresa),
+        NumDocumento: fNumero,
+        TipoDoc: Number(fTipoDoc) || 0,
+        DataEmissao: brDateToIso(fEmissao),
+        DataVenciment: brDateToIso(fVencto),
+        DataPrevisao: brDateToIso(fPrevisao),
+        Usuario: usuario,
+        ValorReceber: parseBrFloat(fValorDoc),
+        ValorCalculado: parseBrFloat(fValorRec),
+        NumPedido: fPedido.trim() ? (Number(fPedido.trim()) || 0) : 0,
+        NumSeparacao: 0,
+        ValorAbatimento: parseBrFloat(fAbatimento),
+        ValorDesconto: parseBrFloat(fDesconto),
+        ValorJuros: parseBrFloat(fJuros),
+        ValorOutrasDesp: parseBrFloat(fOutrasDesp),
+        ValorPis: parseBrFloat(fPis),
+        ValorCofins: parseBrFloat(fCofins),
+        ValorAbatido: parseBrFloat(fAbatido),
+        SituacaoPagto: fSituacaoPagto ? (Number(fSituacaoPagto) || 0) : 0,
+        NumParcelas: 0,
+        CodigoSacado: Number(d?.codigo_Cedente ?? 0) || 0,
+        TipoSacado: String(d?.tipo_Cedente ?? ''),
+        CodigoPortador: portadorCodigo ?? '',
+        NumConta: Number(contaFinValue) || 0,
+        NumNotaFiscal: fNotaFiscal.trim() ? fNotaFiscal.trim().padStart(6, '0') : '',
+        SerNotaFiscal: fSerie.trim(),
+        DescricaoLanc: fDescricao,
+        JustAlteracao: fJustificativa,
+        OrigemChamada: 2,
+        NumLanc: numLanc,
+      });
+      if (res.succeeded) {
+        showToast('Alteração realizada com sucesso!', 'success');
+        onClose();
+        onSuccess?.();
+      } else {
+        const body = res.jsonBody ?? res.data;
+        showToast(String(body?.message ?? 'Erro ao alterar lançamento'), 'error');
+      }
+    } catch {
+      showToast('Erro ao alterar lançamento', 'error');
+    } finally {
+      setAlterarSaving(false);
+    }
+  }, [
+    numLanc, fNumero, fTipoDoc, fEmissao, fVencto, fPrevisao,
+    fValorDoc, fValorRec, fPedido, fAbatimento, fDesconto, fJuros,
+    fOutrasDesp, fPis, fCofins, fAbatido, fSituacaoPagto,
+    portadorCodigo, contaFinValue, fNotaFiscal, fSerie,
+    fDescricao, fJustificativa, onClose, onSuccess, showToast,
+  ]);
+
+  const handleAbrirAbatimentosConsulta = useCallback(async () => {
+    const d = consultaDataRef.current;
+    if (!d) return;
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+    const codigoEmpresa = GlobalConfig.getCodEmpresa();
+    if (!baseUrl || !token || !codigoEmpresa || d.num_Lanc == null) return;
+    setAbatimentosConsRows([]);
+    setAbatimentosConsOpen(true);
+    setAbatimentosConsLoading(true);
+    try {
+      const resp = await listContasReceberEstornoAbatNCCall(baseUrl, token, {
+        codigoEmpresa,
+        codCedente: d.codigo_Cedente ?? '',
+        tipoCedente: String(d.tipo_Cedente ?? ''),
+        numLancPrincipal: d.num_Lanc,
+      });
+      if (resp.succeeded) {
+        const body = resp.jsonBody ?? resp.data;
+        setAbatimentosConsRows(Array.isArray(body) ? body : getRows(body));
+      }
+    } catch {
+      setAbatimentosConsRows([]);
+    } finally {
+      setAbatimentosConsLoading(false);
+    }
+  }, []);
+
+  const ro = mode === 'consulta';
+
+  // Regras por tipo de documento (só aplica no modo alterar)
+  const tipoDocNum = Number(fTipoDoc);
+  const isNotaDebitoOuAdiant = !ro && (tipoDocNum === 7 || tipoDocNum === 8);
+  const isAdiantamento = !ro && tipoDocNum === 8;
+
+  // Aplica regras de tipo de documento ao alterar
+  useEffect(() => {
+    if (ro || !fTipoDoc) return;
+    const tipo = Number(fTipoDoc);
+    if (tipo === 7 || tipo === 8) {
+      setFDesconto('0,00');
+      setFJuros('0,00');
+      setFOutrasDesp('0,00');
+      setFPis('0,00');
+      setFCofins('0,00');
+    }
+    if (tipo === 8) {
+      setFNotaFiscal('');
+      setFSerie('');
+    }
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+    if (!baseUrl || !token) return;
+    void atualizaValorCalculadoCall(baseUrl, token, {
+      ValorReceber: parseBrFloat(fValorDoc),
+      ValorAbatimento: parseBrFloat(fAbatimento),
+      ValorAbatido: parseBrFloat(fAbatido),
+      ValorPis: tipo === 7 || tipo === 8 ? 0 : parseBrFloat(fPis),
+      ValorCofins: tipo === 7 || tipo === 8 ? 0 : parseBrFloat(fCofins),
+      ValorDesconto: tipo === 7 || tipo === 8 ? 0 : parseBrFloat(fDesconto),
+      ValorJuros: tipo === 7 || tipo === 8 ? 0 : parseBrFloat(fJuros),
+      ValorOutrasDesp: tipo === 7 || tipo === 8 ? 0 : parseBrFloat(fOutrasDesp),
+      ValorCalculado: parseBrFloat(fValorRec),
+      Calcular: false,
+    }).then((res) => {
+      if (res.succeeded) {
+        const body = res.jsonBody ?? res.data;
+        if (body?.valorCalculado != null) setFValorRec(formatBrFloat(Number(body.valorCalculado)));
+      }
+    }).catch(() => { /* silently ignore */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fTipoDoc, ro]);
+
+  const tipoDocLabel = TIPO_DOC_OPTIONS.find((o) => o.value === fTipoDoc)?.label ?? fTipoDoc;
+  const portadorBancoLabel = portadores.find((p) => String(p.codigo_Portador) === portadorValue)?.nome_Banco ?? portadorValue;
+  const situacaoPagtoLabel = SITUACAO_PAGTO_OPTIONS.find((o) => o.value === fSituacaoPagto)?.label ?? fSituacaoPagto;
+  const contaFinCodigoLabel = contasFinanceiras.find((c) => String(c.num_Conta) === contaFinValue)?.codigo_Conta ?? contaFinValue;
+  const fJustificativaEnabled = !ro && [fAbatimento, fDesconto, fJuros, fOutrasDesp, fPis, fCofins, fAbatido].some((v) => parseBrFloat(v) > 0);
+
+  if (!open) return null;
+
+  return (
+    <>
+      <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label={mode === 'consulta' ? 'Consulta Contas a Receber' : 'Alterar Contas a Receber'}>
+        <article className="modal-card modal-card--lancamento">
+          <header className="modal-card__header lancamento-modal-header">
+            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--color-heading)' }}>
+              {mode === 'consulta' ? 'Consulta' : 'Alterar'} Contas a Receber
+            </h2>
+          </header>
+
+          <div className="lancamento-modal-body">
+            {loading && (
+              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-muted)', textAlign: 'center' }}>Carregando dados...</p>
+            )}
+
+            <div className="lancamento-two-col">
+              {/* Left column */}
+              <div className="lancamento-col">
+                <div className="lancamento-form-grid4">
+                  <span className="lancamento-lbl">Número:</span>
+                  <input className="lancamento-inp" readOnly value={fNumero} />
+                  <span className="lancamento-lbl">Usuário:</span>
+                  <input className="lancamento-inp" readOnly value={GlobalConfig.getUsuario().toUpperCase()} />
+
+                  <span className="lancamento-lbl">Tipo doc:</span>
+                  {ro
+                    ? <input className="lancamento-inp" readOnly value={tipoDocLabel} />
+                    : <SearchableSelect options={TIPO_DOC_OPTIONS} value={fTipoDoc} onChange={setFTipoDoc} placeholder="Selecione..." />
+                  }
+                  <span className="lancamento-lbl">Valor doc.:</span>
+                  <input className="lancamento-inp lancamento-inp--right" readOnly value={fValorDoc} placeholder="0,00" />
+
+                  <span className="lancamento-lbl">Emissão:</span>
+                  <input className="lancamento-inp" readOnly value={fEmissao} />
+                  <span className="lancamento-lbl">Valor rec.:</span>
+                  <input className="lancamento-inp lancamento-inp--right" readOnly={ro} value={fValorRec} onChange={(e) => setFValorRec(e.target.value)} placeholder="0,00" />
+
+                  <span className="lancamento-lbl">Vencto.:</span>
+                  <input className="lancamento-inp" readOnly value={fVencto} />
+                  <span className="lancamento-lbl">Pedido:</span>
+                  <input className="lancamento-inp" readOnly={ro} value={fPedido} onChange={(e) => setFPedido(e.target.value)} />
+
+                  <span className="lancamento-lbl">Previsão:</span>
+                  {ro
+                    ? <input className="lancamento-inp" readOnly value={fPrevisao} />
+                    : <CustomDatePicker value={fPrevisao} onChange={setFPrevisao} />
+                  }
+                  <span /><span />
+                </div>
+
+                <div className="lancamento-values-box">
+                  <div className="lancamento-values-grid">
+                    <span className="lancamento-lbl">Abatimento:</span>
+                    <input className="lancamento-inp lancamento-inp--right" readOnly={ro || isNotaDebitoOuAdiant} value={fAbatimento} onChange={(e) => setFAbatimento(e.target.value)} onBlur={ro ? undefined : () => void handleAtualizaValorAlt()} />
+                    <span className="lancamento-lbl">PIS:</span>
+                    <input className="lancamento-inp lancamento-inp--right" readOnly={ro} disabled={isNotaDebitoOuAdiant} value={fPis} onChange={(e) => setFPis(e.target.value)} onBlur={ro ? undefined : () => void handleAtualizaValorAlt()} />
+
+                    <span className="lancamento-lbl">Desconto:</span>
+                    <input className="lancamento-inp lancamento-inp--right" readOnly={ro} disabled={isNotaDebitoOuAdiant} value={fDesconto} onChange={(e) => setFDesconto(e.target.value)} onBlur={ro ? undefined : () => void handleAtualizaValorAlt()} />
+                    <span className="lancamento-lbl">Cofins:</span>
+                    <input className="lancamento-inp lancamento-inp--right" readOnly={ro} disabled={isNotaDebitoOuAdiant} value={fCofins} onChange={(e) => setFCofins(e.target.value)} onBlur={ro ? undefined : () => void handleAtualizaValorAlt()} />
+
+                    <span className="lancamento-lbl">Juros:</span>
+                    <input className="lancamento-inp lancamento-inp--right" readOnly={ro} disabled={isNotaDebitoOuAdiant} value={fJuros} onChange={(e) => setFJuros(e.target.value)} onBlur={ro ? undefined : () => void handleAtualizaValorAlt()} />
+                    <span className="lancamento-lbl">Abatido:</span>
+                    <input className="lancamento-inp lancamento-inp--right" readOnly value={fAbatido} />
+
+                    <span className="lancamento-lbl">Outras desp.:</span>
+                    <input className="lancamento-inp lancamento-inp--right" readOnly={ro} disabled={isNotaDebitoOuAdiant} value={fOutrasDesp} onChange={(e) => setFOutrasDesp(e.target.value)} onBlur={ro ? undefined : () => void handleAtualizaValorAlt()} />
+                    <span /><span />
+                  </div>
+                  <div className="lancamento-calcular-row">
+                    {!ro && (
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        style={{ width: 'auto', minWidth: 80, height: 34, fontSize: '0.78rem', padding: '0 12px' }}
+                        onClick={() => void handleCalcularAlt()}
+                      >
+                        Calcular
+                      </button>
+                    )}
+                    <span style={{ flex: 1 }} />
+                    <span className="lancamento-lbl" style={{ flexShrink: 0 }}>Situação do pagto.:</span>
+                    {ro
+                      ? <input className="lancamento-inp" readOnly value={situacaoPagtoLabel} />
+                      : <SearchableSelect options={SITUACAO_PAGTO_OPTIONS} value={fSituacaoPagto} onChange={setFSituacaoPagto} placeholder="Selecione..." />
+                    }
+                  </div>
+                </div>
+              </div>
+
+              {/* Right column */}
+              <div className="lancamento-col">
+                <div className="lancamento-form-grid2">
+                  <span className="lancamento-lbl">Sacado:</span>
+                  <div className="lancamento-combo-group">
+                    <input className="lancamento-inp" readOnly value={sacadoNome} style={{ flex: 1 }} />
+                    <input className="lancamento-inp lancamento-inp--tipo" readOnly value={sacadoTipo === 'C' ? 'Cliente' : sacadoTipo === 'F' ? 'Fornecedor' : sacadoTipo} tabIndex={-1} />
+                  </div>
+
+                  <span className="lancamento-lbl">Portador:</span>
+                  <div className="lancamento-combo-group">
+                    {ro
+                      ? <input className="lancamento-inp" readOnly value={portadorBancoLabel} style={{ flex: 1 }} />
+                      : <SearchableSelect
+                        options={[{ value: '', label: 'Selecione...' }, ...portadores.map((p) => ({ value: String(p.codigo_Portador), label: p.nome_Banco }))]}
+                        value={portadorValue}
+                        onChange={(v) => { setPortadorValue(v); setPortadorCodigo(v); }}
+                        placeholder="Selecione..."
+                      />
+                    }
+                    <input className="lancamento-inp lancamento-inp--sm" readOnly value={portadorCodigo} tabIndex={-1} />
+                  </div>
+
+                  <span className="lancamento-lbl">Conta Fin.:</span>
+                  <div className="lancamento-combo-group">
+                    {ro
+                      ? <input className="lancamento-inp" readOnly value={contaFinCodigoLabel} style={{ flex: 1 }} />
+                      : <SearchableSelect
+                        options={[{ value: '', label: 'Selecione...' }, ...contasFinanceiras.map((c) => ({ value: String(c.num_Conta), label: c.codigo_Conta }))]}
+                        value={contaFinValue}
+                        onChange={(v) => {
+                          setContaFinValue(v);
+                          const found = contasFinanceiras.find((c) => String(c.num_Conta) === v);
+                          setContaFinDescricao(found ? found.descricao_Conta : '');
+                        }}
+                        placeholder="Selecione..."
+                      />
+                    }
+                    <input className="lancamento-inp lancamento-inp--desc" readOnly value={contaFinDescricao} tabIndex={-1} title={contaFinDescricao} />
+                  </div>
+
+                  <span className="lancamento-lbl">Nota Fiscal:</span>
+                  <input className="lancamento-inp lancamento-inp--nf" readOnly={ro} disabled={isAdiantamento} value={fNotaFiscal} onChange={ro ? undefined : (e) => setFNotaFiscal(e.target.value)} />
+
+                  <span className="lancamento-lbl">Série:</span>
+                  <input className="lancamento-inp" style={{ maxWidth: 60 }} readOnly={ro} disabled={isAdiantamento} value={fSerie} onChange={ro ? undefined : (e) => setFSerie(e.target.value)} />
+                </div>
+
+                <div className="lancamento-textarea-wrap">
+                  <span className="lancamento-lbl" style={{ textAlign: 'left' }}>Descrição:</span>
+                  <textarea
+                    className="lancamento-textarea"
+                    readOnly={ro}
+                    value={fDescricao}
+                    onChange={(e) => setFDescricao(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+
+                {!ro && (
+                  <div className="lancamento-textarea-wrap">
+                    <span className="lancamento-lbl" style={{ textAlign: 'left' }}>Justificativa da alteração:</span>
+                    <textarea
+                      className="lancamento-textarea"
+                      value={fJustificativa}
+                      onChange={(e) => setFJustificativa(e.target.value)}
+                      rows={3}
+                      disabled={!fJustificativaEnabled}
+                    />
+                  </div>
+                )}
+
+                <div className="lancamento-textarea-wrap">
+                  <div className="lancamento-textarea-actions" style={{ marginTop: 4 }}>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      style={{ width: 'auto', minWidth: 90, height: 34, fontSize: '0.78rem', padding: '0 12px' }}
+                      onClick={() => void handleAbrirOcorrencias()}
+                    >
+                      Ocorrências
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      style={{ width: 'auto', minWidth: 90, height: 34, fontSize: '0.78rem', padding: '0 12px' }}
+                      onClick={() => void handleAbrirAbatimentosConsulta()}
+                    >
+                      Abatimentos
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <footer className="lancamento-modal-footer">
+            <div style={{ flex: 1 }} />
+            <div className="lancamento-modal-actions">
+              <button type="button" className="secondary-button" style={{ width: 'auto', minWidth: 80 }} onClick={onClose} disabled={alterarSaving}>
+                {mode === 'consulta' ? 'Fechar' : 'Cancelar'}
+              </button>
+              {mode === 'alterar' && (
+                <button type="button" className="primary-button" style={{ width: 'auto', minWidth: 80 }} onClick={() => setAlterarConfirmOpen(true)} disabled={alterarSaving}>
+                  {alterarSaving ? 'Salvando...' : 'OK'}
+                </button>
+              )}
+            </div>
+          </footer>
+        </article>
+      </section>
+
+      {/* Confirmação de alteração */}
+      {alterarConfirmOpen && (
+        <section className="modal-backdrop modal-backdrop--nested" role="dialog" aria-modal="true" aria-label="Confirmar alteração">
+          <article className="modal-card" style={{ width: 'min(420px, 92vw)', gap: 20 }}>
+            <header className="modal-card__header">
+              <h2>Confirmar Alteração</h2>
+            </header>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)' }}>
+              Confirma a alteração do lançamento <strong>{fNumero}</strong>?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button type="button" className="secondary-button" style={{ width: 'auto', minWidth: 80 }} onClick={() => setAlterarConfirmOpen(false)}>Cancelar</button>
+              <button type="button" className="primary-button" style={{ width: 'auto', minWidth: 80 }} onClick={() => void handleConfirmAlterar()}>Confirmar</button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      {/* Ocorrências sub-modal */}
+      {ocorrenciasOpen && (
+        <section className="modal-backdrop modal-backdrop--nested" role="dialog" aria-modal="true" aria-label="Ocorrências">
+          <article className="modal-card modal-card--abatimento">
+            <header className="modal-card__header">
+              <h2>Ocorrências</h2>
+            </header>
+            <div className="abatimento-table-wrap">
+              {ocorrenciasLoading ? (
+                <p className="module-empty">Carregando...</p>
+              ) : (
+                <table className="abatimento-table">
+                  <thead>
+                    <tr>
+                      <th>Data</th>
+                      <th>Tipo</th>
+                      <th>Motivo da Alteração</th>
+                      <th>Usuário</th>
+                      <th style={{ textAlign: 'right' }}>Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ocorrenciasRows.length === 0 ? (
+                      <tr><td colSpan={5} style={{ padding: '14px', textAlign: 'center', color: 'var(--color-muted)', fontSize: '0.82rem' }}>Nenhuma ocorrência encontrada.</td></tr>
+                    ) : ocorrenciasRows.map((item, idx) => (
+                      <tr key={idx}>
+                        <td>{formatDateDdMmYy(item.data_Ocorrencia)}</td>
+                        <td>{tipoOcorrenciaLabel(item.tipo_Ocorrencia)}</td>
+                        <td>{String(item.descricao_Ocorrencia ?? '-')}</td>
+                        <td>{String(item.codigo_Usuario ?? '-')}</td>
+                        <td style={{ textAlign: 'right' }}>{formatCurrency(item.valor_Ocorrencia)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" className="secondary-button abatimento-footer__fechar" onClick={() => setOcorrenciasOpen(false)}>
+                Fechar
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      {/* Abatimentos sub-modal */}
+      {abatimentosConsOpen && (
+        <section className="modal-backdrop modal-backdrop--nested" role="dialog" aria-modal="true" aria-label="Abatimentos">
+          <article className="modal-card modal-card--abatimento">
+            <header className="modal-card__header">
+              <h2>Abatimentos</h2>
+            </header>
+            <div className="abatimento-table-wrap">
+              {abatimentosConsLoading ? (
+                <p className="module-empty">Carregando...</p>
+              ) : (
+                <table className="abatimento-table">
+                  <thead>
+                    <tr>
+                      <th>Documento</th>
+                      <th>Data Abatimento</th>
+                      <th>Tipo</th>
+                      <th style={{ textAlign: 'right' }}>Abatido</th>
+                      <th>Nota</th>
+                      <th>Sacado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {abatimentosConsRows.length === 0 ? (
+                      <tr><td colSpan={6} style={{ padding: '14px', textAlign: 'center', color: 'var(--color-muted)', fontSize: '0.82rem' }}>Nenhum abatimento encontrado.</td></tr>
+                    ) : abatimentosConsRows.map((item, idx) => (
+                      <tr key={idx}>
+                        <td>{String(item.num_Documento ?? '-')}</td>
+                        <td>{formatDateDdMmYy(item.data_Abatimento)}</td>
+                        <td>{String(item.tipo ?? '-')}</td>
+                        <td style={{ textAlign: 'right' }}>{formatCurrency(item.valor_Abatido)}</td>
+                        <td>{item.num_Nota_Fiscal != null ? String(item.num_Nota_Fiscal) : '-'}</td>
+                        <td>{String(item.nome_Fantasia ?? '-')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" className="secondary-button abatimento-footer__fechar" onClick={() => setAbatimentosConsOpen(false)}>
+                Fechar
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+    </>
+  );
+});
+
 // ── Lançamento de Contas a Receber — componente isolado (performance) ──────────
 const LancamentoContasReceberModal = memo(function LancamentoContasReceberModal({
   open,
   onClose,
+  onSuccess,
 }: {
   open: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }) {
   const [lancLoadingInit, setLancLoadingInit] = useState(false);
   const { showToast } = useToast();
@@ -311,6 +1056,9 @@ const LancamentoContasReceberModal = memo(function LancamentoContasReceberModal(
   const lancSacadoTimerRef = useRef<number | null>(null);
   const lancPedidoRef = useRef<HTMLInputElement>(null);
   const lancNotaFiscalRef = useRef<HTMLInputElement>(null);
+
+  const [lancConfirmOpen, setLancConfirmOpen] = useState(false);
+  const [lancSaving, setLancSaving] = useState(false);
 
   // Reset form + load combos when modal opens
   useEffect(() => {
@@ -547,349 +1295,463 @@ const LancamentoContasReceberModal = memo(function LancamentoContasReceberModal(
     }
   }, [lancValorDoc, lancAbatimento, lancAbatido, lancPis, lancCofins, lancDesconto, lancJuros, lancOutrasDesp, lancValorRec]);
 
+  const handleOkClick = useCallback(() => {
+    setLancConfirmOpen(true);
+  }, []);
+
+  const handleConfirmLancamento = useCallback(async () => {
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+    const codEmpresa = GlobalConfig.getCodEmpresa();
+    const usuario = GlobalConfig.getUsuario();
+    if (!baseUrl || !token) return;
+    setLancSaving(true);
+    try {
+      const res = await adicionaContasReceberCall(baseUrl, token, {
+        codigoEmpesa: Number(codEmpresa ?? 0),
+        NumDocumento: lancNumero,
+        TipoDoc: Number(lancTipoDoc) || 0,
+        DataEmissao: brDateToIso(lancEmissao),
+        DataVenciment: brDateToIso(lancVencto),
+        DataPrevisao: brDateToIso(lancPrevisao),
+        Usuario: usuario,
+        ValorReceber: parseBrFloat(lancValorDoc),
+        ValorCalculado: parseBrFloat(lancValorRec),
+        NumPedido: lancPedido.trim() ? (Number(lancPedido.trim()) || 0) : 0,
+        NumSeparacao: 0,
+        ValorAbatimento: parseBrFloat(lancAbatimento),
+        ValorDesconto: parseBrFloat(lancDesconto),
+        ValorJuros: parseBrFloat(lancJuros),
+        ValorOutrasDesp: parseBrFloat(lancOutrasDesp),
+        ValorPis: parseBrFloat(lancPis),
+        ValorCofins: parseBrFloat(lancCofins),
+        ValorAbatido: parseBrFloat(lancAbatido),
+        SituacaoPagto: lancSituacaoPagto ? (Number(lancSituacaoPagto) || 0) : 0,
+        NumParcelas: lancParcelas ? (Number(lancQtdParcelas) || 0) : 0,
+        CodigoSacado: Number(lancSacadoCodigo) || 0,
+        TipoSacado: lancSacadoTipo,
+        CodigoPortador: lancPortadorCodigo ?? '',
+        NumConta: Number(lancContaFinValue) || 0,
+        NumNotaFiscal: lancNotaFiscal.trim() ? lancNotaFiscal.trim().padStart(6, '0') : '',
+        SerNotaFiscal: lancSerie.trim(),
+        DescricaoLanc: lancDescricao,
+        JustAlteracao: lancJustificativa,
+      });
+      if (res.succeeded) {
+        showToast('Lançamento realizado com sucesso!', 'success');
+        setLancConfirmOpen(false);
+        onClose();
+        onSuccess?.();
+      } else {
+        const body = res.jsonBody ?? res.data;
+        showToast(String(body?.message ?? 'Erro ao realizar lançamento'), 'error');
+        setLancConfirmOpen(false);
+      }
+    } catch {
+      showToast('Erro ao realizar lançamento', 'error');
+      setLancConfirmOpen(false);
+    } finally {
+      setLancSaving(false);
+    }
+  }, [
+    lancNumero, lancTipoDoc, lancEmissao, lancVencto, lancPrevisao,
+    lancValorDoc, lancValorRec, lancPedido, lancAbatimento, lancDesconto,
+    lancJuros, lancOutrasDesp, lancPis, lancCofins, lancAbatido,
+    lancSituacaoPagto, lancParcelas, lancQtdParcelas,
+    lancSacadoCodigo, lancSacadoTipo, lancPortadorCodigo, lancContaFinValue,
+    lancNotaFiscal, lancSerie, lancDescricao, lancJustificativa,
+    onClose, onSuccess, showToast,
+  ]);
+
   if (!open) return null;
 
   return (
-    <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Lançamento de Contas a Receber">
-      <article className="modal-card modal-card--lancamento">
-        {/* Header */}
-        <header className="modal-card__header lancamento-modal-header">
-          <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--color-heading)' }}>
-            Lançamento Contas a Receber
-          </h2>
-          <span className="lancamento-badge">Pend.</span>
-        </header>
+    <>
+      <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Lançamento de Contas a Receber">
+        <article className="modal-card modal-card--lancamento">
+          {/* Header */}
+          <header className="modal-card__header lancamento-modal-header">
+            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--color-heading)' }}>
+              Lançamento Contas a Receber
+            </h2>
+            <span className="lancamento-badge">Pend.</span>
+          </header>
 
-        {/* Body */}
-        <div className="lancamento-modal-body">
-          {lancLoadingInit && (
-            <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-muted)', textAlign: 'center' }}>
-              Carregando dados...
-            </p>
-          )}
+          {/* Body */}
+          <div className="lancamento-modal-body">
+            {lancLoadingInit && (
+              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-muted)', textAlign: 'center' }}>
+                Carregando dados...
+              </p>
+            )}
 
-          <div className="lancamento-two-col">
-            {/* ── Left column ───────────────────────────────────────── */}
-            <div className="lancamento-col">
-              {/* Top form fields */}
-              <div className="lancamento-form-grid4">
-                <span className="lancamento-lbl">Número:</span>
-                <input className="lancamento-inp" value={lancNumero} onChange={(e) => setLancNumero(e.target.value)} />
-                <span className="lancamento-lbl">Usuário:</span>
-                <input className="lancamento-inp" readOnly value={GlobalConfig.getUsuario().toUpperCase()} />
+            <div className="lancamento-two-col">
+              {/* ── Left column ───────────────────────────────────────── */}
+              <div className="lancamento-col">
+                {/* Top form fields */}
+                <div className="lancamento-form-grid4">
+                  <span className="lancamento-lbl">Número:</span>
+                  <input className="lancamento-inp" value={lancNumero} onChange={(e) => setLancNumero(e.target.value)} />
+                  <span className="lancamento-lbl">Usuário:</span>
+                  <input className="lancamento-inp" readOnly value={GlobalConfig.getUsuario().toUpperCase()} />
 
-                <span className="lancamento-lbl">Tipo doc:</span>
-                <SearchableSelect
-                  options={TIPO_DOC_OPTIONS}
-                  value={lancTipoDoc}
-                  onChange={setLancTipoDoc}
-                  placeholder="Selecione..."
-                />
-                <span className="lancamento-lbl">Valor doc.:</span>
-                <input className="lancamento-inp lancamento-inp--right" value={lancValorDoc} onChange={(e) => {
-                  const v = e.target.value;
-                  setLancValorDoc(v);
-                  setLancValorRec(v);
-                  setLancAbatimento('0,00');
-                  setLancDesconto('0,00');
-                  setLancJuros('0,00');
-                  setLancOutrasDesp('0,00');
-                  setLancPis('0,00');
-                  setLancCofins('0,00');
-                }} placeholder="0,00" />
-
-                <span className="lancamento-lbl">Emissão:</span>
-                <CustomDatePicker value={lancEmissao} onChange={setLancEmissao} />
-                <span className="lancamento-lbl">Valor rec.:</span>
-                <input className="lancamento-inp lancamento-inp--right" value={lancValorRec} onChange={(e) => setLancValorRec(e.target.value)} placeholder="0,00" />
-
-                <span className="lancamento-lbl">Vencto.:</span>
-                <CustomDatePicker value={lancVencto} onChange={(v) => { setLancVencto(v); setLancPrevisao(v); }} />
-                <span className="lancamento-lbl">Pedido:</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <input
-                    ref={lancPedidoRef}
-                    className="lancamento-inp"
-                    style={{ flex: 1 }}
-                    value={lancPedido}
-                    onChange={(e) => { setLancPedido(e.target.value); setLancPedidoStatus('idle'); setLancPedidoMsg(''); }}
-                    onBlur={() => void handleValidatePedido()}
+                  <span className="lancamento-lbl">Tipo doc:</span>
+                  <SearchableSelect
+                    options={TIPO_DOC_OPTIONS}
+                    value={lancTipoDoc}
+                    onChange={setLancTipoDoc}
+                    placeholder="Selecione..."
                   />
-                  {lancPedidoStatus === 'ok' && <IoCheckmarkCircleOutline size={16} style={{ color: '#4caf50', flexShrink: 0 }} />}
-                  {lancPedidoStatus === 'error' && <IoCloseCircleOutline size={16} style={{ color: '#f44336', flexShrink: 0 }} title={lancPedidoMsg} />}
-                </div>
+                  <span className="lancamento-lbl">Valor doc.:</span>
+                  <input className="lancamento-inp lancamento-inp--right" value={lancValorDoc} onChange={(e) => {
+                    const v = e.target.value;
+                    setLancValorDoc(v);
+                    setLancValorRec(v);
+                    setLancAbatimento('0,00');
+                    setLancDesconto('0,00');
+                    setLancJuros('0,00');
+                    setLancOutrasDesp('0,00');
+                    setLancPis('0,00');
+                    setLancCofins('0,00');
+                  }} placeholder="0,00" />
 
-                <span className="lancamento-lbl">Previsão:</span>
-                <CustomDatePicker value={lancPrevisao} onChange={setLancPrevisao} />
-                <span /><span />
-              </div>
+                  <span className="lancamento-lbl">Emissão:</span>
+                  <CustomDatePicker value={lancEmissao} onChange={setLancEmissao} />
+                  <span className="lancamento-lbl">Valor rec.:</span>
+                  <input className="lancamento-inp lancamento-inp--right" value={lancValorRec} onChange={(e) => setLancValorRec(e.target.value)} placeholder="0,00" />
 
-              {/* Financial values */}
-              <div className="lancamento-values-box">
-                <div className="lancamento-values-grid">
-                  <span className="lancamento-lbl">Abatimento:</span>
-                  <input className="lancamento-inp lancamento-inp--right" value={lancAbatimento} onChange={(e) => setLancAbatimento(e.target.value)} onBlur={() => void handleAtualizaValor()} />
-                  <span className="lancamento-lbl">PIS:</span>
-                  <input className="lancamento-inp lancamento-inp--right" value={lancPis} onChange={(e) => setLancPis(e.target.value)} onBlur={() => void handleAtualizaValor()} />
+                  <span className="lancamento-lbl">Vencto.:</span>
+                  <CustomDatePicker value={lancVencto} onChange={(v) => { setLancVencto(v); setLancPrevisao(v); }} />
+                  <span className="lancamento-lbl">Pedido:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <input
+                      ref={lancPedidoRef}
+                      className="lancamento-inp"
+                      style={{ flex: 1 }}
+                      value={lancPedido}
+                      onChange={(e) => { setLancPedido(e.target.value); setLancPedidoStatus('idle'); setLancPedidoMsg(''); }}
+                      onBlur={() => void handleValidatePedido()}
+                    />
+                    {lancPedidoStatus === 'ok' && <IoCheckmarkCircleOutline size={16} style={{ color: '#4caf50', flexShrink: 0 }} />}
+                    {lancPedidoStatus === 'error' && <IoCloseCircleOutline size={16} style={{ color: '#f44336', flexShrink: 0 }} title={lancPedidoMsg} />}
+                  </div>
 
-                  <span className="lancamento-lbl">Desconto:</span>
-                  <input className="lancamento-inp lancamento-inp--right" value={lancDesconto} onChange={(e) => setLancDesconto(e.target.value)} onBlur={() => void handleAtualizaValor()} />
-                  <span className="lancamento-lbl">Cofins:</span>
-                  <input className="lancamento-inp lancamento-inp--right" value={lancCofins} onChange={(e) => setLancCofins(e.target.value)} onBlur={() => void handleAtualizaValor()} />
-
-                  <span className="lancamento-lbl">Juros:</span>
-                  <input className="lancamento-inp lancamento-inp--right" value={lancJuros} onChange={(e) => setLancJuros(e.target.value)} onBlur={() => void handleAtualizaValor()} />
-                  <span className="lancamento-lbl">Abatido:</span>
-                  <input className="lancamento-inp lancamento-inp--right" readOnly value={lancAbatido} onBlur={() => void handleAtualizaValor()} />
-
-                  <span className="lancamento-lbl">Outras desp.:</span>
-                  <input className="lancamento-inp lancamento-inp--right" value={lancOutrasDesp} onChange={(e) => setLancOutrasDesp(e.target.value)} onBlur={() => void handleAtualizaValor()} />
+                  <span className="lancamento-lbl">Previsão:</span>
+                  <CustomDatePicker value={lancPrevisao} onChange={setLancPrevisao} />
                   <span /><span />
                 </div>
-                <div className="lancamento-calcular-row">
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    style={{ width: 'auto', minWidth: 80, height: 34, fontSize: '0.78rem', padding: '0 12px' }}
-                    onClick={() => void handleCalcular()}
-                  >
-                    Calcular
-                  </button>
-                  <span className="lancamento-lbl" style={{ flexShrink: 0 }}>Situação do pagto.:</span>
-                  <SearchableSelect
-                    options={SITUACAO_PAGTO_OPTIONS}
-                    value={lancSituacaoPagto}
-                    onChange={setLancSituacaoPagto}
-                    placeholder="Selecione..."
-                  />
+
+                {/* Financial values */}
+                <div className="lancamento-values-box">
+                  <div className="lancamento-values-grid">
+                    <span className="lancamento-lbl">Abatimento:</span>
+                    <input className="lancamento-inp lancamento-inp--right" value={lancAbatimento} onChange={(e) => setLancAbatimento(e.target.value)} onBlur={() => void handleAtualizaValor()} />
+                    <span className="lancamento-lbl">PIS:</span>
+                    <input className="lancamento-inp lancamento-inp--right" value={lancPis} onChange={(e) => setLancPis(e.target.value)} onBlur={() => void handleAtualizaValor()} />
+
+                    <span className="lancamento-lbl">Desconto:</span>
+                    <input className="lancamento-inp lancamento-inp--right" value={lancDesconto} onChange={(e) => setLancDesconto(e.target.value)} onBlur={() => void handleAtualizaValor()} />
+                    <span className="lancamento-lbl">Cofins:</span>
+                    <input className="lancamento-inp lancamento-inp--right" value={lancCofins} onChange={(e) => setLancCofins(e.target.value)} onBlur={() => void handleAtualizaValor()} />
+
+                    <span className="lancamento-lbl">Juros:</span>
+                    <input className="lancamento-inp lancamento-inp--right" value={lancJuros} onChange={(e) => setLancJuros(e.target.value)} onBlur={() => void handleAtualizaValor()} />
+                    <span className="lancamento-lbl">Abatido:</span>
+                    <input className="lancamento-inp lancamento-inp--right" readOnly value={lancAbatido} onBlur={() => void handleAtualizaValor()} />
+
+                    <span className="lancamento-lbl">Outras desp.:</span>
+                    <input className="lancamento-inp lancamento-inp--right" value={lancOutrasDesp} onChange={(e) => setLancOutrasDesp(e.target.value)} onBlur={() => void handleAtualizaValor()} />
+                    <span /><span />
+                  </div>
+                  <div className="lancamento-calcular-row">
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      style={{ width: 'auto', minWidth: 80, height: 34, fontSize: '0.78rem', padding: '0 12px' }}
+                      onClick={() => void handleCalcular()}
+                    >
+                      Calcular
+                    </button>
+                    <span className="lancamento-lbl" style={{ flexShrink: 0 }}>Situação do pagto.:</span>
+                    <SearchableSelect
+                      options={SITUACAO_PAGTO_OPTIONS}
+                      value={lancSituacaoPagto}
+                      onChange={setLancSituacaoPagto}
+                      placeholder="Selecione..."
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* ── Right column ──────────────────────────────────────── */}
-            <div className="lancamento-col">
-              {/* Sacado / Portador / Conta Fin / NF / Série */}
-              <div className="lancamento-form-grid2">
-                <span className="lancamento-lbl">Sacado:</span>
-                <div className="lancamento-combo-group" data-sacado-codigo={lancSacadoCodigo}>
-                  <SearchableSelect
-                    options={lancSacadoOptions.length > 0 ? lancSacadoOptions : [{ value: '', label: 'Digite ao menos 3 letras...' }]}
-                    value={lancSacadoValue}
-                    onChange={(v) => {
-                      setLancSacadoValue(v);
-                      const found = lancSacadoRawRef.current.find(
-                        (c: any) => `${String(c.tipo ?? '').toUpperCase()}-${c.codigo ?? ''}` === v,
-                      );
-                      setLancSacadoNome(found ? String(found.nome_Fantasia ?? found.razao_Social ?? '') : '');
-                      setLancSacadoCodigo(found ? String(found.codigo ?? '') : '');
-                      setLancSacadoTipo(found ? String(found.tipo ?? '').toUpperCase() : '');
-                    }}
-                    enableSearch
-                    searchPlaceholder="Digite ao menos 3 letras..."
-                    placeholder="Selecione..."
-                    displayValue={lancSacadoNome || undefined}
-                    onSearchInputChange={handleLancSacadoSearch}
-                  />
-                  <input
-                    className="lancamento-inp lancamento-inp--tipo"
-                    readOnly
-                    value={
-                      lancSacadoTipo === 'C' ? 'Cliente'
-                        : lancSacadoTipo === 'F' ? 'Fornecedor'
-                          : lancSacadoTipo || ''
-                    }
-                    aria-label="Tipo do sacado"
-                    tabIndex={-1}
-                  />
-                </div>
+              {/* ── Right column ──────────────────────────────────────── */}
+              <div className="lancamento-col">
+                {/* Sacado / Portador / Conta Fin / NF / Série */}
+                <div className="lancamento-form-grid2">
+                  <span className="lancamento-lbl">Sacado:</span>
+                  <div className="lancamento-combo-group" data-sacado-codigo={lancSacadoCodigo}>
+                    <SearchableSelect
+                      options={lancSacadoOptions.length > 0 ? lancSacadoOptions : [{ value: '', label: 'Digite ao menos 3 letras...' }]}
+                      value={lancSacadoValue}
+                      onChange={(v) => {
+                        setLancSacadoValue(v);
+                        const found = lancSacadoRawRef.current.find(
+                          (c: any) => `${String(c.tipo ?? '').toUpperCase()}-${c.codigo ?? ''}` === v,
+                        );
+                        setLancSacadoNome(found ? String(found.nome_Fantasia ?? found.razao_Social ?? '') : '');
+                        setLancSacadoCodigo(found ? String(found.codigo ?? '') : '');
+                        setLancSacadoTipo(found ? String(found.tipo ?? '').toUpperCase() : '');
+                        // Preenche Conta Financeira a partir de conta_Financeira do sacado
+                        const contaFinanceira = found ? Number(found.conta_Financeira ?? 0) : 0;
+                        if (contaFinanceira > 0) {
+                          const contaMatch = lancContasFinanceiras.find((c) => c.num_Conta === contaFinanceira);
+                          setLancContaFinValue(String(contaFinanceira));
+                          setLancContaFinDescricao(contaMatch ? contaMatch.descricao_Conta : '');
+                        } else {
+                          setLancContaFinValue('');
+                          setLancContaFinDescricao('');
+                        }
+                      }}
+                      enableSearch
+                      searchPlaceholder="Digite ao menos 3 letras..."
+                      placeholder="Selecione..."
+                      displayValue={lancSacadoNome || undefined}
+                      onSearchInputChange={handleLancSacadoSearch}
+                    />
+                    <input
+                      className="lancamento-inp lancamento-inp--tipo"
+                      readOnly
+                      value={
+                        lancSacadoTipo === 'C' ? 'Cliente'
+                          : lancSacadoTipo === 'F' ? 'Fornecedor'
+                            : lancSacadoTipo || ''
+                      }
+                      aria-label="Tipo do sacado"
+                      tabIndex={-1}
+                    />
+                  </div>
 
-                <span className="lancamento-lbl">Portador:</span>
-                <div className="lancamento-combo-group">
-                  <SearchableSelect
-                    options={[
-                      { value: '', label: 'Selecione...' },
-                      ...lancPortadores.map((p) => ({ value: String(p.codigo_Portador), label: p.nome_Banco })),
-                    ]}
-                    value={lancPortadorValue}
-                    onChange={(v) => {
-                      setLancPortadorValue(v);
-                      setLancPortadorCodigo(v);
-                    }}
-                    placeholder="Selecione..."
-                    listHeader={
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 72px', gap: 8 }}>
-                        <span>Nome Banco</span>
-                        <span style={{ textAlign: 'right' }}>Portador</span>
-                      </div>
-                    }
-                    renderOption={(opt) => {
-                      if (!opt.value) return <span>{opt.label}</span>;
-                      const p = lancPortadores.find((x) => String(x.codigo_Portador) === opt.value);
-                      return (
-                        <span className="searchable-select__col-row" style={{ gridTemplateColumns: '1fr 72px' }}>
-                          <span>{p?.nome_Banco ?? opt.label}</span>
-                          <span style={{ textAlign: 'right', color: 'var(--color-muted)', fontSize: '0.75rem' }}>{p?.codigo_Portador}</span>
-                        </span>
-                      );
-                    }}
-                  />
-                  <input
-                    className="lancamento-inp lancamento-inp--sm"
-                    readOnly
-                    value={lancPortadorCodigo}
-                    aria-label="Código portador"
-                    tabIndex={-1}
-                  />
-                </div>
+                  <span className="lancamento-lbl">Portador:</span>
+                  <div className="lancamento-combo-group">
+                    <SearchableSelect
+                      options={[
+                        { value: '', label: 'Selecione...' },
+                        ...lancPortadores.map((p) => ({ value: String(p.codigo_Portador), label: p.nome_Banco })),
+                      ]}
+                      value={lancPortadorValue}
+                      onChange={(v) => {
+                        setLancPortadorValue(v);
+                        setLancPortadorCodigo(v);
+                      }}
+                      placeholder="Selecione..."
+                      listHeader={
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 72px', gap: 8 }}>
+                          <span>Nome Banco</span>
+                          <span style={{ textAlign: 'right' }}>Portador</span>
+                        </div>
+                      }
+                      renderOption={(opt) => {
+                        if (!opt.value) return <span>{opt.label}</span>;
+                        const p = lancPortadores.find((x) => String(x.codigo_Portador) === opt.value);
+                        return (
+                          <span className="searchable-select__col-row" style={{ gridTemplateColumns: '1fr 72px' }}>
+                            <span>{p?.nome_Banco ?? opt.label}</span>
+                            <span style={{ textAlign: 'right', color: 'var(--color-muted)', fontSize: '0.75rem' }}>{p?.codigo_Portador}</span>
+                          </span>
+                        );
+                      }}
+                    />
+                    <input
+                      className="lancamento-inp lancamento-inp--sm"
+                      readOnly
+                      value={lancPortadorCodigo}
+                      aria-label="Código portador"
+                      tabIndex={-1}
+                    />
+                  </div>
 
-                <span className="lancamento-lbl">Conta Fin.:</span>
-                <div className="lancamento-combo-group">
-                  <SearchableSelect
-                    options={[
-                      { value: '', label: 'Selecione...' },
-                      ...lancContasFinanceiras.map((c) => ({ value: String(c.num_Conta), label: c.codigo_Conta })),
-                    ]}
-                    value={lancContaFinValue}
-                    onChange={(v) => {
-                      setLancContaFinValue(v);
-                      const found = lancContasFinanceiras.find((c) => String(c.num_Conta) === v);
-                      setLancContaFinDescricao(found ? found.descricao_Conta : '');
-                    }}
-                    placeholder="Selecione..."
-                    listHeader={
-                      <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8 }}>
-                        <span>Código</span>
-                        <span>Descrição</span>
-                      </div>
-                    }
-                    renderOption={(opt) => {
-                      if (!opt.value) return <span>{opt.label}</span>;
-                      const c = lancContasFinanceiras.find((x) => String(x.num_Conta) === opt.value);
-                      return (
-                        <span className="searchable-select__col-row" style={{ gridTemplateColumns: '80px 1fr' }}>
-                          <span>{c?.codigo_Conta ?? opt.label}</span>
-                          <span>{c?.descricao_Conta}</span>
-                        </span>
-                      );
-                    }}
-                  />
-                  <input
-                    className="lancamento-inp lancamento-inp--desc"
-                    readOnly
-                    value={lancContaFinDescricao}
-                    aria-label="Descrição conta financeira"
-                    tabIndex={-1}
-                    title={lancContaFinDescricao}
-                  />
-                </div>
+                  <span className="lancamento-lbl">Conta Fin.:</span>
+                  <div className="lancamento-combo-group">
+                    <SearchableSelect
+                      options={[
+                        { value: '', label: 'Selecione...' },
+                        ...lancContasFinanceiras.map((c) => ({ value: String(c.num_Conta), label: c.codigo_Conta })),
+                      ]}
+                      value={lancContaFinValue}
+                      onChange={(v) => {
+                        setLancContaFinValue(v);
+                        const found = lancContasFinanceiras.find((c) => String(c.num_Conta) === v);
+                        setLancContaFinDescricao(found ? found.descricao_Conta : '');
+                      }}
+                      placeholder="Selecione..."
+                      listHeader={
+                        <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8 }}>
+                          <span>Código</span>
+                          <span>Descrição</span>
+                        </div>
+                      }
+                      renderOption={(opt) => {
+                        if (!opt.value) return <span>{opt.label}</span>;
+                        const c = lancContasFinanceiras.find((x) => String(x.num_Conta) === opt.value);
+                        return (
+                          <span className="searchable-select__col-row" style={{ gridTemplateColumns: '80px 1fr' }}>
+                            <span>{c?.codigo_Conta ?? opt.label}</span>
+                            <span>{c?.descricao_Conta}</span>
+                          </span>
+                        );
+                      }}
+                    />
+                    <input
+                      className="lancamento-inp lancamento-inp--desc"
+                      readOnly
+                      value={lancContaFinDescricao}
+                      aria-label="Descrição conta financeira"
+                      tabIndex={-1}
+                      title={lancContaFinDescricao}
+                    />
+                  </div>
 
-                <span className="lancamento-lbl">Nota Fiscal:</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span className="lancamento-lbl">Nota Fiscal:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <input
+                      ref={lancNotaFiscalRef}
+                      className="lancamento-inp lancamento-inp--nf"
+                      value={lancNotaFiscal}
+                      onChange={(e) => { setLancNotaFiscal(e.target.value); setLancNotaStatus('idle'); setLancNotaMsg(''); }}
+                      onBlur={() => void handleValidateNota()}
+                    />
+                    {lancNotaStatus === 'ok' && <IoCheckmarkCircleOutline size={16} style={{ color: '#4caf50', flexShrink: 0 }} />}
+                    {lancNotaStatus === 'error' && <IoCloseCircleOutline size={16} style={{ color: '#f44336', flexShrink: 0 }} title={lancNotaMsg} />}
+                  </div>
+
+                  <span className="lancamento-lbl">Série:</span>
                   <input
-                    ref={lancNotaFiscalRef}
-                    className="lancamento-inp lancamento-inp--nf"
-                    value={lancNotaFiscal}
-                    onChange={(e) => { setLancNotaFiscal(e.target.value); setLancNotaStatus('idle'); setLancNotaMsg(''); }}
+                    className="lancamento-inp"
+                    style={{ maxWidth: 60 }}
+                    value={lancSerie}
+                    onChange={(e) => { setLancSerie(e.target.value); setLancNotaStatus('idle'); setLancNotaMsg(''); }}
                     onBlur={() => void handleValidateNota()}
                   />
-                  {lancNotaStatus === 'ok' && <IoCheckmarkCircleOutline size={16} style={{ color: '#4caf50', flexShrink: 0 }} />}
-                  {lancNotaStatus === 'error' && <IoCloseCircleOutline size={16} style={{ color: '#f44336', flexShrink: 0 }} title={lancNotaMsg} />}
                 </div>
 
-                <span className="lancamento-lbl">Série:</span>
-                <input
-                  className="lancamento-inp"
-                  style={{ maxWidth: 60 }}
-                  value={lancSerie}
-                  onChange={(e) => { setLancSerie(e.target.value); setLancNotaStatus('idle'); setLancNotaMsg(''); }}
-                  onBlur={() => void handleValidateNota()}
-                />
-              </div>
+                {/* Descrição */}
+                <div className="lancamento-textarea-wrap">
+                  <span className="lancamento-lbl" style={{ textAlign: 'left' }}>Descrição:</span>
+                  <textarea
+                    className="lancamento-textarea"
+                    value={lancDescricao}
+                    onChange={(e) => setLancDescricao(e.target.value)}
+                    rows={3}
+                  />
+                </div>
 
-              {/* Descrição */}
-              <div className="lancamento-textarea-wrap">
-                <span className="lancamento-lbl" style={{ textAlign: 'left' }}>Descrição:</span>
-                <textarea
-                  className="lancamento-textarea"
-                  value={lancDescricao}
-                  onChange={(e) => setLancDescricao(e.target.value)}
-                  rows={3}
-                />
-              </div>
-
-              {/* Justificativa */}
-              <div className="lancamento-textarea-wrap">
-                <span className="lancamento-lbl" style={{ textAlign: 'left' }}>Justificativa da alteração:</span>
-                <textarea
-                  className="lancamento-textarea"
-                  value={lancJustificativa}
-                  onChange={(e) => setLancJustificativa(e.target.value)}
-                  rows={3}
-                  disabled={!lancJustificativaEnabled}
-                />
-                <div className="lancamento-textarea-actions">
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    style={{ width: 'auto', minWidth: 90, height: 34, fontSize: '0.78rem', padding: '0 12px' }}
-                  >
-                    Ocorrências
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    style={{ width: 'auto', minWidth: 90, height: 34, fontSize: '0.78rem', padding: '0 12px' }}
-                  >
-                    Abatimentos
-                  </button>
+                {/* Justificativa */}
+                <div className="lancamento-textarea-wrap">
+                  <span className="lancamento-lbl" style={{ textAlign: 'left' }}>Justificativa da alteração:</span>
+                  <textarea
+                    className="lancamento-textarea"
+                    value={lancJustificativa}
+                    onChange={(e) => setLancJustificativa(e.target.value)}
+                    rows={3}
+                    disabled={!lancJustificativaEnabled}
+                  />
+                  <div className="lancamento-textarea-actions">
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      style={{ width: 'auto', minWidth: 90, height: 34, fontSize: '0.78rem', padding: '0 12px' }}
+                    >
+                      Ocorrências
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      style={{ width: 'auto', minWidth: 90, height: 34, fontSize: '0.78rem', padding: '0 12px' }}
+                    >
+                      Abatimentos
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Footer */}
-        <footer className="lancamento-modal-footer">
-          <div className="lancamento-parcelas-row">
-            <input
-              type="checkbox"
-              id="lanc-parcelas-chk"
-              checked={lancParcelas}
-              onChange={(e) => setLancParcelas(e.target.checked)}
-              style={{ width: '0.85rem', height: '0.85rem', accentColor: 'var(--color-primary)', cursor: 'pointer', flexShrink: 0 }}
-            />
-            <label htmlFor="lanc-parcelas-chk" className="lancamento-lbl" style={{ textAlign: 'left', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              Parcelas:
-            </label>
-            <input
-              className="lancamento-inp"
-              style={{ width: 50, flexShrink: 0 }}
-              value={lancQtdParcelas}
-              onChange={(e) => setLancQtdParcelas(e.target.value)}
-              disabled={!lancParcelas}
-            />
-            <span className="lancamento-parcelas-hint">Quantidade de parcelas a gerar fora o lançamento atual</span>
-          </div>
-          <div className="lancamento-modal-actions">
-            <button
-              type="button"
-              className="secondary-button"
-              style={{ width: 'auto', minWidth: 80 }}
-              onClick={onClose}
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              className="primary-button"
-              style={{ width: 'auto', minWidth: 80 }}
-            >
-              OK
-            </button>
-          </div>
-        </footer>
-      </article>
-    </section>
+          {/* Footer */}
+          <footer className="lancamento-modal-footer">
+            <div className="lancamento-parcelas-row">
+              <input
+                type="checkbox"
+                id="lanc-parcelas-chk"
+                checked={lancParcelas}
+                onChange={(e) => setLancParcelas(e.target.checked)}
+                style={{ width: '0.85rem', height: '0.85rem', accentColor: 'var(--color-primary)', cursor: 'pointer', flexShrink: 0 }}
+              />
+              <label htmlFor="lanc-parcelas-chk" className="lancamento-lbl" style={{ textAlign: 'left', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                Parcelas:
+              </label>
+              <input
+                className="lancamento-inp"
+                style={{ width: 50, flexShrink: 0 }}
+                value={lancQtdParcelas}
+                onChange={(e) => setLancQtdParcelas(e.target.value)}
+                disabled={!lancParcelas}
+              />
+              <span className="lancamento-parcelas-hint">Quantidade de parcelas a gerar fora o lançamento atual</span>
+            </div>
+            <div className="lancamento-modal-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                style={{ width: 'auto', minWidth: 80 }}
+                onClick={onClose}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                style={{ width: 'auto', minWidth: 80 }}
+                onClick={handleOkClick}
+                disabled={lancSaving}
+              >
+                OK
+              </button>
+            </div>
+          </footer>
+        </article>
+      </section>
+      {lancConfirmOpen && (
+        <section className="modal-backdrop modal-backdrop--nested" role="dialog" aria-modal="true" aria-label="Confirmar lançamento">
+          <article className="modal-card" style={{ width: 'min(400px, 92vw)', gap: 20 }}>
+            <header className="modal-card__header">
+              <h2>Confirmar Lançamento</h2>
+            </header>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)' }}>
+              Deseja realmente realizar o lançamento deste documento?
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="secondary-button"
+                style={{ width: 'auto', minWidth: 80 }}
+                onClick={() => setLancConfirmOpen(false)}
+                disabled={lancSaving}
+              >
+                Não
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                style={{ width: 'auto', minWidth: 80 }}
+                onClick={() => void handleConfirmLancamento()}
+                disabled={lancSaving}
+              >
+                {lancSaving ? 'Salvando...' : 'Sim'}
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+    </>
   );
 });
 
@@ -901,7 +1763,7 @@ export function ContasReceberPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [rows, setRows] = useState<ContaReceber[]>([]);
 
-  const [dataInicio, setDataInicio] = useState(formatFirstDayOfMonth());
+  const [dataInicio, setDataInicio] = useState(formatToday());
   const [dataFim, setDataFim] = useState(formatToday());
   const [numNf, setNumNf] = useState('');
   const [filtroErrors, setFiltroErrors] = useState<FiltroErrors>({});
@@ -955,6 +1817,18 @@ export function ContasReceberPage() {
   const [cancelarExecutando, setCancelarExecutando] = useState(false);
   const [cancelarIsLote, setCancelarIsLote] = useState(false);
   const [cancelarDescExclusao, setCancelarDescExclusao] = useState('');
+
+  const [consultaAlterarOpen, setConsultaAlterarOpen] = useState(false);
+  const [consultaAlterarMode, setConsultaAlterarMode] = useState<ConsultaAlterarMode>('consulta');
+  const [consultaAlterarNumLanc, setConsultaAlterarNumLanc] = useState<number | null>(null);
+  const [consultaAlterarSacadoNome, setConsultaAlterarSacadoNome] = useState('');
+
+  const [dataBaixaLote, setDataBaixaLote] = useState('');
+  const [baixarConfirmOpen, setBaixarConfirmOpen] = useState(false);
+  const [baixarExecutando, setBaixarExecutando] = useState(false);
+  const [baixaResultOpen, setBaixaResultOpen] = useState(false);
+  const [baixaResultMsg, setBaixaResultMsg] = useState('');
+  const [baixaResultSuccess, setBaixaResultSuccess] = useState(false);
 
   const [lancModalOpen, setLancModalOpen] = useState(false);
 
@@ -1745,6 +2619,100 @@ export function ContasReceberPage() {
     void executarCancelar(true);
   }, [executarCancelar]);
 
+  const handleAbrirConsulta = useCallback(() => {
+    if (selectedRows.size === 0) {
+      showToast('Selecione ao menos um registro para consultar!', 'error');
+      return;
+    }
+    if (selectedRows.size !== 1) {
+      showToast('Selecione apenas um registro para consultar!', 'error');
+      return;
+    }
+    const numLancC = Array.from(selectedRows)[0];
+    const regC = rows.find((r) => r.num_Lanc === numLancC);
+    setConsultaAlterarSacadoNome(regC?.nome_Fantasia ?? '');
+    setConsultaAlterarNumLanc(numLancC);
+    setConsultaAlterarMode('consulta');
+    setConsultaAlterarOpen(true);
+  }, [selectedRows, rows, showToast]);
+
+  const handleAbrirAlterar = useCallback(() => {
+    if (selectedRows.size === 0) {
+      showToast('Selecione ao menos um registro para alterar!', 'error');
+      return;
+    }
+    if (selectedRows.size !== 1) {
+      showToast('Selecione apenas um registro para alterar!', 'error');
+      return;
+    }
+    const numLancA = Array.from(selectedRows)[0];
+    const regA = rows.find((r) => r.num_Lanc === numLancA);
+    setConsultaAlterarSacadoNome(regA?.nome_Fantasia ?? '');
+    setConsultaAlterarNumLanc(numLancA);
+    setConsultaAlterarMode('alterar');
+    setConsultaAlterarOpen(true);
+  }, [selectedRows, rows, showToast]);
+
+  const handleBaixarClick = useCallback(() => {
+    if (selectedRows.size === 0) {
+      showToast('Selecione ao menos um registro para baixar!', 'error');
+      return;
+    }
+    if (selectedRows.size > 1 && !dataBaixaLote.trim()) {
+      showToast('Informe uma data para baixa em lote!', 'error');
+      return;
+    }
+    setBaixarConfirmOpen(true);
+  }, [selectedRows, dataBaixaLote, showToast]);
+
+  const handleExecutarBaixa = useCallback(async () => {
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+    const codigoEmpresa = GlobalConfig.getCodEmpresa();
+    const usuario = GlobalConfig.getUsuario();
+    if (!baseUrl || !token || !codigoEmpresa) return;
+
+    const dataParaApi = selectedRows.size > 1
+      ? toApiDateFormat(dataBaixaLote)
+      : dataBaixaLote.trim()
+        ? toApiDateFormat(dataBaixaLote)
+        : toApiDateFormat(formatToday());
+
+    setBaixarExecutando(true);
+    setBaixarConfirmOpen(false);
+    try {
+      const resp = await baixaContasReceberCall(baseUrl, token, {
+        CodigoEmpresa: Number(codigoEmpresa),
+        docs: selectedList,
+        Usuario: usuario,
+        TipoBaixa: 1,
+        DataBaixaLote: dataParaApi,
+      });
+      if (resp.succeeded) {
+        const body = resp.jsonBody ?? resp.data;
+        const msg = String(body?.message ?? 'Baixa registrada com sucesso!');
+        setSelectedRows(new Set());
+        void carregarContas();
+        setBaixaResultMsg(msg);
+        setBaixaResultSuccess(true);
+        setBaixaResultOpen(true);
+      } else {
+        const body = resp.jsonBody ?? resp.data;
+        void carregarContas();
+        setBaixaResultMsg(String(body?.message ?? 'Erro ao realizar a baixa.'));
+        setBaixaResultSuccess(false);
+        setBaixaResultOpen(true);
+      }
+    } catch {
+      void carregarContas();
+      setBaixaResultMsg('Erro ao realizar a baixa.');
+      setBaixaResultSuccess(false);
+      setBaixaResultOpen(true);
+    } finally {
+      setBaixarExecutando(false);
+    }
+  }, [selectedRows, selectedList, dataBaixaLote, carregarContas]);
+
   const toggleSelectRow = (numLanc: number | null | undefined) => {
     if (numLanc == null) return;
     setSelectedRows((prev) => {
@@ -1813,7 +2781,7 @@ export function ContasReceberPage() {
             </button>
 
             <button
-              className="icon-button module-action-button"
+              className="icon-button module-action-button module-action-button--primary"
               type="button"
               onClick={() => setLancModalOpen(true)}
               title="Novo lançamento"
@@ -2158,26 +3126,94 @@ export function ContasReceberPage() {
 
           {/* Data da baixa em lote */}
           <fieldset className="contas-receber-footer__saldo-box">
-            <label className="contas-receber-footer__field contas-receber-footer__field--stack">
-              <span>Data da baixa em lote:</span>
-              <input type="text" className="contas-receber-footer__input" />
+            <label className="list-layout-field list-layout-field--date">
+              <span>Data da baixa em lote</span>
+              <CustomDatePicker value={dataBaixaLote} onChange={setDataBaixaLote} />
             </label>
           </fieldset>
 
           {/* Botões de ação */}
           <div className="contas-receber-footer__actions">
             <div className="contas-receber-footer__actions-row">
-              <button type="button" className="secondary-button contas-receber-footer__btn">Baixar</button>
-              <button type="button" className="secondary-button contas-receber-footer__btn">Alterar</button>
+              <button type="button" className="secondary-button contas-receber-footer__btn" onClick={handleBaixarClick} disabled={baixarExecutando}>Baixar</button>
+              <button type="button" className="secondary-button contas-receber-footer__btn" onClick={handleAbrirConsulta}>Consultar</button>
+              <button type="button" className="secondary-button contas-receber-footer__btn" onClick={handleAbrirAlterar}>Alterar</button>
               <button type="button" className="secondary-button contas-receber-footer__btn" onClick={handleCancelarClick} disabled={cancelarExecutando}>Cancelar</button>
-            </div>
-            <div className="contas-receber-footer__actions-row">
-              <button type="button" className="secondary-button contas-receber-footer__btn">Imprimir</button>
-              <button type="button" className="secondary-button contas-receber-footer__btn contas-receber-footer__btn--wide">Remessa de cobrança</button>
             </div>
           </div>
         </footer>
       </section>
+
+      {/* Result Baixar */}
+      {baixaResultOpen && (
+        <section className="modal-backdrop modal-backdrop--nested" role="dialog" aria-modal="true" aria-label="Resultado da baixa">
+          <article className="modal-card" style={{ width: 'min(560px, 92vw)', gap: 20 }}>
+            <header className="modal-card__header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {baixaResultSuccess
+                  ? <IoCheckmarkCircleOutline size={22} style={{ color: '#16a34a', flexShrink: 0 }} />
+                  : <IoCloseCircleOutline size={22} style={{ color: '#dc2626', flexShrink: 0 }} />
+                }
+                <h2 style={{ margin: 0 }}>Resultado da Baixa</h2>
+              </div>
+            </header>
+            <div style={{
+              border: '1px solid var(--color-border)',
+              borderRadius: 6,
+              padding: '12px 14px',
+              background: 'var(--color-surface-alt)',
+            }}>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {baixaResultMsg}
+              </p>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="primary-button"
+                style={{ width: 'auto', minWidth: 80 }}
+                onClick={() => setBaixaResultOpen(false)}
+              >
+                Ok
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      {/* Confirm Baixar */}
+      {baixarConfirmOpen && (
+        <section className="modal-backdrop modal-backdrop--nested" role="dialog" aria-modal="true" aria-label="Confirmar baixa">
+          <article className="modal-card" style={{ width: 'min(460px, 92vw)', gap: 20 }}>
+            <header className="modal-card__header">
+              <h2>Confirmar Baixa</h2>
+            </header>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)' }}>
+              Deseja realizar as baixas do(s) documento(s) selecionado(s)?
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="secondary-button"
+                style={{ width: 'auto', minWidth: 80 }}
+                onClick={() => setBaixarConfirmOpen(false)}
+                disabled={baixarExecutando}
+              >
+                Não
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                style={{ width: 'auto', minWidth: 80 }}
+                onClick={() => void handleExecutarBaixa()}
+                disabled={baixarExecutando}
+              >
+                {baixarExecutando ? 'Baixando...' : 'Sim'}
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
 
       {/* Modal de Abatimento */}
       {abatimentoConfirmOpen && (
@@ -2568,7 +3604,11 @@ export function ContasReceberPage() {
                           <td style={{ textAlign: 'right' }}>{formatCurrency(item.valor_Orig)}</td>
                           <td>{item.num_Nota_Fiscal ?? '-'}</td>
                           <td>{item.nome_Fantasia ?? '-'}</td>
-                          <td>{item.descricao_Lanc ?? ''}</td>
+                          <td title={adiantamentosTab === 'E' && (item.descricao_Lanc ?? '').length > 50 ? String(item.descricao_Lanc) : undefined}>
+                            {adiantamentosTab === 'E' && (item.descricao_Lanc ?? '').length > 50
+                              ? `${String(item.descricao_Lanc).slice(0, 50)}…`
+                              : (item.descricao_Lanc ?? '')}
+                          </td>
                           {adiantamentosTab === 'E' && (
                             <td style={{ textAlign: 'center' }}>
                               <input type="checkbox" readOnly checked={item.temDev === true} onChange={() => { }} style={{ cursor: 'default', accentColor: 'var(--color-primary)' }} />
@@ -2832,8 +3872,18 @@ export function ContasReceberPage() {
         </section>
       )}
 
+      {/* ── Consulta / Alterar Contas a Receber ──────────────────────────────── */}
+      <ConsultaAlterarContasReceberModal
+        open={consultaAlterarOpen}
+        mode={consultaAlterarMode}
+        numLanc={consultaAlterarNumLanc}
+        sacadoNomeInicial={consultaAlterarSacadoNome}
+        onClose={() => setConsultaAlterarOpen(false)}
+        onSuccess={() => void carregarContas()}
+      />
+
       {/* ── Modal Lançamento de Contas a Receber ─────────────────────────────── */}
-      <LancamentoContasReceberModal open={lancModalOpen} onClose={() => setLancModalOpen(false)} />
+      <LancamentoContasReceberModal open={lancModalOpen} onClose={() => setLancModalOpen(false)} onSuccess={() => void carregarContas()} />
     </main>
   );
 }

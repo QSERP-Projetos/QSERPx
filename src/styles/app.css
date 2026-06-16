@@ -8220,6 +8220,17 @@ select.text-field:focus {
   border-color: #000 !important;
 }
 
+:root[data-theme="dark"] .abatimento-footer__fechar {
+  background: #fff !important;
+  color: #111 !important;
+  border-color: #fff !important;
+}
+
+:root[data-theme="dark"] .abatimento-footer__fechar:hover {
+  background: #e0e0e0 !important;
+  border-color: #e0e0e0 !important;
+}
+
 .abatimento-footer .secondary-button {
   width: auto;
   min-width: 90px;

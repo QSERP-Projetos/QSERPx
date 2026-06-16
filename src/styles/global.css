@@ -70,6 +70,8 @@
   --table-row-odd: #252526;
   --table-row-even: #2a2d2e;
   --table-row-hover: #33373a;
+  --color-icon-success: #ffffff;
+  --color-icon-error: #ffffff;
 }
 
 :root[data-theme="light"] {
@@ -98,6 +100,8 @@
   --color-accent-glow: rgba(0, 0, 0, 0.04);
   --color-sidebar-bg: radial-gradient(circle at 20% 20%, var(--color-accent-glow), transparent 45%), #f3f4f6;
   --color-sidebar-bg-sticky: rgba(243, 244, 246, 0.98);
+  --color-icon-success: #16a34a;
+  --color-icon-error: #dc2626;
   --sidebar-toggle-bg: #111111;
   --sidebar-toggle-fg: #ffffff;
   --sidebar-toggle-border: rgba(0, 0, 0, 0.12);
