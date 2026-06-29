@@ -2328,6 +2328,45 @@ export const deleteNFSeCall = async (
   );
 };
 
+export const imprimirDanfeNFSeCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  body: {
+    CodigoEmpresa: number;
+    NumNota: string;
+    SerNota: string;
+  },
+): Promise<ApiCallResponse<Blob>> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/DanfeNFSe`;
+  return apiManager.makeApiCall<Blob>(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    body,
+    { responseType: 'blob' },
+  );
+};
+
+export const enviarEmailNFSeCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  body: {
+    CodigoEmpresa: number;
+    Nota: string;
+    Serie: string;
+  },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/EnviarEmailNFSe`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    body,
+  );
+};
+
 export const obterNotaFiscalServicoModCall = async (
   baseUrl: string,
   jwtToken: string | undefined,
@@ -3001,6 +3040,8 @@ export default {
   atualizarNFSeCall,
   cancelarNFSeCall,
   deleteNFSeCall,
+  imprimirDanfeNFSeCall,
+  enviarEmailNFSeCall,
   obterOcorrenciasNotaFiscalCall,
   obterClientesFornecedoresCall,
   obterEmpresasSeriesNFCall,
