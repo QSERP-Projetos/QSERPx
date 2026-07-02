@@ -1139,6 +1139,36 @@ export function DashboardVendasPage() {
         </div>
       </AdvancedFiltersPanel>
 
+      <section className="dashboard-vendas-controls">
+        <button
+          className={`icon-button module-action-button${advancedOpen ? ' module-action-button--primary' : ''}`}
+          type="button"
+          onClick={() => setAdvancedOpen(true)}
+          title="Filtros avançados"
+          aria-label="Filtros avançados"
+        >
+          <IoFilterOutline size={18} />
+        </button>
+
+        <button
+          className="icon-button module-action-button"
+          type="button"
+          onClick={() => {
+            if (!appliedDataDe || !appliedDataAte) {
+              setAdvancedOpen(true);
+              return;
+            }
+
+            void fetchDashboard({ dataDe: appliedDataDe, dataAte: appliedDataAte });
+          }}
+          title="Atualizar"
+          aria-label="Atualizar"
+          disabled={loading}
+        >
+          <IoRefreshOutline size={18} />
+        </button>
+      </section>
+
       <section className="card dashboard-vendas-results">
         <div className="dashboard-vendas-controls-inline dashboard-vendas-results__actions">
           <label className="list-layout-field list-layout-field--sm dashboard-field dashboard-vendas-scope-filter" aria-label="Filtrar destinatário">
@@ -1154,33 +1184,6 @@ export function DashboardVendasPage() {
           </label>
 
           <div className="dashboard-vendas-controls-inline__buttons">
-            <button
-              className={`icon-button module-action-button${advancedOpen ? ' module-action-button--primary' : ''}`}
-              type="button"
-              onClick={() => setAdvancedOpen(true)}
-              title="Filtros avançados"
-              aria-label="Filtros avançados"
-            >
-              <IoFilterOutline size={16} />
-            </button>
-
-            <button
-              className="icon-button module-action-button"
-              type="button"
-              onClick={() => {
-                if (!appliedDataDe || !appliedDataAte) {
-                  setAdvancedOpen(true);
-                  return;
-                }
-
-                void fetchDashboard({ dataDe: appliedDataDe, dataAte: appliedDataAte });
-              }}
-              title="Atualizar"
-              aria-label="Atualizar"
-              disabled={loading}
-            >
-              <IoRefreshOutline size={16} />
-            </button>
           </div>
         </div>
 

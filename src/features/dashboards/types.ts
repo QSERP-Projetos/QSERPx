@@ -35,3 +35,129 @@ export type DashboardDateErrors = {
   dataAte?: string;
   ano?: string;
 };
+
+export type DashboardPCPResumo = {
+  totalApontamentos: number;
+  totalOrdens: number;
+  quantidadeApontada: number;
+  horasApontadas: number;
+  totalParadas: number;
+  horasParadas: number;
+};
+
+export type DashboardPCPProducaoPorMaquina = {
+  num_Maquina: string;
+  descricao_Maquina?: string;
+  totalApontamentos: number;
+  quantidadeApontada: number;
+  horasApontadas: number;
+};
+
+export type DashboardPCPProducaoPorCentroTrabalho = {
+  codigo_CTrab: string;
+  descricao_CTrab: string;
+  totalApontamentos: number;
+  quantidadeApontada: number;
+  horasApontadas: number;
+};
+
+export type DashboardPCPParadaPorMotivo = {
+  codigo_Parada: number;
+  motivo_Parada: string;
+  parada_Programada: boolean;
+  totalOcorrencias: number;
+  horasParadas: number;
+};
+
+export type DashboardPCPDadosProducao = {
+  tempoProgramadoHoras: number;
+  tempoProgramadoMinutos: number;
+  paradasDescansoMinutos: number;
+  paradasRefeicaoMinutos: number;
+  paradasQuebraMinutos: number;
+  producaoIdealPPM: number;
+  totalProduzidoPecas: number;
+  totalRefugoPecas: number;
+};
+
+export type DashboardPCPVariaveisSuporte = {
+  tempoProducaoPlanejadaMinutos: number;
+  tempoOperacionalMinutos: number;
+  pecasBoas: number;
+};
+
+export type DashboardPCPFatoresOEE = {
+  disponibilidade: number;
+  performance: number;
+  qualidade: number;
+  oee: number;
+};
+
+export type DashboardPCPMaquinaDisponivel = {
+  codigo: string;
+  nome: string;
+};
+
+export type DashboardPCPFiltros = {
+  maquinaSelecionada: string | null;
+  metaSelecionada: number;
+  mesInicio: string;
+  numeroMeses: number;
+  maquinasDisponiveis: DashboardPCPMaquinaDisponivel[];
+};
+
+export type DashboardPCPCards = {
+  oee: number;
+  disponibilidade: number;
+  performance: number;
+  qualidade: number;
+};
+
+export type DashboardPCPEvolucaoMensal = {
+  mes: string;
+  disponibilidade: number;
+  qualidade: number;
+  performance: number;
+  meta: number;
+  oee: number;
+};
+
+export type DashboardPCPPecasMensal = {
+  mes: string;
+  pecasBoas: number;
+  pecasRuins: number;
+};
+
+export type DashboardPCPTemposMensal = {
+  mes: string;
+  tempoProdutivo: number;
+  naoQualidade: number;
+  tempoParado: number;
+};
+
+export type DashboardPCPFrontend = {
+  filtros: DashboardPCPFiltros;
+  cards: DashboardPCPCards;
+  evolucaoMensal: DashboardPCPEvolucaoMensal[];
+  pecasMensal: DashboardPCPPecasMensal[];
+  temposMensal: DashboardPCPTemposMensal[];
+};
+
+export type DashboardPCPWorldClass = {
+  disponibilidade: number;
+  performance: number;
+  qualidade: number;
+  oee: number;
+};
+
+export type DashboardPCPResponse = {
+  resumo: DashboardPCPResumo;
+  dadosProducao: DashboardPCPDadosProducao;
+  variaveisSuporte: DashboardPCPVariaveisSuporte;
+  fatoresOEE: DashboardPCPFatoresOEE;
+  dashboardFrontend: DashboardPCPFrontend;
+  worldClass: DashboardPCPWorldClass;
+  producaoPorMaquina: DashboardPCPProducaoPorMaquina[];
+  producaoPorCentroTrabalho: DashboardPCPProducaoPorCentroTrabalho[];
+  paradasPorMotivo: DashboardPCPParadaPorMotivo[];
+};

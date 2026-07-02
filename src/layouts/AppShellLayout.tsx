@@ -24,6 +24,7 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
   const codeRouteMap: Record<string, string> = {
     DSB002: ROUTES.dashboardFinanceiro,
     DSB003: ROUTES.dashboardVendas,
+    DSB004: ROUTES.dashboardPcp,
     DSB005: ROUTES.dashboardServicos,
     VEN001: ROUTES.pedidoVendaRepresentantes,
     VEN002: ROUTES.pedidoVenda,
@@ -52,9 +53,11 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
       ? ROUTES.dashboardFinanceiro
       : isDashboardCode && normalizedTitle.includes('venda')
         ? ROUTES.dashboardVendas
-        : isDashboardCode && normalizedTitle.includes('servic')
-          ? ROUTES.dashboardServicos
-          : undefined;
+        : isDashboardCode && normalizedTitle.includes('pcp')
+          ? ROUTES.dashboardPcp
+          : isDashboardCode && normalizedTitle.includes('servic')
+            ? ROUTES.dashboardServicos
+            : undefined;
 
   const routeByCode = codeRouteMap[normalizedCode];
   const routeByTitle =
@@ -62,6 +65,7 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
       ? ROUTES.dashboardFinanceiro
       : undefined) ||
     (normalizedTitle.includes('dashboard') && normalizedTitle.includes('venda') ? ROUTES.dashboardVendas : undefined) ||
+    (normalizedTitle.includes('dashboard') && normalizedTitle.includes('pcp') ? ROUTES.dashboardPcp : undefined) ||
     (normalizedTitle.includes('dashboard') && normalizedTitle.includes('servic') ? ROUTES.dashboardServicos : undefined) ||
     (normalizedTitle.includes('pedido') &&
       normalizedTitle.includes('venda') &&
@@ -245,7 +249,6 @@ export function AppShellLayout() {
 
     if (
       (isDashboardCode && normalizedTitle.includes('compr')) ||
-      (isDashboardCode && normalizedTitle.includes('pcp')) ||
       normalizedCode === 'DSB001'
     ) {
       setMobileNavOpen(false);

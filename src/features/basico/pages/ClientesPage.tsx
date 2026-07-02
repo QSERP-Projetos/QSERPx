@@ -51,6 +51,7 @@ const getRows = (payload: any): any[] => {
 
 const asText = (value: any) => String(value ?? '').trim();
 const onlyDigits = (value: string) => value.replace(/\D+/g, '');
+const onlyAlphaNumeric = (value: string) => value.replace(/[^a-zA-Z0-9]+/g, '').toUpperCase();
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 const formatCpf = (value: string) => {
@@ -64,16 +65,16 @@ const formatCpf = (value: string) => {
 };
 
 const formatCnpj = (value: string) => {
-  const digits = onlyDigits(value).slice(0, 14);
+  const chars = onlyAlphaNumeric(value).slice(0, 14);
 
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
-  if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
-  if (digits.length <= 12) {
-    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+  if (chars.length <= 2) return chars;
+  if (chars.length <= 5) return `${chars.slice(0, 2)}.${chars.slice(2)}`;
+  if (chars.length <= 8) return `${chars.slice(0, 2)}.${chars.slice(2, 5)}.${chars.slice(5)}`;
+  if (chars.length <= 12) {
+    return `${chars.slice(0, 2)}.${chars.slice(2, 5)}.${chars.slice(5, 8)}/${chars.slice(8)}`;
   }
 
-  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+  return `${chars.slice(0, 2)}.${chars.slice(2, 5)}.${chars.slice(5, 8)}/${chars.slice(8, 12)}-${chars.slice(12)}`;
 };
 
 const formatDocumento = (value: string, pessoa: '1' | '2') => {
@@ -83,8 +84,9 @@ const formatDocumento = (value: string, pessoa: '1' | '2') => {
 const limitComplemento = (value: string) => asText(value).slice(0, 20);
 
 const formatDocumentoAuto = (value: string) => {
-  const digits = onlyDigits(value).slice(0, 14);
-  return digits.length > 11 ? formatCnpj(digits) : formatCpf(digits);
+  const alphanumeric = onlyAlphaNumeric(value).slice(0, 14);
+  const hasLetters = /[A-Z]/.test(alphanumeric);
+  return hasLetters || alphanumeric.length > 11 ? formatCnpj(alphanumeric) : formatCpf(alphanumeric);
 };
 
 const formatCep = (value: string) => {
@@ -398,7 +400,7 @@ export function ClientesPage() {
 
   const preencherFormularioComDocumento = (data: any, documentoDigitado: string) => {
     const documentoRetorno = asText(data?.cnpj) || documentoDigitado;
-    const pessoa: '1' | '2' = onlyDigits(documentoRetorno).length > 11 ? '2' : '1';
+    const pessoa: '1' | '2' = onlyAlphaNumeric(documentoRetorno).length > 11 ? '2' : '1';
     const nomeFantasia = asText(data?.fantasia);
     const razaoSocial = asText(data?.nome);
     const endereco = asText(data?.logradouro);
@@ -458,10 +460,10 @@ export function ClientesPage() {
       return;
     }
 
-    const documento = onlyDigits(formCpfCnpj);
+    const documento = onlyAlphaNumeric(formCpfCnpj);
     if (documento.length !== 11 && documento.length !== 14) {
       setStatusConsultaDocumento('ERROR');
-      showToast('Informe um CPF ou CNPJ válido.', 'error');
+      showToast('Informe um CPF (11) ou CNPJ (14) válido.', 'error');
       return;
     }
 
@@ -516,7 +518,7 @@ export function ClientesPage() {
     const bairro = formBairro.trim();
     const cidade = formCidade.trim();
     const complemento = formComplemento.trim().slice(0, 20);
-    const cnpjCpf = onlyDigits(formCpfCnpj);
+    const cnpjCpf = formPessoa === '1' ? onlyDigits(formCpfCnpj) : onlyAlphaNumeric(formCpfCnpj);
     const telefone = onlyDigits(formTelefone);
     const email = formEmail.trim();
     const ibgeDigits = onlyDigits(formIbge);
@@ -550,7 +552,7 @@ export function ClientesPage() {
     }
 
     if (formPessoa === '2' && cnpjCpf && cnpjCpf.length !== 14) {
-      nextErrors.cpfCnpj = 'CNPJ inválido. Informe 14 números.';
+      nextErrors.cpfCnpj = 'CNPJ inválido. Informe 14 caracteres alfanuméricos.';
     }
 
     if (email && !isValidEmail(email)) {
@@ -832,8 +834,9 @@ export function ClientesPage() {
                         const nextValue = event.target.value;
 
                         if (formModoCadastro === 'documento') {
-                          const digits = onlyDigits(nextValue);
-                          setFormPessoa(digits.length > 11 ? '2' : '1');
+                          const chars = onlyAlphaNumeric(nextValue);
+                          const hasLetters = /[A-Z]/.test(chars);
+                          setFormPessoa(hasLetters || chars.length > 11 ? '2' : '1');
                           setFormCpfCnpj(formatDocumentoAuto(nextValue));
                         } else {
                           setFormCpfCnpj(formatDocumento(nextValue, formPessoa));
@@ -842,7 +845,7 @@ export function ClientesPage() {
                         if (formErrors.cpfCnpj) setFormErrors((prev) => ({ ...prev, cpfCnpj: undefined }));
                       }}
                       readOnly={modoConsulta}
-                      inputMode="numeric"
+                      inputMode={formPessoa === '1' ? 'numeric' : 'text'}
                       maxLength={18}
                     />
 
