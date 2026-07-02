@@ -7,7 +7,9 @@ import {
   IoCloseCircleOutline,
   IoCloseOutline,
   IoCodeSlashOutline,
+  IoDocumentTextOutline,
   IoFilterOutline,
+  IoPaperPlaneOutline,
   IoRefreshOutline,
   IoTimeOutline,
 } from 'react-icons/io5';
@@ -15,7 +17,7 @@ import { ROUTES } from '../../../constants/routes';
 import { APP_VERSION } from '../../../constants/appInfo';
 import { useToast } from '../../../contexts/ToastContext';
 import { GlobalConfig } from '../../../services/globalConfig';
-import { obterNotasFiscaisServicoCall, obterNotaFiscalServicoModCall, enviarDPSCall, atualizarNFSeCall, cancelarNFSeCall, deleteNFSeCall, obterOcorrenciasNotaFiscalCall, listaCondicaoPagtoCall, listaServicosCall, obterEmpresasSeriesNFCall, obterClientesFornecedoresCall } from '../../../services/apiCalls';
+import { obterNotasFiscaisServicoCall, obterNotaFiscalServicoModCall, enviarDPSCall, atualizarNFSeCall, cancelarNFSeCall, deleteNFSeCall, imprimirDanfeNFSeCall, enviarEmailNFSeCall, obterOcorrenciasNotaFiscalCall, listaCondicaoPagtoCall, listaServicosCall, obterEmpresasSeriesNFCall, obterClientesFornecedoresCall } from '../../../services/apiCalls';
 import { SearchableSelect } from '../../../components/SearchableSelect';
 import { AdvancedFiltersPanel } from '../../../components/AdvancedFiltersPanel';
 import { ListSearchField } from '../../../components/ListSearchField';
@@ -136,6 +138,38 @@ const getRows = (payload: any): any[] => {
 };
 
 const asText = (value: any) => String(value ?? '');
+
+const isNotaAutorizada = (autorizado: any): boolean => {
+  const autNorm = String(autorizado ?? '').trim().toUpperCase();
+  return autNorm === 'S' || autNorm === 'SIM' || autNorm === 'Y' || autNorm === 'YES' || autNorm === '1' || autNorm === 'TRUE';
+};
+
+const abrirPdfParaImpressao = (pdfBlob: Blob) => {
+  const blobUrl = URL.createObjectURL(pdfBlob);
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.onload = () => {
+    const printWindow = iframe.contentWindow;
+    if (printWindow) {
+      printWindow.focus();
+      printWindow.print();
+    } else {
+      window.open(blobUrl, '_blank', 'noopener,noreferrer');
+    }
+
+    window.setTimeout(() => {
+      URL.revokeObjectURL(blobUrl);
+      iframe.remove();
+    }, 60_000);
+  };
+  iframe.src = blobUrl;
+  document.body.appendChild(iframe);
+};
 
 const getSituacaoLabel = (situacao: number | null | undefined): string => {
   switch (situacao) {
@@ -676,6 +710,11 @@ export function NotaFiscalServicoPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [reenvioConfirmRow, setReenvioConfirmRow] = useState<NotaFiscal | null>(null);
   const [reenvioLoading, setReenvioLoading] = useState(false);
+  const [imprimirDanfeRow, setImprimirDanfeRow] = useState<NotaFiscal | null>(null);
+  const [imprimirDanfeLoading, setImprimirDanfeLoading] = useState(false);
+  const [enviarEmailRow, setEnviarEmailRow] = useState<NotaFiscal | null>(null);
+  const [enviarEmailConfirmOpen, setEnviarEmailConfirmOpen] = useState(false);
+  const [enviarEmailLoading, setEnviarEmailLoading] = useState(false);
   const [historicoRow, setHistoricoRow] = useState<NotaFiscal | null>(null);
   const [historicoLoading, setHistoricoLoading] = useState(false);
   const [historicoChaveAcesso, setHistoricoChaveAcesso] = useState('');
@@ -848,9 +887,7 @@ export function NotaFiscalServicoPage() {
     setConsultaOpen(true);
     setConsultaEditando(false);
     setCarregandoConsulta(true);
-    const autNorm = String(autorizado ?? '').trim().toUpperCase();
-    const isAutorizado = autNorm === 'S' || autNorm === 'SIM' || autNorm === 'Y' || autNorm === 'YES' || autNorm === '1' || autNorm === 'TRUE';
-    setConsultaAutorizada(isAutorizado);
+    setConsultaAutorizada(isNotaAutorizada(autorizado));
     const baseUrl = GlobalConfig.getBaseUrl();
     const token = GlobalConfig.getJwToken();
     const codEmpresa = GlobalConfig.getCodEmpresa();
@@ -1211,8 +1248,7 @@ export function NotaFiscalServicoPage() {
   const handleCancelarClick = useCallback((e: React.MouseEvent, row: NotaFiscal) => {
     e.stopPropagation();
     const situacao = row.situacao_Nota != null ? Number(row.situacao_Nota) : null;
-    const autNorm = String(row.autorizado ?? '').trim().toUpperCase();
-    const isAutorizado = autNorm === 'S' || autNorm === 'SIM' || autNorm === 'Y' || autNorm === 'YES' || autNorm === '1' || autNorm === 'TRUE';
+    const isAutorizado = isNotaAutorizada(row.autorizado);
 
     if (situacao === 9 && !isAutorizado) {
       setDeleteConfirmRow(row);
@@ -1220,10 +1256,6 @@ export function NotaFiscalServicoPage() {
     }
     if (situacao === 9) {
       showToast('Esta nota já está cancelada.', 'info');
-      return;
-    }
-    if (isAutorizado) {
-      showToast('Não é possível cancelar uma nota já autorizada por aqui.', 'info');
       return;
     }
     setCancelarRow(row);
@@ -1302,14 +1334,85 @@ export function NotaFiscalServicoPage() {
 
   const handleReenvioClick = useCallback((e: React.MouseEvent, row: NotaFiscal) => {
     e.stopPropagation();
-    const autNorm = String(row.autorizado ?? '').trim().toUpperCase();
-    const isAutorizado = autNorm === 'S' || autNorm === 'SIM' || autNorm === 'Y' || autNorm === 'YES' || autNorm === '1' || autNorm === 'TRUE';
+    const isAutorizado = isNotaAutorizada(row.autorizado);
     if (isAutorizado) {
-      showToast('Essa nota já está autorizada!', 'info');
+      setImprimirDanfeRow(row);
       return;
     }
     setReenvioConfirmRow(row);
-  }, [showToast]);
+  }, []);
+
+  const handleConfirmarImpressaoDanfe = useCallback(async () => {
+    if (!imprimirDanfeRow) return;
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+    const codEmpresa = GlobalConfig.getCodEmpresa();
+    if (!baseUrl || !token || !codEmpresa) {
+      showToast('Informações de sessão não encontradas.', 'error');
+      return;
+    }
+
+    setImprimirDanfeLoading(true);
+    try {
+      const resp = await imprimirDanfeNFSeCall(baseUrl, token, {
+        CodigoEmpresa: codEmpresa,
+        NumNota: String(imprimirDanfeRow.num_Nota_Fiscal ?? ''),
+        SerNota: String(imprimirDanfeRow.serie ?? ''),
+      });
+
+      if (resp.succeeded && resp.data instanceof Blob && resp.data.size > 0) {
+        abrirPdfParaImpressao(resp.data);
+      } else {
+        const msg = resp.jsonBody?.message ?? resp.jsonBody?.Message ?? 'Não foi possível gerar a DANFE da nota.';
+        showToast(String(msg), 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro ao imprimir DANFE.', 'error');
+    } finally {
+      setImprimirDanfeLoading(false);
+      setImprimirDanfeRow(null);
+    }
+  }, [imprimirDanfeRow, showToast]);
+
+  const handleEnviarEmail = useCallback(async () => {
+    if (!enviarEmailRow) return;
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+    const codEmpresa = GlobalConfig.getCodEmpresa();
+    if (!baseUrl || !token || !codEmpresa) {
+      showToast('Informações de sessão não encontradas.', 'error');
+      return;
+    }
+
+    setEnviarEmailLoading(true);
+    try {
+      const resp = await enviarEmailNFSeCall(baseUrl, token, {
+        CodigoEmpresa: codEmpresa,
+        Nota: String(enviarEmailRow.num_Nota_Fiscal ?? ''),
+        Serie: String(enviarEmailRow.serie ?? ''),
+      });
+
+      if (resp.succeeded) {
+        showToast('Email enviado com sucesso!', 'success');
+        setEnviarEmailConfirmOpen(false);
+        setEnviarEmailRow(null);
+        void carregar();
+      } else {
+        const msg = resp.jsonBody?.message ?? resp.jsonBody?.Message ?? 'Erro ao enviar email da nota fiscal.';
+        showToast(String(msg), 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Erro ao enviar email.', 'error');
+    } finally {
+      setEnviarEmailLoading(false);
+    }
+  }, [enviarEmailRow, showToast, carregar]);
+
+  const handleEnviarEmailClick = useCallback((e: React.MouseEvent, row: NotaFiscal) => {
+    e.stopPropagation();
+    setEnviarEmailRow(row);
+    setEnviarEmailConfirmOpen(true);
+  }, []);
 
   const handleConfirmarReenvio = useCallback(async () => {
     if (!reenvioConfirmRow) return;
@@ -1610,6 +1713,7 @@ export function NotaFiscalServicoPage() {
                 <tbody>
                   {rowsFiltradas.map((row, idx) => {
                     const situacaoNum = row.situacao_Nota != null ? Number(row.situacao_Nota) : null;
+                    const autorizado = isNotaAutorizada(row.autorizado);
                     return (
                       <tr
                         key={`${asText(row.num_Nota_Fiscal)}-${idx}`}
@@ -1638,11 +1742,11 @@ export function NotaFiscalServicoPage() {
                           <button
                             type="button"
                             className="icon-button"
-                            title="Reenviar Xml"
-                            aria-label="Reenviar Xml"
+                            title={autorizado ? 'Imprimir Danfe' : 'Reenviar Xml'}
+                            aria-label={autorizado ? 'Imprimir Danfe' : 'Reenviar Xml'}
                             onClick={(e) => handleReenvioClick(e, row)}
                           >
-                            <IoCodeSlashOutline size={16} />
+                            {autorizado ? <IoDocumentTextOutline size={16} /> : <IoCodeSlashOutline size={16} />}
                           </button>
                           <button
                             type="button"
@@ -1652,6 +1756,17 @@ export function NotaFiscalServicoPage() {
                             onClick={(e) => void abrirHistorico(e, row)}
                           >
                             <IoTimeOutline size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-button"
+                            title="Enviar email"
+                            aria-label="Enviar email"
+                            onClick={(e) => handleEnviarEmailClick(e, row)}
+                            disabled={!autorizado}
+                            style={!autorizado ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                          >
+                            <IoPaperPlaneOutline size={16} />
                           </button>
                           <button
                             type="button"
@@ -2117,6 +2232,100 @@ export function NotaFiscalServicoPage() {
                 disabled={reenvioLoading}
               >
                 {reenvioLoading ? 'Reenviando...' : 'Reenviar'}
+              </button>
+            </footer>
+          </article>
+        </section>
+      )}
+
+      {imprimirDanfeRow && (
+        <section className="modal-backdrop" role="dialog" aria-modal="true">
+          <article className="modal-card modal-card--confirm">
+            <header className="modal-card__header">
+              <h2>Imprimir DANFE</h2>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Fechar"
+                onClick={() => setImprimirDanfeRow(null)}
+                disabled={imprimirDanfeLoading}
+              >
+                <IoCloseOutline size={18} />
+              </button>
+            </header>
+            <div className="modal-card__body modal-card__body--confirm">
+              <IoAlertCircleOutline size={36} className="modal-confirm__icon" />
+              <p>
+                Deseja imprimir a DANFE da nota <strong>{asText(imprimirDanfeRow.num_Nota_Fiscal)}</strong> série{' '}
+                <strong>{asText(imprimirDanfeRow.serie)}</strong>?
+              </p>
+            </div>
+            <footer className="nfs-nova-footer">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setImprimirDanfeRow(null)}
+                disabled={imprimirDanfeLoading}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => void handleConfirmarImpressaoDanfe()}
+                disabled={imprimirDanfeLoading}
+              >
+                {imprimirDanfeLoading ? 'Gerando...' : 'Imprimir'}
+              </button>
+            </footer>
+          </article>
+        </section>
+      )}
+
+      {enviarEmailRow && enviarEmailConfirmOpen && (
+        <section className="modal-backdrop" role="dialog" aria-modal="true">
+          <article className="modal-card modal-card--confirm">
+            <header className="modal-card__header">
+              <h2>Enviar Email</h2>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Fechar"
+                onClick={() => {
+                  setEnviarEmailConfirmOpen(false);
+                  setEnviarEmailRow(null);
+                }}
+                disabled={enviarEmailLoading}
+              >
+                <IoCloseOutline size={18} />
+              </button>
+            </header>
+            <div className="modal-card__body modal-card__body--confirm">
+              <IoAlertCircleOutline size={36} className="modal-confirm__icon" />
+              <p>
+                Deseja enviar email com a nota fiscal <strong>{asText(enviarEmailRow.num_Nota_Fiscal)}</strong> série{' '}
+                <strong>{asText(enviarEmailRow.serie)}</strong>?
+              </p>
+            </div>
+            <footer className="nfs-nova-footer">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => {
+                  setEnviarEmailConfirmOpen(false);
+                  setEnviarEmailRow(null);
+                }}
+                disabled={enviarEmailLoading}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => void handleEnviarEmail()}
+                disabled={enviarEmailLoading}
+              >
+                {enviarEmailLoading ? 'Enviando...' : 'Enviar'}
               </button>
             </footer>
           </article>

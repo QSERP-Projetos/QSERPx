@@ -28,6 +28,7 @@ export interface ApiCallResponse<T = any> {
 
 export interface ApiCallRequestOptions {
   timeoutMs?: number;
+  responseType?: 'json' | 'blob' | 'text';
 }
 
 class ApiManager {
@@ -101,6 +102,10 @@ class ApiManager {
         headers: requestHeaders,
       };
 
+      if (requestOptions.responseType) {
+        config.responseType = requestOptions.responseType;
+      }
+
       if (typeof requestOptions.timeoutMs === 'number' && Number.isFinite(requestOptions.timeoutMs) && requestOptions.timeoutMs > 0) {
         config.timeout = requestOptions.timeoutMs;
       }
@@ -118,22 +123,30 @@ class ApiManager {
 
       const response: AxiosResponse<T> = await this.axiosInstance.request(config);
 
+      const responseBodyText = response.data instanceof Blob
+        ? '[binary data]'
+        : typeof response.data === 'string'
+          ? response.data
+          : JSON.stringify(response.data);
+
       return {
         data: response.data,
         statusCode: response.status,
         succeeded: response.status >= 200 && response.status < 300,
-        jsonBody: response.data,
-        bodyText: JSON.stringify(response.data),
+        jsonBody: response.data instanceof Blob ? null : response.data,
+        bodyText: responseBodyText,
       };
     } catch (error: any) {
       const status = error?.response?.status;
       const responseBody = error?.response?.data;
-      const responseBodyText =
-        typeof responseBody === 'string'
-          ? responseBody
-          : responseBody != null
-            ? JSON.stringify(responseBody)
-            : '';
+      let responseBodyText = '';
+      if (typeof responseBody === 'string') {
+        responseBodyText = responseBody;
+      } else if (responseBody instanceof Blob) {
+        responseBodyText = await responseBody.text().catch(() => '');
+      } else if (responseBody != null) {
+        responseBodyText = JSON.stringify(responseBody);
+      }
       if (status >= 500 || !status) {
         console.error('API Call Error:', error);
       } else {
@@ -151,105 +164,105 @@ class ApiManager {
     }
   }
 
-    private shouldBypassGlobalGuards(apiUrl: string): boolean {
-      const normalized = String(apiUrl || '').toLowerCase();
-      return normalized.includes('/api/v1/token') || normalized.includes('/api/v1/url') || normalized.includes('/api/v1/login');
+  private shouldBypassGlobalGuards(apiUrl: string): boolean {
+    const normalized = String(apiUrl || '').toLowerCase();
+    return normalized.includes('/api/v1/token') || normalized.includes('/api/v1/url') || normalized.includes('/api/v1/login');
+  }
+
+  private extractBaseUrl(apiUrl: string): string {
+    const raw = String(apiUrl || '').trim();
+    if (!raw) return '';
+    const marker = '/api/v1/';
+    const index = raw.toLowerCase().indexOf(marker);
+    if (index < 0) return raw.replace(/\/$/, '');
+    return raw.slice(0, index).replace(/\/$/, '');
+  }
+
+  private async checkApiHealth(baseUrl: string): Promise<boolean> {
+    try {
+      const response = await this.axiosInstance.request({
+        method: ApiCallType.GET,
+        url: `${baseUrl}/api/v1/url`,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      return response.status === 200;
+    } catch {
+      return false;
+    }
+  }
+
+  private async fetchFreshToken(baseUrl: string): Promise<string | null> {
+    const usuario = GlobalConfig.getUsuario();
+    const nomeEmpresa = GlobalConfig.getNomeEmpresa();
+    const codigoEmpresa = Number(GlobalConfig.getCodEmpresa() ?? 0);
+
+    if (!usuario || !nomeEmpresa || !codigoEmpresa) {
+      return null;
     }
 
-    private extractBaseUrl(apiUrl: string): string {
-      const raw = String(apiUrl || '').trim();
-      if (!raw) return '';
-      const marker = '/api/v1/';
-      const index = raw.toLowerCase().indexOf(marker);
-      if (index < 0) return raw.replace(/\/$/, '');
-      return raw.slice(0, index).replace(/\/$/, '');
-    }
+    try {
+      const response = await this.axiosInstance.request({
+        method: ApiCallType.GET,
+        url: `${baseUrl}/api/v1/token`,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        params: {
+          Usuario: usuario,
+          Codigo_Empresa: codigoEmpresa,
+          Nome_Empresa: nomeEmpresa,
+          Chave_Api: '',
+          IdGuid: '',
+          Tipo: 2,
+          RetornarComoXml: false,
+        },
+      });
 
-    private async checkApiHealth(baseUrl: string): Promise<boolean> {
-      try {
-        const response = await this.axiosInstance.request({
-          method: ApiCallType.GET,
-          url: `${baseUrl}/api/v1/url`,
-          headers: {
-            'Content-Type': 'application/json',
+      const payload = response.data as any;
+      const token = payload?.token || payload?.Token || payload?.data?.token;
+      if (!token) return null;
+
+      GlobalConfig.setJwToken(String(token));
+      return String(token);
+    } catch {
+      return null;
+    }
+  }
+
+  private handleDisconnected(): void {
+    if (this.disconnectHandled) return;
+    this.disconnectHandled = true;
+
+    void GlobalConfig.clearConfig();
+
+    try {
+      window.dispatchEvent(
+        new CustomEvent('qserpx:toast', {
+          detail: {
+            message: 'Desconectado do servidor. Faça login novamente.',
+            type: 'error',
+            duration: 2500,
           },
-        });
-
-        return response.status === 200;
-      } catch {
-        return false;
-      }
+        }),
+      );
+    } catch {
+      // ignore toast event failures
     }
 
-    private async fetchFreshToken(baseUrl: string): Promise<string | null> {
-      const usuario = GlobalConfig.getUsuario();
-      const nomeEmpresa = GlobalConfig.getNomeEmpresa();
-      const codigoEmpresa = Number(GlobalConfig.getCodEmpresa() ?? 0);
-
-      if (!usuario || !nomeEmpresa || !codigoEmpresa) {
-        return null;
+    try {
+      const currentPath = window.location.pathname;
+      if (currentPath !== ROUTES.login) {
+        window.setTimeout(() => {
+          window.location.assign(ROUTES.login);
+        }, 900);
       }
-
-      try {
-        const response = await this.axiosInstance.request({
-          method: ApiCallType.GET,
-          url: `${baseUrl}/api/v1/token`,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          params: {
-            Usuario: usuario,
-            Codigo_Empresa: codigoEmpresa,
-            Nome_Empresa: nomeEmpresa,
-            Chave_Api: '',
-            IdGuid: '',
-            Tipo: 2,
-            RetornarComoXml: false,
-          },
-        });
-
-        const payload = response.data as any;
-        const token = payload?.token || payload?.Token || payload?.data?.token;
-        if (!token) return null;
-
-        GlobalConfig.setJwToken(String(token));
-        return String(token);
-      } catch {
-        return null;
-      }
+    } catch {
+      // ignore navigation failures
     }
-
-    private handleDisconnected(): void {
-      if (this.disconnectHandled) return;
-      this.disconnectHandled = true;
-
-      void GlobalConfig.clearConfig();
-
-      try {
-        window.dispatchEvent(
-          new CustomEvent('qserpx:toast', {
-            detail: {
-              message: 'Desconectado do servidor. Faça login novamente.',
-              type: 'error',
-              duration: 2500,
-            },
-          }),
-        );
-      } catch {
-        // ignore toast event failures
-      }
-
-      try {
-        const currentPath = window.location.pathname;
-        if (currentPath !== ROUTES.login) {
-          window.setTimeout(() => {
-            window.location.assign(ROUTES.login);
-          }, 900);
-        }
-      } catch {
-        // ignore navigation failures
-      }
-    }
+  }
 }
 
 export default ApiManager.getInstance();
