@@ -1757,7 +1757,7 @@ export const consultarCnpjCall = async (
   jwtToken: string | undefined,
   cnpj: string,
 ): Promise<ApiCallResponse> => {
-  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ConsultaCnpj/${cnpj}`;
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ConsultaCnpj/${encodeURIComponent(cnpj)}`;
   return apiManager.makeApiCall(
     url,
     ApiCallType.GET,

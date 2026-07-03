@@ -1,4 +1,19 @@
 import apiManager, { ApiCallType } from '../../../services/apiManager';
+import type {
+  DashboardPCPResponse,
+  DashboardPCPProducaoPorMaquina,
+  DashboardPCPProducaoPorCentroTrabalho,
+  DashboardPCPParadaPorMotivo,
+  DashboardPCPResumo,
+} from '../types';
+
+export type {
+  DashboardPCPResponse,
+  DashboardPCPProducaoPorMaquina,
+  DashboardPCPProducaoPorCentroTrabalho,
+  DashboardPCPParadaPorMotivo,
+  DashboardPCPResumo,
+};
 
 const DASHBOARD_TIMEOUT_MS = 120000;
 
@@ -252,4 +267,45 @@ export const getDashboardServicos = async ({
   const destinatarios = Array.isArray(body.destinatarios) ? (body.destinatarios as DashboardServicosDestinatario[]) : [];
 
   return { totalFaturado, totalImpostos, destinatarios };
+};
+
+export const getDashboardPCP = async ({
+  baseUrl,
+  token,
+  codigoEmpresa,
+  dataDe,
+  dataAte,
+}: DashboardParams): Promise<DashboardPCPResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/Dashboards/PCP`;
+
+  const response = await apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    token ? { Authorization: `Bearer ${token}` } : {},
+    {
+      Codigo_Empresa: codigoEmpresa,
+      Data_De: dataDe,
+      Data_Ate: dataAte,
+    },
+    null,
+    { timeoutMs: DASHBOARD_TIMEOUT_MS },
+  );
+
+  if (!response.succeeded) {
+    throw new Error(response.bodyText || 'Erro ao consultar dashboard PCP.');
+  }
+
+  const body = (response.jsonBody ?? response.data ?? {}) as Record<string, unknown>;
+
+  return {
+    resumo: (body.resumo ?? {}) as any,
+    dadosProducao: (body.dadosProducao ?? {}) as any,
+    variaveisSuporte: (body.variaveisSuporte ?? {}) as any,
+    fatoresOEE: (body.fatoresOEE ?? {}) as any,
+    dashboardFrontend: (body.dashboardFrontend ?? {}) as any,
+    worldClass: (body.worldClass ?? {}) as any,
+    producaoPorMaquina: Array.isArray(body.producaoPorMaquina) ? (body.producaoPorMaquina as DashboardPCPProducaoPorMaquina[]) : [],
+    producaoPorCentroTrabalho: Array.isArray(body.producaoPorCentroTrabalho) ? (body.producaoPorCentroTrabalho as DashboardPCPProducaoPorCentroTrabalho[]) : [],
+    paradasPorMotivo: Array.isArray(body.paradasPorMotivo) ? (body.paradasPorMotivo as DashboardPCPParadaPorMotivo[]) : [],
+  } as DashboardPCPResponse;
 };

@@ -284,7 +284,7 @@ export function DashboardServicosPage() {
   // ── render ───────────────────────────────────────────────────────────────
 
   return (
-    <main className="clientes-page list-layout-page dashboard-page dashboard-vendas-page">
+    <main className="clientes-page list-layout-page dashboard-page dashboard-servicos-page">
       <section className="clientes-page__header">
         <div className="clientes-page__title-wrap">
           <button className="icon-button" type="button" onClick={() => navigate(ROUTES.home)} aria-label="Voltar">
@@ -324,43 +324,44 @@ export function DashboardServicosPage() {
         </div>
       </AdvancedFiltersPanel>
 
+      <section className="dashboard-servicos-controls">
+        <button
+          className={`icon-button module-action-button${advancedOpen ? ' module-action-button--primary' : ''}`}
+          type="button"
+          onClick={() => setAdvancedOpen(true)}
+          title="Filtros avançados"
+          aria-label="Filtros avançados"
+        >
+          <IoFilterOutline size={18} />
+        </button>
+        <button
+          className="icon-button module-action-button"
+          type="button"
+          onClick={() => {
+            if (!appliedDataDe || !appliedDataAte) { setAdvancedOpen(true); return; }
+            void fetchDashboard({ dataDe: appliedDataDe, dataAte: appliedDataAte });
+          }}
+          title="Atualizar"
+          aria-label="Atualizar"
+          disabled={loading}
+        >
+          <IoRefreshOutline size={18} />
+        </button>
+        {hasAnyData && (
+          <button
+            className="icon-button module-action-button"
+            type="button"
+            onClick={handleExportExcel}
+            title="Exportar Excel"
+            aria-label="Exportar Excel"
+          >
+            <IoDownloadOutline size={18} />
+          </button>
+        )}
+      </section>
+
       <section className="card dashboard-vendas-results">
         <div className="dashboard-vendas-controls-inline dashboard-vendas-results__actions">
-          <div className="dashboard-vendas-controls-inline__buttons">
-            <button
-              className={`icon-button module-action-button${advancedOpen ? ' module-action-button--primary' : ''}`}
-              type="button"
-              onClick={() => setAdvancedOpen(true)}
-              title="Filtros avançados"
-              aria-label="Filtros avançados"
-            >
-              <IoFilterOutline size={16} />
-            </button>
-            <button
-              className="icon-button module-action-button"
-              type="button"
-              onClick={() => {
-                if (!appliedDataDe || !appliedDataAte) { setAdvancedOpen(true); return; }
-                void fetchDashboard({ dataDe: appliedDataDe, dataAte: appliedDataAte });
-              }}
-              title="Atualizar"
-              aria-label="Atualizar"
-              disabled={loading}
-            >
-              <IoRefreshOutline size={16} />
-            </button>
-            {hasAnyData && (
-              <button
-                className="icon-button module-action-button"
-                type="button"
-                onClick={handleExportExcel}
-                title="Exportar Excel"
-                aria-label="Exportar Excel"
-              >
-                <IoDownloadOutline size={16} />
-              </button>
-            )}
-          </div>
         </div>
 
         <p className="dashboard-period-range">Período: {appliedDataDe} - {appliedDataAte}</p>

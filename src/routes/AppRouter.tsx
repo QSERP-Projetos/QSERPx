@@ -40,6 +40,12 @@ const DashboardVendasPage = lazy(() =>
   })),
 );
 
+const DashboardPcpPage = lazy(() =>
+  import('../features/dashboards/pages/DashboardPCPPage').then((module) => ({
+    default: module.DashboardPCPPage,
+  })),
+);
+
 const DashboardServicosPage = lazy(() =>
   import('../features/dashboards/pages/DashboardServicosPage').then((module) => ({
     default: module.DashboardServicosPage,
@@ -71,6 +77,14 @@ export function AppRouter() {
             element={
               <Suspense fallback={<p className="module-empty">Carregando dashboard de vendas...</p>}>
                 <DashboardVendasPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path={ROUTES.dashboardPcp}
+            element={
+              <Suspense fallback={<p className="module-empty">Carregando dashboard PCP...</p>}>
+                <DashboardPcpPage />
               </Suspense>
             }
           />

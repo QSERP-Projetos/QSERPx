@@ -15,6 +15,10 @@ type DashboardSummaryTableProps = {
   rowSearchText?: (row: DashboardRow) => string;
   renderRowDetails?: (row: DashboardRow) => ReactNode;
   rowDetailsTitle?: string;
+  showHeader?: boolean;
+  showSearch?: boolean;
+  title?: string;
+  subtitle?: string;
 };
 
 export function DashboardSummaryTable({
@@ -28,8 +32,12 @@ export function DashboardSummaryTable({
   rowSearchText,
   renderRowDetails,
   rowDetailsTitle = 'Detalhes',
+  showHeader = true,
+  showSearch = true,
+  title = 'Grade resumo da agregação',
+  subtitle = 'Dados resumidos que alimentam a visualização selecionada.',
 }: DashboardSummaryTableProps) {
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(!showHeader);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortColumnKey, setSortColumnKey] = useState(initialSortColumnKey ?? columns[0]?.key ?? '');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(initialSortDirection);
@@ -106,31 +114,33 @@ export function DashboardSummaryTable({
   };
 
   return (
-    <section className="card">
-      <header className="dashboard-section-header dashboard-section-header--collapsible">
-        <div>
-          <h2>Grade resumo da agregação</h2>
-          <p>Dados resumidos que alimentam a visualização selecionada.</p>
-        </div>
-        <div className="dashboard-summary-table__header-actions">
-          {headerAction}
-          <button
-            type="button"
-            className="home-dashboard-card__collapse"
-            onClick={() => setCollapsed((prev) => !prev)}
-            aria-label={collapsed ? 'Expandir grade resumo' : 'Encolher grade resumo'}
-            title={collapsed ? 'Expandir grade resumo' : 'Encolher grade resumo'}
-          >
-            {collapsed ? <IoChevronDownOutline size={18} /> : <IoChevronUpOutline size={18} />}
-          </button>
-        </div>
-      </header>
+    <section className={showHeader ? "card" : ""}>
+      {showHeader && (
+        <header className="dashboard-section-header dashboard-section-header--collapsible">
+          <div>
+            <h2>{title}</h2>
+            <p>{subtitle}</p>
+          </div>
+          <div className="dashboard-summary-table__header-actions">
+            {headerAction}
+            <button
+              type="button"
+              className="home-dashboard-card__collapse"
+              onClick={() => setCollapsed((prev) => !prev)}
+              aria-label={collapsed ? 'Expandir grade resumo' : 'Encolher grade resumo'}
+              title={collapsed ? 'Expandir grade resumo' : 'Encolher grade resumo'}
+            >
+              {collapsed ? <IoChevronDownOutline size={18} /> : <IoChevronUpOutline size={18} />}
+            </button>
+          </div>
+        </header>
+      )}
 
-      {collapsed ? null : rows.length === 0 ? (
+      {collapsed && showHeader ? null : rows.length === 0 ? (
         <p className="module-empty">Sem dados para exibir na grade resumo.</p>
       ) : (
         <div className="dashboard-summary-table-body">
-          {searchEnabled ? (
+          {searchEnabled && showSearch ? (
             <div className="dashboard-summary-table-toolbar">
               <ListSearchField
                 value={searchTerm}
