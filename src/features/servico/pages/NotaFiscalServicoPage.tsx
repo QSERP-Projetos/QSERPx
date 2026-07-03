@@ -9,6 +9,7 @@ import {
   IoCodeSlashOutline,
   IoDocumentTextOutline,
   IoFilterOutline,
+  IoInformationCircleOutline,
   IoPaperPlaneOutline,
   IoRefreshOutline,
   IoTimeOutline,
@@ -73,6 +74,13 @@ type NovaNotaFiscalForm = {
   valor25anos: string;
   alterarValorReceber: boolean;
   valorReceber: string;
+  cstIBSCBS: string;
+  descricaoCSTIBSCBS: string;
+  classTribIBSCBS: string;
+  descricaoTributacaoIBSCBS: string;
+  codIndicadorOperacao: string;
+  descontoIncondicional: string;
+  descontoCondicional: string;
 };
 
 const formatToday = () => {
@@ -127,6 +135,13 @@ const makeFormNova = (): NovaNotaFiscalForm => ({
   valor25anos: '',
   alterarValorReceber: false,
   valorReceber: '',
+  cstIBSCBS: '',
+  descricaoCSTIBSCBS: '',
+  classTribIBSCBS: '',
+  descricaoTributacaoIBSCBS: '',
+  codIndicadorOperacao: '',
+  descontoIncondicional: '',
+  descontoCondicional: '',
 });
 
 const getRows = (payload: any): any[] => {
@@ -301,6 +316,8 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
   const [formNova, setFormNova] = useState<NovaNotaFiscalForm>(makeFormNova);
   const [formErrors, setFormErrors] = useState<Set<string>>(new Set());
   const [salvandoNova, setSalvandoNova] = useState(false);
+  const [ibsCbsAusente, setIbsCbsAusente] = useState(false);
+  const [infoIndicadorOpen, setInfoIndicadorOpen] = useState(false);
   const [clientesFornRawLocal, setClientesFornRawLocal] = useState<any[]>([]);
   const [clientesFornOptionsLocal, setClientesFornOptionsLocal] = useState<{ value: string; label: string }[]>([{ value: '', label: 'Digite ao menos 3 letras...' }]);
   const [carregandoDestinatarios, setCarregandoDestinatarios] = useState(false);
@@ -310,6 +327,8 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
     if (open) {
       setFormNova(makeFormNova());
       setFormErrors(new Set());
+      setIbsCbsAusente(false);
+      setInfoIndicadorOpen(false);
       setClientesFornRawLocal([]);
       setClientesFornOptionsLocal([{ value: '', label: 'Digite ao menos 3 letras...' }]);
     }
@@ -438,6 +457,9 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
         TribISSQN: parseIntSafe(formNova.tribISSQN), RetISSQN: parseIntSafe(formNova.retISSQN), AliqISSQN: 0,
         TpRetPisCofins: parseIntSafe(formNova.tipoRetencao),
         ValorPISRet: parseNum(formNova.pisRetido), ValorCOFINSRet: parseNum(formNova.cofinsRetido), ValorCSLLRet: parseNum(formNova.csllRetido),
+        Coindop: formNova.codIndicadorOperacao.trim(),
+        DescontoIncond: parseNum(formNova.descontoIncondicional),
+        DescontoCond: parseNum(formNova.descontoCondicional),
         Usuario: GlobalConfig.getUsuario(), versao: APP_VERSION,
       });
       if (resp.succeeded) {
@@ -584,6 +606,23 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
                 if (found) {
                   const descCompleta = String(found.descr_Completa ?? found.Descr_Completa ?? '').trim();
                   if (descCompleta) handleFieldNova('descricao', descCompleta);
+                  const cst = found.csT_IBS_CBS ?? found.cst_IBS_CBS ?? null;
+                  const descCst = found.descricao_CST_IBS_CBS ?? null;
+                  const classTrib = found.classTrib_IBS_CBS ?? null;
+                  const descTrib = found.descricao_Tributacao_IBS_CBS ?? null;
+                  handleFieldNova('cstIBSCBS', cst != null ? String(cst) : '');
+                  handleFieldNova('descricaoCSTIBSCBS', descCst != null ? String(descCst) : '');
+                  handleFieldNova('classTribIBSCBS', classTrib != null ? String(classTrib) : '');
+                  handleFieldNova('descricaoTributacaoIBSCBS', descTrib != null ? String(descTrib) : '');
+                  setIbsCbsAusente(cst == null && classTrib == null);
+                  if (cst == null || classTrib == null) handleFieldNova('codIndicadorOperacao', '');
+                } else {
+                  handleFieldNova('cstIBSCBS', '');
+                  handleFieldNova('descricaoCSTIBSCBS', '');
+                  handleFieldNova('classTribIBSCBS', '');
+                  handleFieldNova('descricaoTributacaoIBSCBS', '');
+                  handleFieldNova('codIndicadorOperacao', '');
+                  setIbsCbsAusente(false);
                 }
               }}
               enableSearch searchPlaceholder="Pesquisar..." disabled={carregandoListas || isNfServico} className={formErrors.has('codigoServico') ? 'nfs-error' : ''}
@@ -608,6 +647,91 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
             <div className="nfs-nova-label"><span>Trib. ISSQN</span><SearchableSelect enableSearch={false} options={OPTIONS_TRIB_ISSQN} value={formNova.tribISSQN} onChange={(v) => handleFieldNova('tribISSQN', v)} disabled={isNfServico} className={formErrors.has('tribISSQN') ? 'nfs-error' : ''} /></div>
             <div className="nfs-nova-label"><span>Ret. ISSQN</span><SearchableSelect enableSearch={false} options={OPTIONS_RET_ISSQN} value={formNova.retISSQN} onChange={(v) => handleFieldNova('retISSQN', v)} disabled={isNfServico} className={formErrors.has('retISSQN') ? 'nfs-error' : ''} /></div>
             <label className="nfs-nova-label"><span>Valor serviço</span><input className="nfs-nova-input--right" value={formNova.valorServico} onChange={(e) => handleFieldNova('valorServico', e.target.value)} placeholder="0,00" /></label>
+          </div>
+
+          {/* IBS/CBS */}
+          <div className="nfs-nova-fieldset">
+            <div className="nfs-nova-fieldset__title">IBS/CBS</div>
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end' }}>
+              <label className="nfs-nova-label" style={{ flexShrink: 0, width: '6rem' }}>
+                <span>CST IBS/CBS</span>
+                <input value={formNova.cstIBSCBS} readOnly style={{ textAlign: 'center' }} />
+              </label>
+              <label className="nfs-nova-label" style={{ flex: 1 }}>
+                <span>Descrição CST</span>
+                <input value={formNova.descricaoCSTIBSCBS} readOnly />
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end', marginTop: '0.5rem' }}>
+              <label className="nfs-nova-label" style={{ flexShrink: 0, width: '6rem' }}>
+                <span>ClassTrib</span>
+                <input value={formNova.classTribIBSCBS} readOnly style={{ textAlign: 'center' }} />
+              </label>
+              <label className="nfs-nova-label" style={{ flex: 1 }}>
+                <span>Descrição</span>
+                <input value={formNova.descricaoTributacaoIBSCBS} readOnly />
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end', marginTop: '0.5rem' }}>
+              <label className="nfs-nova-label" style={{ flexShrink: 0 }}>
+                <span style={{ whiteSpace: 'nowrap' }}>Cód. Indicador da Operação</span>
+                <input
+                  value={formNova.codIndicadorOperacao}
+                  onChange={(e) => handleFieldNova('codIndicadorOperacao', e.target.value)}
+                  disabled={!formNova.cstIBSCBS.trim() || !formNova.classTribIBSCBS.trim()}
+                  placeholder={!formNova.cstIBSCBS.trim() || !formNova.classTribIBSCBS.trim() ? '—' : ''}
+                  style={{ width: '6rem' }}
+                />
+              </label>
+              <button
+                type="button"
+                className="icon-button"
+                title="Ver tabela de códigos"
+                aria-label="Ver tabela de códigos indicadores"
+                onClick={() => setInfoIndicadorOpen(true)}
+                style={{ marginBottom: '2px', color: 'var(--color-primary, #3182ce)' }}
+              >
+                <IoInformationCircleOutline size={18} />
+              </button>
+            </div>
+            {ibsCbsAusente && (
+              <p style={{ color: 'var(--color-danger, #e53e3e)', fontSize: '0.8rem', margin: '0.4rem 0 0' }}>
+                * Esse serviço não possui cadastro de IBS/CBS, essa informação não irá na NFs-e
+              </p>
+            )}
+          </div>
+
+          {/* Modal informativo – Código Indicador da Operação */}
+          {infoIndicadorOpen && (
+            <section className="modal-backdrop modal-backdrop--nested" role="dialog" aria-modal="true">
+              <article className="modal-card" style={{ maxWidth: 520 }}>
+                <header className="modal-card__header">
+                  <h2>Código Indicador da Operação</h2>
+                  <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setInfoIndicadorOpen(false)}>
+                    <IoCloseOutline size={18} />
+                  </button>
+                </header>
+                <div className="modal-card__body" style={{ padding: '1.2rem 1.5rem', lineHeight: 1.7 }}>
+                  <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.88rem' }}>
+                    <li><strong>020101 a 020301</strong>: Operações relacionadas a bens imóveis (ex: obras, limpeza, locação).</li>
+                    <li><strong>030101</strong>: Serviços prestados no estabelecimento do fornecedor.</li>
+                    <li><strong>030102</strong>: Serviços prestados no endereço do adquirente.</li>
+                    <li><strong>030103</strong>: Serviços prestados no endereço do destinatário.</li>
+                    <li><strong>050101 a 050104</strong>: Serviços de saúde, educação, beleza, etc., dependendo da localidade de incidência.</li>
+                  </ul>
+                </div>
+                <footer className="nfs-nova-footer">
+                  <button type="button" className="secondary-button" onClick={() => setInfoIndicadorOpen(false)}>Fechar</button>
+                </footer>
+              </article>
+            </section>
+          )}
+
+          {/* Descontos */}
+          <div className="nfs-nova-fieldset">
+            <div className="nfs-nova-fieldset__title">Descontos</div>
+            <div className="nfs-nova-value-row"><span>Desconto Incondicional</span><input className="nfs-nova-input--right" value={formNova.descontoIncondicional} onChange={(e) => handleFieldNova('descontoIncondicional', e.target.value)} placeholder="0,00" /></div>
+            <div className="nfs-nova-value-row"><span>Desconto Condicional</span><input className="nfs-nova-input--right" value={formNova.descontoCondicional} onChange={(e) => handleFieldNova('descontoCondicional', e.target.value)} placeholder="0,00" /></div>
           </div>
 
           {/* INSS */}
@@ -928,6 +1052,7 @@ export function NotaFiscalServicoPage() {
 
         // Garante que o serviço da nota está nas opções (pode não estar no filtro por tipo)
         let nomeServicoDaNota = '';
+        let ibsCbsData = { cst: '', descCst: '', classTrib: '', descTrib: '' };
         if (d.codServico != null) {
           const resServico = await listaServicosCall(baseUrl, token, { codigoServico: Number(d.codServico) });
           if (resServico.succeeded) {
@@ -937,6 +1062,12 @@ export function NotaFiscalServicoPage() {
               const svc = svcLista[0];
               const svcValue = String(svc.codigo_Servico ?? '');
               nomeServicoDaNota = String(svc.descr_Resumida ?? svcValue);
+              ibsCbsData = {
+                cst: String(svc.csT_IBS_CBS ?? svc.cst_IBS_CBS ?? ''),
+                descCst: String(svc.descricao_CST_IBS_CBS ?? svc.descricao_CST_IBS_CBS ?? ''),
+                classTrib: String(svc.classTrib_IBS_CBS ?? svc.classTrib_IBS_CBS ?? ''),
+                descTrib: String(svc.descricao_Tributacao_IBS_CBS ?? svc.descricao_Tributacao_IBS_CBS ?? ''),
+              };
               setServicosOptions((prev) => {
                 if (prev.some((o) => o.value === svcValue)) return prev;
                 return [...prev, { value: svcValue, label: nomeServicoDaNota }];
@@ -994,6 +1125,13 @@ export function NotaFiscalServicoPage() {
           valor25anos: fmtNum(d.valorServ25),
           alterarValorReceber: Boolean(d.alteraValor),
           valorReceber: fmtNum(d.valorReceber),
+          cstIBSCBS: ibsCbsData.cst,
+          descricaoCSTIBSCBS: ibsCbsData.descCst,
+          classTribIBSCBS: ibsCbsData.classTrib,
+          descricaoTributacaoIBSCBS: ibsCbsData.descTrib,
+          codIndicadorOperacao: String(d.coindop ?? ''),
+          descontoIncondicional: fmtNum(d.descontoIncond),
+          descontoCondicional: fmtNum(d.descontoCond),
         });
       } else {
         showToast('Não foi possível carregar a nota fiscal.', 'error');
@@ -1147,6 +1285,9 @@ export function NotaFiscalServicoPage() {
         ValorPISRet: parseNum(consultaForm.pisRetido),
         ValorCOFINSRet: parseNum(consultaForm.cofinsRetido),
         ValorCSLLRet: parseNum(consultaForm.csllRetido),
+        Coindop: consultaForm.codIndicadorOperacao.trim(),
+        DescontoIncond: parseNum(consultaForm.descontoIncondicional),
+        DescontoCond: parseNum(consultaForm.descontoCondicional),
         Usuario: GlobalConfig.getUsuario(),
         versao: APP_VERSION,
       });
@@ -1226,6 +1367,9 @@ export function NotaFiscalServicoPage() {
         ValorPISRet: Number(d.valorPISRet ?? 0),
         ValorCOFINSRet: Number(d.valorCOFINSRet ?? 0),
         ValorCSLLRet: Number(d.valorCSLLRet ?? 0),
+        Coindop: String(d.coindop ?? ''),
+        DescontoIncond: Number(d.descontoIncond ?? 0),
+        DescontoCond: Number(d.descontoCond ?? 0),
         Usuario: GlobalConfig.getUsuario(),
         versao: APP_VERSION,
       });
@@ -1473,6 +1617,9 @@ export function NotaFiscalServicoPage() {
         ValorPISRet: Number(d.valorPISRet ?? 0),
         ValorCOFINSRet: Number(d.valorCOFINSRet ?? 0),
         ValorCSLLRet: Number(d.valorCSLLRet ?? 0),
+        Coindop: String(d.coindop ?? ''),
+        DescontoIncond: Number(d.descontoIncond ?? 0),
+        DescontoCond: Number(d.descontoCond ?? 0),
         Usuario: GlobalConfig.getUsuario(),
         versao: APP_VERSION,
       });
@@ -2007,6 +2154,49 @@ export function NotaFiscalServicoPage() {
                       <span>Valor serviço</span>
                       <input className="nfs-nova-input--right" value={consultaForm.valorServico} onChange={(e) => handleConsultaField('valorServico', e.target.value)} readOnly={consultaSomenteLeitura} />
                     </label>
+                  </div>
+
+                  {/* IBS/CBS */}
+                  <div className="nfs-nova-fieldset">
+                    <div className="nfs-nova-fieldset__title">IBS/CBS</div>
+                    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end' }}>
+                      <label className="nfs-nova-label" style={{ flexShrink: 0, width: '6rem' }}>
+                        <span>CST IBS/CBS</span>
+                        <input value={consultaForm.cstIBSCBS} readOnly style={{ textAlign: 'center' }} />
+                      </label>
+                      <label className="nfs-nova-label" style={{ flex: 1 }}>
+                        <span>Descrição CST</span>
+                        <input value={consultaForm.descricaoCSTIBSCBS} readOnly />
+                      </label>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end', marginTop: '0.5rem' }}>
+                      <label className="nfs-nova-label" style={{ flexShrink: 0, width: '6rem' }}>
+                        <span>ClassTrib</span>
+                        <input value={consultaForm.classTribIBSCBS} readOnly style={{ textAlign: 'center' }} />
+                      </label>
+                      <label className="nfs-nova-label" style={{ flex: 1 }}>
+                        <span>Descrição</span>
+                        <input value={consultaForm.descricaoTributacaoIBSCBS} readOnly />
+                      </label>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end', marginTop: '0.5rem' }}>
+                      <label className="nfs-nova-label" style={{ flexShrink: 0 }}>
+                        <span style={{ whiteSpace: 'nowrap' }}>Cód. Indicador da Operação</span>
+                        <input
+                          value={consultaForm.codIndicadorOperacao}
+                          onChange={(e) => handleConsultaField('codIndicadorOperacao', e.target.value)}
+                          readOnly={consultaSomenteLeitura}
+                          style={{ width: '6rem' }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Descontos */}
+                  <div className="nfs-nova-fieldset">
+                    <div className="nfs-nova-fieldset__title">Descontos</div>
+                    <div className="nfs-nova-value-row"><span>Desconto Incondicional</span><input className="nfs-nova-input--right" value={consultaForm.descontoIncondicional} onChange={(e) => handleConsultaField('descontoIncondicional', e.target.value)} readOnly={consultaSomenteLeitura} /></div>
+                    <div className="nfs-nova-value-row"><span>Desconto Condicional</span><input className="nfs-nova-input--right" value={consultaForm.descontoCondicional} onChange={(e) => handleConsultaField('descontoCondicional', e.target.value)} readOnly={consultaSomenteLeitura} /></div>
                   </div>
 
                   {/* INSS + INSS adicional lado a lado */}
