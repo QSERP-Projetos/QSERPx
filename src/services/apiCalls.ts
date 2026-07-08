@@ -2261,6 +2261,9 @@ export const enviarDPSCall = async (
     ValorPISRet: number;
     ValorCOFINSRet: number;
     ValorCSLLRet: number;
+    Coindop?: string;
+    DescontoIncond?: number;
+    DescontoCond?: number;
     Usuario: string;
     versao: string;
   },

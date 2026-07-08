@@ -21,11 +21,6 @@ import { getDashboardPCP, type DashboardPCPResponse } from '../services/dashboar
 import type { DashboardDateErrors, DashboardKpiCard } from '../types';
 import { formatNumberBR, normalizeText, parseDateStrict, toApiDate } from '../utils/dashboardUtils';
 
-const chartPalette = [
-  '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
-  '#EC4899', '#14B8A6', '#F97316', '#06B6D4', '#84CC16',
-];
-
 const toPtBrDateString = (date: Date) => {
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -256,18 +251,6 @@ export function DashboardPCPPage() {
       .sort((a: any, b: any) => b.horasParadas - a.horasParadas)
       .slice(0, 10);
   }, [payload.paradasPorMotivo]);
-
-  const totalMaquinaHoras = useMemo(() => {
-    return Math.max(1, producaoMaquinaTop.reduce((acc: number, item: any) => acc + (item.horasApontadas ?? 0), 0));
-  }, [producaoMaquinaTop]);
-
-  const totalCentroHoras = useMemo(() => {
-    return Math.max(1, centrosTrabalhoTop.reduce((acc: number, item: any) => acc + (item.horasApontadas ?? 0), 0));
-  }, [centrosTrabalhoTop]);
-
-  const totalParadaHoras = useMemo(() => {
-    return Math.max(1, paradasTop.reduce((acc: number, item: any) => acc + (item.horasParadas ?? 0), 0));
-  }, [paradasTop]);
 
   const hasAnyData = payload.producaoPorMaquina.length > 0 || payload.producaoPorCentroTrabalho.length > 0 || payload.paradasPorMotivo.length > 0;
 
@@ -617,41 +600,41 @@ export function DashboardPCPPage() {
 
                   {!pecasChartCollapsed && (
 
-                  <div className="dashboard-stacked-bars">
-                    <svg viewBox={`0 0 700 ${payload.dashboardFrontend.pecasMensal.length * 28 + 40}`} className="dashboard-stacked-bars-chart">
-                      {payload.dashboardFrontend.pecasMensal.map((item: any, index: number) => {
-                        const barY = 20 + index * 28;
-                        const maxWidth = 400;
-                        const totalPecas = (item.pecasBoas ?? 0) + (item.pecasRuins ?? 0) || 1;
-                        const boasWidth = ((item.pecasBoas ?? 0) / totalPecas) * maxWidth;
-                        const ruinsWidth = ((item.pecasRuins ?? 0) / totalPecas) * maxWidth;
+                    <div className="dashboard-stacked-bars">
+                      <svg viewBox={`0 0 700 ${payload.dashboardFrontend.pecasMensal.length * 28 + 40}`} className="dashboard-stacked-bars-chart">
+                        {payload.dashboardFrontend.pecasMensal.map((item: any, index: number) => {
+                          const barY = 20 + index * 28;
+                          const maxWidth = 400;
+                          const totalPecas = (item.pecasBoas ?? 0) + (item.pecasRuins ?? 0) || 1;
+                          const boasWidth = ((item.pecasBoas ?? 0) / totalPecas) * maxWidth;
+                          const ruinsWidth = ((item.pecasRuins ?? 0) / totalPecas) * maxWidth;
 
-                        return (
-                          <g key={`pecas-${item.mes}`}>
-                            <rect x="140" y={barY + 2} width={boasWidth} height="16" fill="#10B981" opacity="0.8" />
-                            <rect x={140 + boasWidth} y={barY + 2} width={ruinsWidth} height="16" fill="#EF4444" opacity="0.8" />
-                            <text x="10" y={barY + 12} textAnchor="start" fontSize="12" fontWeight="bold" fill="var(--color-text)">
-                              {item.mes}
-                            </text>
-                            <text x={140 + boasWidth + ruinsWidth + 5} y={barY + 12} textAnchor="start" fontSize="13" fontWeight="bold" fill="var(--color-text)">
-                              {formatNumberBR(item.pecasBoas + item.pecasRuins)}
-                            </text>
-                          </g>
-                        );
-                      })}
-                    </svg>
+                          return (
+                            <g key={`pecas-${item.mes}`}>
+                              <rect x="140" y={barY + 2} width={boasWidth} height="16" fill="#10B981" opacity="0.8" />
+                              <rect x={140 + boasWidth} y={barY + 2} width={ruinsWidth} height="16" fill="#EF4444" opacity="0.8" />
+                              <text x="10" y={barY + 12} textAnchor="start" fontSize="12" fontWeight="bold" fill="var(--color-text)">
+                                {item.mes}
+                              </text>
+                              <text x={140 + boasWidth + ruinsWidth + 5} y={barY + 12} textAnchor="start" fontSize="13" fontWeight="bold" fill="var(--color-text)">
+                                {formatNumberBR(item.pecasBoas + item.pecasRuins)}
+                              </text>
+                            </g>
+                          );
+                        })}
+                      </svg>
 
-                    <div className="dashboard-stacked-legend">
-                      <div className="dashboard-stacked-legend-item">
-                        <span style={{ backgroundColor: '#10B981' }} />
-                        <strong>Quantidades Boas</strong>
-                      </div>
-                      <div className="dashboard-stacked-legend-item">
-                        <span style={{ backgroundColor: '#EF4444' }} />
-                        <strong>Quantidades Ruins</strong>
+                      <div className="dashboard-stacked-legend">
+                        <div className="dashboard-stacked-legend-item">
+                          <span style={{ backgroundColor: '#10B981' }} />
+                          <strong>Quantidades Boas</strong>
+                        </div>
+                        <div className="dashboard-stacked-legend-item">
+                          <span style={{ backgroundColor: '#EF4444' }} />
+                          <strong>Quantidades Ruins</strong>
+                        </div>
                       </div>
                     </div>
-                  </div>
                   )}
                 </article>
               )}
@@ -676,47 +659,47 @@ export function DashboardPCPPage() {
 
                   {!temposChartCollapsed && (
 
-                  <div className="dashboard-stacked-bars">
-                    <svg viewBox={`0 0 700 ${payload.dashboardFrontend.temposMensal.length * 28 + 40}`} className="dashboard-stacked-bars-chart">
-                      {payload.dashboardFrontend.temposMensal.map((item: any, index: number) => {
-                        const barY = 20 + index * 28;
-                        const maxWidth = 400;
-                        const totalTempos = (item.tempoProdutivo ?? 0) + (item.naoQualidade ?? 0) + (item.tempoParado ?? 0) || 1;
-                        const prodWidth = ((item.tempoProdutivo ?? 0) / totalTempos) * maxWidth;
-                        const naQualWidth = ((item.naoQualidade ?? 0) / totalTempos) * maxWidth;
-                        const paradoWidth = ((item.tempoParado ?? 0) / totalTempos) * maxWidth;
+                    <div className="dashboard-stacked-bars">
+                      <svg viewBox={`0 0 700 ${payload.dashboardFrontend.temposMensal.length * 28 + 40}`} className="dashboard-stacked-bars-chart">
+                        {payload.dashboardFrontend.temposMensal.map((item: any, index: number) => {
+                          const barY = 20 + index * 28;
+                          const maxWidth = 400;
+                          const totalTempos = (item.tempoProdutivo ?? 0) + (item.naoQualidade ?? 0) + (item.tempoParado ?? 0) || 1;
+                          const prodWidth = ((item.tempoProdutivo ?? 0) / totalTempos) * maxWidth;
+                          const naQualWidth = ((item.naoQualidade ?? 0) / totalTempos) * maxWidth;
+                          const paradoWidth = ((item.tempoParado ?? 0) / totalTempos) * maxWidth;
 
-                        return (
-                          <g key={`tempos-${item.mes}`}>
-                            <rect x="140" y={barY + 2} width={prodWidth} height="16" fill="#3B82F6" opacity="0.8" />
-                            <rect x={140 + prodWidth} y={barY + 2} width={naQualWidth} height="16" fill="#F59E0B" opacity="0.8" />
-                            <rect x={140 + prodWidth + naQualWidth} y={barY + 2} width={paradoWidth} height="16" fill="#EF4444" opacity="0.8" />
-                            <text x="10" y={barY + 12} textAnchor="start" fontSize="12" fontWeight="bold" fill="var(--color-text)">
-                              {item.mes}
-                            </text>
-                            <text x={140 + prodWidth + naQualWidth + paradoWidth + 5} y={barY + 12} textAnchor="start" fontSize="13" fontWeight="bold" fill="var(--color-text)">
-                              {formatNumberBR((item.tempoProdutivo + item.naoQualidade + item.tempoParado) / 60)}h
-                            </text>
-                          </g>
-                        );
-                      })}
-                    </svg>
+                          return (
+                            <g key={`tempos-${item.mes}`}>
+                              <rect x="140" y={barY + 2} width={prodWidth} height="16" fill="#3B82F6" opacity="0.8" />
+                              <rect x={140 + prodWidth} y={barY + 2} width={naQualWidth} height="16" fill="#F59E0B" opacity="0.8" />
+                              <rect x={140 + prodWidth + naQualWidth} y={barY + 2} width={paradoWidth} height="16" fill="#EF4444" opacity="0.8" />
+                              <text x="10" y={barY + 12} textAnchor="start" fontSize="12" fontWeight="bold" fill="var(--color-text)">
+                                {item.mes}
+                              </text>
+                              <text x={140 + prodWidth + naQualWidth + paradoWidth + 5} y={barY + 12} textAnchor="start" fontSize="13" fontWeight="bold" fill="var(--color-text)">
+                                {formatNumberBR((item.tempoProdutivo + item.naoQualidade + item.tempoParado) / 60)}h
+                              </text>
+                            </g>
+                          );
+                        })}
+                      </svg>
 
-                    <div className="dashboard-stacked-legend">
-                      <div className="dashboard-stacked-legend-item">
-                        <span style={{ backgroundColor: '#3B82F6' }} />
-                        <strong>Tempo Produtivo</strong>
-                      </div>
-                      <div className="dashboard-stacked-legend-item">
-                        <span style={{ backgroundColor: '#F59E0B' }} />
-                        <strong>Não Qualidade</strong>
-                      </div>
-                      <div className="dashboard-stacked-legend-item">
-                        <span style={{ backgroundColor: '#EF4444' }} />
-                        <strong>Tempo Parado</strong>
+                      <div className="dashboard-stacked-legend">
+                        <div className="dashboard-stacked-legend-item">
+                          <span style={{ backgroundColor: '#3B82F6' }} />
+                          <strong>Tempo Produtivo</strong>
+                        </div>
+                        <div className="dashboard-stacked-legend-item">
+                          <span style={{ backgroundColor: '#F59E0B' }} />
+                          <strong>Não Qualidade</strong>
+                        </div>
+                        <div className="dashboard-stacked-legend-item">
+                          <span style={{ backgroundColor: '#EF4444' }} />
+                          <strong>Tempo Parado</strong>
+                        </div>
                       </div>
                     </div>
-                  </div>
                   )}
                 </article>
               )}
@@ -759,7 +742,7 @@ export function DashboardPCPPage() {
                               const dashArray = `${slice} ${circleLength - slice}`;
                               const dashOffset = -offset;
                               const pct = ((value / totalHoras) * 100).toFixed(0);
-                              
+
                               // Calcular ângulo para posicionar o texto
                               const sliceAngle = (slice / circleLength) * 360;
                               const middleAngle = (offset / circleLength) * 360 + sliceAngle / 2 - 90;
@@ -767,7 +750,7 @@ export function DashboardPCPPage() {
                               const textRadius = 22;
                               const textX = 60 + textRadius * Math.cos(textRad);
                               const textY = 60 + textRadius * Math.sin(textRad);
-                              
+
                               offset += slice;
 
                               return (
@@ -800,8 +783,6 @@ export function DashboardPCPPage() {
                       <div className="dashboard-native-legend dashboard-vendas-region-legend">
                         {producaoMaquinaTop.map((item: any, index: number) => {
                           const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
-                          const totalHoras = producaoMaquinaTop.reduce((acc: number, i: any) => acc + (i.horasApontadas ?? 0), 0);
-                          const pct = totalHoras > 0 ? ((item.horasApontadas ?? 0) / totalHoras * 100).toFixed(1) : '0.0';
                           return (
                             <div key={`legend-${item.num_Maquina}`} className="dashboard-native-legend-item dashboard-vendas-region-legend__item">
                               <span style={{ backgroundColor: colors[index % colors.length] }} />
@@ -853,7 +834,7 @@ export function DashboardPCPPage() {
                               const dashArray = `${slice} ${circleLength - slice}`;
                               const dashOffset = -offset;
                               const pct = ((value / totalHoras) * 100).toFixed(0);
-                              
+
                               // Calcular ângulo para posicionar o texto
                               const sliceAngle = (slice / circleLength) * 360;
                               const middleAngle = (offset / circleLength) * 360 + sliceAngle / 2 - 90;
@@ -861,7 +842,7 @@ export function DashboardPCPPage() {
                               const textRadius = 22;
                               const textX = 60 + textRadius * Math.cos(textRad);
                               const textY = 60 + textRadius * Math.sin(textRad);
-                              
+
                               offset += slice;
 
                               return (
@@ -894,8 +875,6 @@ export function DashboardPCPPage() {
                       <div className="dashboard-native-legend dashboard-vendas-region-legend">
                         {centrosTrabalhoTop.map((item: any, index: number) => {
                           const colors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6'];
-                          const totalHoras = centrosTrabalhoTop.reduce((acc: number, i: any) => acc + (i.horasApontadas ?? 0), 0);
-                          const pct = totalHoras > 0 ? ((item.horasApontadas ?? 0) / totalHoras * 100).toFixed(1) : '0.0';
                           return (
                             <div key={`legend-${item.codigo_CTrab}`} className="dashboard-native-legend-item dashboard-vendas-region-legend__item">
                               <span style={{ backgroundColor: colors[index % colors.length] }} />
