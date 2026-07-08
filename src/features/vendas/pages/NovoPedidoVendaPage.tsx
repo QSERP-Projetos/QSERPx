@@ -1412,14 +1412,14 @@ export function PedidoVendaFormPanel({
             );
             if (!value) return null;
 
-            const razaoSocial = cleanLabelText(
+            const nomeFantasia = cleanLabelText(
               getRowLabel(row, [
-                'razao_Social',
-                'Razao_Social',
                 'nome_Fantasia',
                 'Nome_Fantasia',
                 'nome_Cliente',
                 'Nome_Cliente',
+                'razao_Social',
+                'Razao_Social',
                 'nome',
                 'Nome',
               ]),
@@ -1427,7 +1427,7 @@ export function PedidoVendaFormPanel({
             const documento = formatCpfCnpj(
               getRowLabel(row, ['cgc_Cpf', 'Cgc_Cpf', 'cgcCpf', 'CgcCpf', 'cpf_Cnpj', 'Cpf_Cnpj']),
             );
-            const labelBase = razaoSocial || value;
+            const labelBase = nomeFantasia || value;
             const label = documento ? `${labelBase} - ${documento}` : labelBase;
 
             return { value, label };
