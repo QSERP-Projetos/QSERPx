@@ -35,7 +35,7 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
     COM002: ROUTES.comprasPedidoLiberacao,
     SEG001: ROUTES.segurancaUsuarios,
     SEG002: ROUTES.segurancaTipoApontamento,
-    CFG009: ROUTES.segurancaTipoApontamento,
+    CFG009: ROUTES.segurancaParametrosGerais,
     CFG008: ROUTES.segurancaSessoes,
     PCP001: ROUTES.pcpApontamentoProducao,
     PCP002: ROUTES.pcpOrdensFabricacao,

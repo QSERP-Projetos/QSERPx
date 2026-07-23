@@ -35,6 +35,7 @@ const MENU_MODULE_COLORS: Record<string, string> = {
   pcp: '#06B6D4',
   qualidade: '#10B981',
   servico: '#EC4899',
+  'documentos-fiscais': '#0F766E',
   vendas: '#3B82F6',
   seguranca: '#64748B',
 };
@@ -109,7 +110,7 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
     PCP004: ROUTES.pcpPreparacaoMaquina,
     SER001: ROUTES.servicoApontamentoMaoObra,
     SER002: ROUTES.servicoOrdens,
-    SER003: ROUTES.servicoOrdens,
+    SER003: ROUTES.servicoNotaFiscal,
     MAN001: ROUTES.manutencaoOrdens,
   };
 
@@ -130,8 +131,8 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
     (normalizedTitle.includes('dashboard') && normalizedTitle.includes('venda') ? ROUTES.dashboardVendas : undefined) ||
     (normalizedTitle.includes('dashboard') && normalizedTitle.includes('pcp') ? ROUTES.dashboardPcp : undefined) ||
     (normalizedTitle.includes('pedido') &&
-    normalizedTitle.includes('venda') &&
-    (normalizedTitle.includes('representante') || normalizedTitle.includes('represent'))
+      normalizedTitle.includes('venda') &&
+      (normalizedTitle.includes('representante') || normalizedTitle.includes('represent'))
       ? ROUTES.pedidoVendaRepresentantes
       : undefined) ||
     (normalizedTitle.includes('pedido') && normalizedTitle.includes('venda') ? ROUTES.pedidoVenda : undefined) ||
@@ -139,6 +140,9 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
       ? ROUTES.comprasPedidoLiberacao
       : undefined) ||
     (normalizedTitle.includes('cliente') ? ROUTES.basicoClientes : undefined) ||
+    (normalizedTitle.includes('nota') && normalizedTitle.includes('fiscal')
+      ? ROUTES.servicoNotaFiscal
+      : undefined) ||
     (normalizedTitle.includes('usuario') ? ROUTES.segurancaUsuarios : undefined) ||
     (normalizedTitle.includes('tipo') && normalizedTitle.includes('apont')
       ? ROUTES.segurancaTipoApontamento
@@ -594,288 +598,288 @@ export function HomePage() {
       ) : null}
 
       {!(menuSimplificado && isMobileViewport) ? (
-      <section className="home-dashboard__grid" aria-label="Resumo principal">
-        <article className={`home-dashboard-card home-dashboard-card--full${lembretesCollapsed ? ' is-line' : ''}`}>
-          <header className="home-dashboard-card__header">
-            <div className="home-dashboard-card__title-wrap">
-              <span className="home-dashboard-card__accent home-dashboard-card__accent--blue" aria-hidden="true" />
-              <h2>Lembretes</h2>
-            </div>
-
-            <div className="home-dashboard-card__header-actions">
-              <span className="home-dashboard-card__badge home-dashboard-card__badge--blue">{lembretes.length}</span>
-              <button
-                type="button"
-                className="home-dashboard-card__collapse"
-                onClick={() => setLembretesCollapsed((prev) => !prev)}
-                aria-label={lembretesCollapsed ? 'Expandir lembretes' : 'Encolher lembretes'}
-                title={lembretesCollapsed ? 'Expandir lembretes' : 'Encolher lembretes'}
-              >
-                {lembretesCollapsed ? <IoChevronDownOutline size={18} /> : <IoChevronUpOutline size={18} />}
-              </button>
-            </div>
-          </header>
-
-          {!lembretesCollapsed ? (
-            <div className="home-dashboard-card__content">
-              <div className="home-dashboard-reminder-tools">
-                <label className="home-dashboard-search" aria-label="Pesquisar lembretes">
-                  <IoSearchOutline size={16} />
-                  <input
-                    value={lembreteSearch}
-                    onChange={(event) => setLembreteSearch(event.target.value)}
-                    placeholder="Pesquisar lembretes"
-                  />
-                </label>
-
-                {canExpandLembretes ? (
-                  <button
-                    type="button"
-                    className="home-dashboard-reminder-expand"
-                    onClick={() => setLembretesExpanded((prev) => !prev)}
-                  >
-                    {lembretesExpanded ? 'Encolher cards' : 'Expandir cards'}
-                  </button>
-                ) : null}
+        <section className="home-dashboard__grid" aria-label="Resumo principal">
+          <article className={`home-dashboard-card home-dashboard-card--full${lembretesCollapsed ? ' is-line' : ''}`}>
+            <header className="home-dashboard-card__header">
+              <div className="home-dashboard-card__title-wrap">
+                <span className="home-dashboard-card__accent home-dashboard-card__accent--blue" aria-hidden="true" />
+                <h2>Lembretes</h2>
               </div>
 
-              {lembretesFiltrados.length === 0 ? (
-                <div className="home-dashboard-empty">
-                  <IoBookmarkOutline size={42} />
-                  <p>
-                    {loadingDashboard
-                      ? 'Carregando lembretes...'
-                      : lembreteSearch.trim()
-                        ? 'Nenhum lembrete encontrado para a pesquisa'
-                        : 'Nenhum lembrete cadastrado'}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <ul className="home-dashboard-reminder-list">
-                    {lembretesVisiveis.map((item, index) => {
-                      const title = getReminderTitle(item, index);
-                      const description = getReminderDescription(item);
-                      const color = getReminderColor(item, index);
-                      const dateLabel = formatDateLabel(item?.data);
+              <div className="home-dashboard-card__header-actions">
+                <span className="home-dashboard-card__badge home-dashboard-card__badge--blue">{lembretes.length}</span>
+                <button
+                  type="button"
+                  className="home-dashboard-card__collapse"
+                  onClick={() => setLembretesCollapsed((prev) => !prev)}
+                  aria-label={lembretesCollapsed ? 'Expandir lembretes' : 'Encolher lembretes'}
+                  title={lembretesCollapsed ? 'Expandir lembretes' : 'Encolher lembretes'}
+                >
+                  {lembretesCollapsed ? <IoChevronDownOutline size={18} /> : <IoChevronUpOutline size={18} />}
+                </button>
+              </div>
+            </header>
 
-                      return (
-                        <li
-                          key={`lembrete-${index}`}
-                          className={`home-dashboard-reminder-card${menuSimplificado ? ' home-dashboard-reminder-card--readonly' : ''}`}
-                          style={{ borderLeftColor: color }}
-                          role={menuSimplificado ? undefined : 'button'}
-                          tabIndex={menuSimplificado ? -1 : 0}
-                          onClick={menuSimplificado ? undefined : () => openReminderViewModal(item, index)}
-                          onKeyDown={(event) => {
-                            if (menuSimplificado) return;
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
-                              openReminderViewModal(item, index);
-                            }
-                          }}
-                        >
-                          <div className="home-dashboard-reminder-card__title-row">
-                            <span
-                              className="home-dashboard-reminder-card__dot"
-                              style={{ backgroundColor: color }}
-                              aria-hidden="true"
-                            />
-                            <strong>{title}</strong>
-                          </div>
-
-                          {description ? <p>{description}</p> : null}
-
-                          {dateLabel ? (
-                            <div className="home-dashboard-reminder-card__date">
-                              <IoTimeOutline size={13} />
-                              <span>{dateLabel}</span>
-                            </div>
-                          ) : null}
-                        </li>
-                      );
-                    })}
-                  </ul>
+            {!lembretesCollapsed ? (
+              <div className="home-dashboard-card__content">
+                <div className="home-dashboard-reminder-tools">
+                  <label className="home-dashboard-search" aria-label="Pesquisar lembretes">
+                    <IoSearchOutline size={16} />
+                    <input
+                      value={lembreteSearch}
+                      onChange={(event) => setLembreteSearch(event.target.value)}
+                      placeholder="Pesquisar lembretes"
+                    />
+                  </label>
 
                   {canExpandLembretes ? (
                     <button
                       type="button"
-                      className="home-dashboard-reminder-expand home-dashboard-reminder-expand--bottom"
+                      className="home-dashboard-reminder-expand"
                       onClick={() => setLembretesExpanded((prev) => !prev)}
                     >
-                      {lembretesExpanded
-                        ? 'Mostrar menos lembretes'
-                        : `Mostrar todos os lembretes (${lembretesFiltrados.length})`}
+                      {lembretesExpanded ? 'Encolher cards' : 'Expandir cards'}
                     </button>
                   ) : null}
-                </>
-              )}
-            </div>
-          ) : null}
-        </article>
+                </div>
 
-        <article className={`home-dashboard-card${notificacoesQsCollapsed ? ' is-line' : ''}`}>
-          <header className="home-dashboard-card__header">
-            <div className="home-dashboard-card__title-wrap">
-              <span className="home-dashboard-card__accent home-dashboard-card__accent--green" aria-hidden="true" />
-              <h2>Notificações QS</h2>
-            </div>
+                {lembretesFiltrados.length === 0 ? (
+                  <div className="home-dashboard-empty">
+                    <IoBookmarkOutline size={42} />
+                    <p>
+                      {loadingDashboard
+                        ? 'Carregando lembretes...'
+                        : lembreteSearch.trim()
+                          ? 'Nenhum lembrete encontrado para a pesquisa'
+                          : 'Nenhum lembrete cadastrado'}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <ul className="home-dashboard-reminder-list">
+                      {lembretesVisiveis.map((item, index) => {
+                        const title = getReminderTitle(item, index);
+                        const description = getReminderDescription(item);
+                        const color = getReminderColor(item, index);
+                        const dateLabel = formatDateLabel(item?.data);
 
-            <div className="home-dashboard-card__header-actions">
-              <span className="home-dashboard-card__badge home-dashboard-card__badge--green">{notificacoesQs.length}</span>
-              <button
-                type="button"
-                className="home-dashboard-card__collapse"
-                onClick={() => setNotificacoesQsCollapsed((prev) => !prev)}
-                aria-label={notificacoesQsCollapsed ? 'Expandir notificações QS' : 'Encolher notificações QS'}
-                title={notificacoesQsCollapsed ? 'Expandir notificações QS' : 'Encolher notificações QS'}
-              >
-                {notificacoesQsCollapsed ? <IoChevronDownOutline size={18} /> : <IoChevronUpOutline size={18} />}
-              </button>
-            </div>
-          </header>
+                        return (
+                          <li
+                            key={`lembrete-${index}`}
+                            className={`home-dashboard-reminder-card${menuSimplificado ? ' home-dashboard-reminder-card--readonly' : ''}`}
+                            style={{ borderLeftColor: color }}
+                            role={menuSimplificado ? undefined : 'button'}
+                            tabIndex={menuSimplificado ? -1 : 0}
+                            onClick={menuSimplificado ? undefined : () => openReminderViewModal(item, index)}
+                            onKeyDown={(event) => {
+                              if (menuSimplificado) return;
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                openReminderViewModal(item, index);
+                              }
+                            }}
+                          >
+                            <div className="home-dashboard-reminder-card__title-row">
+                              <span
+                                className="home-dashboard-reminder-card__dot"
+                                style={{ backgroundColor: color }}
+                                aria-hidden="true"
+                              />
+                              <strong>{title}</strong>
+                            </div>
 
-          {!notificacoesQsCollapsed ? (
-            <div className="home-dashboard-card__content home-dashboard-card__content--scroll">
-              <div className="home-dashboard-reminder-tools home-dashboard-reminder-tools--compact">
-                <label className="home-dashboard-search" aria-label="Pesquisar notificações QS">
-                  <IoSearchOutline size={16} />
-                  <input
-                    value={notificacaoQsSearch}
-                    onChange={(event) => setNotificacaoQsSearch(event.target.value)}
-                    placeholder="Pesquisar notificações QS"
-                  />
-                </label>
+                            {description ? <p>{description}</p> : null}
 
-                {canExpandNotificacoesQs ? (
-                  <button
-                    type="button"
-                    className="home-dashboard-reminder-expand"
-                    onClick={() => setNotificacoesQsExpanded((prev) => !prev)}
-                  >
-                    {notificacoesQsExpanded ? 'Encolher cards' : 'Expandir cards'}
-                  </button>
-                ) : null}
+                            {dateLabel ? (
+                              <div className="home-dashboard-reminder-card__date">
+                                <IoTimeOutline size={13} />
+                                <span>{dateLabel}</span>
+                              </div>
+                            ) : null}
+                          </li>
+                        );
+                      })}
+                    </ul>
+
+                    {canExpandLembretes ? (
+                      <button
+                        type="button"
+                        className="home-dashboard-reminder-expand home-dashboard-reminder-expand--bottom"
+                        onClick={() => setLembretesExpanded((prev) => !prev)}
+                      >
+                        {lembretesExpanded
+                          ? 'Mostrar menos lembretes'
+                          : `Mostrar todos os lembretes (${lembretesFiltrados.length})`}
+                      </button>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            ) : null}
+          </article>
+
+          <article className={`home-dashboard-card${notificacoesQsCollapsed ? ' is-line' : ''}`}>
+            <header className="home-dashboard-card__header">
+              <div className="home-dashboard-card__title-wrap">
+                <span className="home-dashboard-card__accent home-dashboard-card__accent--green" aria-hidden="true" />
+                <h2>Notificações QS</h2>
               </div>
 
-              {notificacoesQsFiltradas.length === 0 ? (
-                <div className="home-dashboard-empty">
-                  <IoNotificationsOutline size={42} />
-                  <p>
-                    {loadingDashboard
-                      ? 'Carregando notificações QS...'
-                      : notificacaoQsSearch.trim()
-                        ? 'Nenhuma notificação QS encontrada para a pesquisa'
-                        : 'Sem notificações QS'}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <ul className="home-dashboard-list">
-                    {notificacoesQsVisiveis.map((item, index) => (
-                      <li key={`not-qs-${index}`}>{getItemText(item, `Notificação QS ${index + 1}`)}</li>
-                    ))}
-                  </ul>
+              <div className="home-dashboard-card__header-actions">
+                <span className="home-dashboard-card__badge home-dashboard-card__badge--green">{notificacoesQs.length}</span>
+                <button
+                  type="button"
+                  className="home-dashboard-card__collapse"
+                  onClick={() => setNotificacoesQsCollapsed((prev) => !prev)}
+                  aria-label={notificacoesQsCollapsed ? 'Expandir notificações QS' : 'Encolher notificações QS'}
+                  title={notificacoesQsCollapsed ? 'Expandir notificações QS' : 'Encolher notificações QS'}
+                >
+                  {notificacoesQsCollapsed ? <IoChevronDownOutline size={18} /> : <IoChevronUpOutline size={18} />}
+                </button>
+              </div>
+            </header>
+
+            {!notificacoesQsCollapsed ? (
+              <div className="home-dashboard-card__content home-dashboard-card__content--scroll">
+                <div className="home-dashboard-reminder-tools home-dashboard-reminder-tools--compact">
+                  <label className="home-dashboard-search" aria-label="Pesquisar notificações QS">
+                    <IoSearchOutline size={16} />
+                    <input
+                      value={notificacaoQsSearch}
+                      onChange={(event) => setNotificacaoQsSearch(event.target.value)}
+                      placeholder="Pesquisar notificações QS"
+                    />
+                  </label>
 
                   {canExpandNotificacoesQs ? (
                     <button
                       type="button"
-                      className="home-dashboard-reminder-expand home-dashboard-reminder-expand--bottom"
+                      className="home-dashboard-reminder-expand"
                       onClick={() => setNotificacoesQsExpanded((prev) => !prev)}
                     >
-                      {notificacoesQsExpanded
-                        ? 'Mostrar menos notificações'
-                        : `Mostrar todas as notificações (${notificacoesQsFiltradas.length})`}
+                      {notificacoesQsExpanded ? 'Encolher cards' : 'Expandir cards'}
                     </button>
                   ) : null}
-                </>
-              )}
-            </div>
-          ) : null}
-        </article>
+                </div>
 
-        <article className={`home-dashboard-card${notificacoesSistemaCollapsed ? ' is-line' : ''}`}>
-          <header className="home-dashboard-card__header">
-            <div className="home-dashboard-card__title-wrap">
-              <span className="home-dashboard-card__accent home-dashboard-card__accent--violet" aria-hidden="true" />
-              <h2>Notificações Sistema</h2>
-            </div>
+                {notificacoesQsFiltradas.length === 0 ? (
+                  <div className="home-dashboard-empty">
+                    <IoNotificationsOutline size={42} />
+                    <p>
+                      {loadingDashboard
+                        ? 'Carregando notificações QS...'
+                        : notificacaoQsSearch.trim()
+                          ? 'Nenhuma notificação QS encontrada para a pesquisa'
+                          : 'Sem notificações QS'}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <ul className="home-dashboard-list">
+                      {notificacoesQsVisiveis.map((item, index) => (
+                        <li key={`not-qs-${index}`}>{getItemText(item, `Notificação QS ${index + 1}`)}</li>
+                      ))}
+                    </ul>
 
-            <div className="home-dashboard-card__header-actions">
-              <span className="home-dashboard-card__badge home-dashboard-card__badge--violet">
-                {notificacoesSistema.length}
-              </span>
-              <button
-                type="button"
-                className="home-dashboard-card__collapse"
-                onClick={() => setNotificacoesSistemaCollapsed((prev) => !prev)}
-                aria-label={notificacoesSistemaCollapsed ? 'Expandir notificações do sistema' : 'Encolher notificações do sistema'}
-                title={notificacoesSistemaCollapsed ? 'Expandir notificações do sistema' : 'Encolher notificações do sistema'}
-              >
-                {notificacoesSistemaCollapsed ? <IoChevronDownOutline size={18} /> : <IoChevronUpOutline size={18} />}
-              </button>
-            </div>
-          </header>
+                    {canExpandNotificacoesQs ? (
+                      <button
+                        type="button"
+                        className="home-dashboard-reminder-expand home-dashboard-reminder-expand--bottom"
+                        onClick={() => setNotificacoesQsExpanded((prev) => !prev)}
+                      >
+                        {notificacoesQsExpanded
+                          ? 'Mostrar menos notificações'
+                          : `Mostrar todas as notificações (${notificacoesQsFiltradas.length})`}
+                      </button>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            ) : null}
+          </article>
 
-          {!notificacoesSistemaCollapsed ? (
-            <div className="home-dashboard-card__content home-dashboard-card__content--scroll">
-              <div className="home-dashboard-reminder-tools home-dashboard-reminder-tools--compact">
-                <label className="home-dashboard-search" aria-label="Pesquisar notificações do sistema">
-                  <IoSearchOutline size={16} />
-                  <input
-                    value={notificacaoSistemaSearch}
-                    onChange={(event) => setNotificacaoSistemaSearch(event.target.value)}
-                    placeholder="Pesquisar notificações do sistema"
-                  />
-                </label>
-
-                {canExpandNotificacoesSistema ? (
-                  <button
-                    type="button"
-                    className="home-dashboard-reminder-expand"
-                    onClick={() => setNotificacoesSistemaExpanded((prev) => !prev)}
-                  >
-                    {notificacoesSistemaExpanded ? 'Encolher cards' : 'Expandir cards'}
-                  </button>
-                ) : null}
+          <article className={`home-dashboard-card${notificacoesSistemaCollapsed ? ' is-line' : ''}`}>
+            <header className="home-dashboard-card__header">
+              <div className="home-dashboard-card__title-wrap">
+                <span className="home-dashboard-card__accent home-dashboard-card__accent--violet" aria-hidden="true" />
+                <h2>Notificações Sistema</h2>
               </div>
 
-              {notificacoesSistemaFiltradas.length === 0 ? (
-                <div className="home-dashboard-empty">
-                  <IoNotificationsOutline size={42} />
-                  <p>
-                    {loadingDashboard
-                      ? 'Carregando notificações...'
-                      : notificacaoSistemaSearch.trim()
-                        ? 'Nenhuma notificação do sistema encontrada para a pesquisa'
-                        : 'Sem notificações'}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <ul className="home-dashboard-list">
-                    {notificacoesSistemaVisiveis.map((item, index) => (
-                      <li key={`not-sys-${index}`}>{getItemText(item, `Notificação ${index + 1}`)}</li>
-                    ))}
-                  </ul>
+              <div className="home-dashboard-card__header-actions">
+                <span className="home-dashboard-card__badge home-dashboard-card__badge--violet">
+                  {notificacoesSistema.length}
+                </span>
+                <button
+                  type="button"
+                  className="home-dashboard-card__collapse"
+                  onClick={() => setNotificacoesSistemaCollapsed((prev) => !prev)}
+                  aria-label={notificacoesSistemaCollapsed ? 'Expandir notificações do sistema' : 'Encolher notificações do sistema'}
+                  title={notificacoesSistemaCollapsed ? 'Expandir notificações do sistema' : 'Encolher notificações do sistema'}
+                >
+                  {notificacoesSistemaCollapsed ? <IoChevronDownOutline size={18} /> : <IoChevronUpOutline size={18} />}
+                </button>
+              </div>
+            </header>
+
+            {!notificacoesSistemaCollapsed ? (
+              <div className="home-dashboard-card__content home-dashboard-card__content--scroll">
+                <div className="home-dashboard-reminder-tools home-dashboard-reminder-tools--compact">
+                  <label className="home-dashboard-search" aria-label="Pesquisar notificações do sistema">
+                    <IoSearchOutline size={16} />
+                    <input
+                      value={notificacaoSistemaSearch}
+                      onChange={(event) => setNotificacaoSistemaSearch(event.target.value)}
+                      placeholder="Pesquisar notificações do sistema"
+                    />
+                  </label>
 
                   {canExpandNotificacoesSistema ? (
                     <button
                       type="button"
-                      className="home-dashboard-reminder-expand home-dashboard-reminder-expand--bottom"
+                      className="home-dashboard-reminder-expand"
                       onClick={() => setNotificacoesSistemaExpanded((prev) => !prev)}
                     >
-                      {notificacoesSistemaExpanded
-                        ? 'Mostrar menos notificações'
-                        : `Mostrar todas as notificações (${notificacoesSistemaFiltradas.length})`}
+                      {notificacoesSistemaExpanded ? 'Encolher cards' : 'Expandir cards'}
                     </button>
                   ) : null}
-                </>
-              )}
-            </div>
-          ) : null}
-        </article>
-      </section>
+                </div>
+
+                {notificacoesSistemaFiltradas.length === 0 ? (
+                  <div className="home-dashboard-empty">
+                    <IoNotificationsOutline size={42} />
+                    <p>
+                      {loadingDashboard
+                        ? 'Carregando notificações...'
+                        : notificacaoSistemaSearch.trim()
+                          ? 'Nenhuma notificação do sistema encontrada para a pesquisa'
+                          : 'Sem notificações'}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <ul className="home-dashboard-list">
+                      {notificacoesSistemaVisiveis.map((item, index) => (
+                        <li key={`not-sys-${index}`}>{getItemText(item, `Notificação ${index + 1}`)}</li>
+                      ))}
+                    </ul>
+
+                    {canExpandNotificacoesSistema ? (
+                      <button
+                        type="button"
+                        className="home-dashboard-reminder-expand home-dashboard-reminder-expand--bottom"
+                        onClick={() => setNotificacoesSistemaExpanded((prev) => !prev)}
+                      >
+                        {notificacoesSistemaExpanded
+                          ? 'Mostrar menos notificações'
+                          : `Mostrar todas as notificações (${notificacoesSistemaFiltradas.length})`}
+                      </button>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            ) : null}
+          </article>
+        </section>
       ) : null}
 
       {!menuSimplificado && createReminderOpen ? (

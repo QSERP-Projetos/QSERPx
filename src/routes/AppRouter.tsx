@@ -22,6 +22,7 @@ import { ServicosPage } from '../features/basico/pages/ServicosPage';
 import { SessoesPage } from '../features/seguranca/pages/SessoesPage';
 import { TipoApontamentoPage } from '../features/seguranca/pages/TipoApontamentoPage';
 import { UsuariosPage } from '../features/seguranca/pages/UsuariosPage';
+import { ParametrosGeraisPage } from '../features/seguranca/pages/ParametrosGeraisPage';
 import { OrdensManutencaoPage } from '../features/manutencao/pages/OrdensManutencaoPage';
 import { FichaInspecaoProcessoPage } from '../features/qualidade/pages/FichaInspecaoProcessoPage';
 import { FichaInspecaoRecebimentoPage } from '../features/qualidade/pages/FichaInspecaoRecebimentoPage';
@@ -113,6 +114,7 @@ export function AppRouter() {
           <Route path={ROUTES.segurancaUsuarios} element={<UsuariosPage />} />
           <Route path={ROUTES.segurancaTipoApontamento} element={<TipoApontamentoPage />} />
           <Route path={ROUTES.segurancaSessoes} element={<SessoesPage />} />
+          <Route path={ROUTES.segurancaParametrosGerais} element={<ParametrosGeraisPage />} />
           <Route path={ROUTES.manutencaoOrdens} element={<OrdensManutencaoPage />} />
           <Route path={ROUTES.qualidadeFichaProcesso} element={<FichaInspecaoProcessoPage />} />
           <Route path={ROUTES.qualidadeFichaRecebimento} element={<FichaInspecaoRecebimentoPage />} />

@@ -37,7 +37,7 @@ export function LoginPage() {
     const checkBaseUrl = async () => {
       await GlobalConfig.loadBaseUrl();
       const baseUrl = GlobalConfig.getBaseUrl();
-      
+
       if (!baseUrl || baseUrl.trim() === '') {
         navigate(ROUTES.configInicial, { replace: true });
         return;
@@ -119,10 +119,10 @@ export function LoginPage() {
 
       const codigoUsuarioDetalhe = String(
         loginData?.codigo_Usuario ??
-          loginData?.codigo_usuario ??
-          loginJsonBody?.codigo_Usuario ??
-          loginJsonBody?.codigo_usuario ??
-          usuarioUpper,
+        loginData?.codigo_usuario ??
+        loginJsonBody?.codigo_Usuario ??
+        loginJsonBody?.codigo_usuario ??
+        usuarioUpper,
       )
         .trim()
         .toUpperCase();
@@ -134,14 +134,14 @@ export function LoginPage() {
         if (userDetalheResp.succeeded) {
           GlobalConfig.setTipoMenuSistema(
             userDetalheData?.Tipo_Menu_Qserpx ??
-              userDetalheData?.tipo_Menu_Qserpx ??
+            userDetalheData?.tipo_Menu_Qserpx ??
             userDetalheData?.tipo_Menu_QSERPx ??
-              userDetalheData?.tipo_menu_qserpx ??
-              userDetalheData?.tipo_Menu ??
-              userDetalheData?.tipo_menu ??
-              userDetalheData?.menu_Sistema ??
-              userDetalheData?.menu_sistema ??
-              userDetalheData?.menu,
+            userDetalheData?.tipo_menu_qserpx ??
+            userDetalheData?.tipo_Menu ??
+            userDetalheData?.tipo_menu ??
+            userDetalheData?.menu_Sistema ??
+            userDetalheData?.menu_sistema ??
+            userDetalheData?.menu,
           );
         }
       } catch {

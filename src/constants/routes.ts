@@ -26,6 +26,7 @@ export const ROUTES = {
   segurancaUsuarios: '/seguranca/usuarios',
   segurancaTipoApontamento: '/seguranca/tipo-apontamento',
   segurancaSessoes: '/seguranca/sessoes',
+  segurancaParametrosGerais: '/seguranca/parametros-gerais',
   manutencaoOrdens: '/manutencao/ordens',
   qualidadeFichaProcesso: '/qualidade/ficha-inspecao-processo',
   qualidadeFichaRecebimento: '/qualidade/ficha-inspecao-recebimento',
