@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IoArrowBack, IoCloseOutline } from 'react-icons/io5';
+import { IoArrowBack, IoCloseOutline, IoConstructOutline } from 'react-icons/io5';
 import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
 import { SearchableSelect, type SearchableSelectOption } from '../../../components/SearchableSelect';
@@ -8,7 +8,16 @@ import apiManager, { ApiCallType } from '../../../services/apiManager';
 import { GlobalConfig } from '../../../services/globalConfig';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
 
-type ActiveTab = 'nfe';
+type ActiveTab = 'nfe' | 'faturamento';
+
+type SerieNotaRow = {
+  id: number;
+  serie: string;
+  ultNota: string;
+  computador: string;
+  emissao: string;
+  modeloNota: string;
+};
 
 type ParametrosNfeResponse = {
   [key: string]: unknown;
@@ -61,14 +70,94 @@ const tipoImpressaoOptions: SearchableSelectOption[] = [
   { value: '6', label: 'Padrão Paisagem Novo' },
 ];
 
+const layoutOptions: SearchableSelectOption[] = [
+  { value: '01', label: 'Padrão' },
+  { value: '02', label: 'KPB' },
+  { value: '03', label: 'Ziliani' },
+  { value: '04', label: 'Driveway' },
+  { value: '05', label: 'Grassi' },
+  { value: '06', label: 'Bioskin' },
+  { value: '07', label: 'Laser' },
+  { value: '08', label: 'Aquarius' },
+  { value: '09', label: 'Joal' },
+  { value: '10', label: 'Sicamet' },
+  { value: '11', label: 'Cassiopeia' },
+  { value: '12', label: 'Yutaka' },
+  { value: '13', label: 'Marbon' },
+  { value: '14', label: 'RevestCar' },
+  { value: '15', label: 'Granei' },
+];
+
+const layoutFormatos: Record<string, string> = {
+  '01': 'A4 - 210 x 297 mm',
+  '02': 'Fanfold - 8.5 x 12 in',
+  '03': 'Letter - 8,5 x 11 in',
+  '04': 'US - Fanfold',
+  '05': 'User - 23,59 x 33,15 cm',
+  '06': 'User - 21,30 x 30,05 cm',
+  '07': 'A4 - Laser',
+  '08': 'User - 25,80 x 31,20 cm',
+  '09': 'User - 21,30 x 30,45 cm',
+  '10': 'User - 21,30 x 30,50 cm',
+  '11': 'User - 21,00 x 33,00 cm',
+  '12': 'Fanfold - 8.5 x 12 in',
+  '13': 'Fanfold - 8.5 x 12 in',
+  '14': 'A4 - 210 x 297 mm',
+  '15': 'A4 - 210 x 297 mm',
+};
+
+const loteOptions: SearchableSelectOption[] = [
+  { value: '0', label: 'Não exibir' },
+  { value: '2', label: 'Exibir todos os lotes agrupados no item' },
+  { value: '1', label: 'Gerar um item por lote na NFe' },
+  { value: '3', label: 'Não agrupar itens na NFe' },
+];
+
+const impressaoEtiquetasOptions: SearchableSelectOption[] = [
+  { value: '0', label: 'Nenhuma' },
+  { value: '1', label: 'Etiqueta de nota fiscal' },
+  { value: '2', label: 'Etiqueta de expedição' },
+  { value: '3', label: 'Ambas' },
+];
+
+const computadorOptions: SearchableSelectOption[] = [
+  { value: 'ambas', label: 'Ambas' },
+  { value: 'servidor', label: 'Servidor' },
+  { value: 'cliente', label: 'Cliente' },
+];
+
+const emissaoOptions: SearchableSelectOption[] = [
+  { value: 'eletronica_hor', label: 'Eletrônica Hor.' },
+  { value: 'eletronica_vert', label: 'Eletrônica Vert.' },
+  { value: 'papel', label: 'Papel' },
+];
+
+const modeloNotaOptions: SearchableSelectOption[] = [
+  { value: 'nfse_hom', label: 'NFS-e Hom.' },
+  { value: 'nfe', label: 'NF-e' },
+  { value: 'nfse', label: 'NFS-e' },
+];
+
+const baseComissaoOptions: SearchableSelectOption[] = [
+  { value: '1', label: 'Valor total da nota fiscal' },
+  { value: '2', label: 'Valor total dos produtos' },
+  { value: '3', label: 'Valor total da nota fiscal sem ICMS ST' },
+  { value: '4', label: 'Valor líquido de venda (descontar ICMS, PIS, COFINS)' },
+];
+
+const gnreFornecedorOptions: SearchableSelectOption[] = [
+  { value: 'GNRE', label: 'GNRE' },
+];
+
 export function ParametrosGeraisPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const [activeTab] = useState<ActiveTab>('nfe');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('nfe');
   const certificadoInputRef = useRef<HTMLInputElement | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loadingParametros, setLoadingParametros] = useState(false);
   const [modalCertificadoOpen, setModalCertificadoOpen] = useState(false);
+  const [devModalOpen, setDevModalOpen] = useState(false);
 
   // NF-e — topo
   const [gerenciador, setGerenciador] = useState('QSApi');
@@ -105,6 +194,34 @@ export function ParametrosGeraisPage() {
   const [certSenha, setCertSenha] = useState('');
   const [certValidadeInicio, setCertValidadeInicio] = useState('');
   const [certValidadeFim, setCertValidadeFim] = useState('');
+
+  // Faturamento — geral
+  const [fatLayout, setFatLayout] = useState('');
+  const [fatItens, setFatItens] = useState('');
+  const [fatLotes, setFatLotes] = useState('0');
+  const [fatCsll, setFatCsll] = useState('');
+  const [fatIss, setFatIss] = useState('');
+  const [fatIrrf, setFatIrrf] = useState('');
+  const [fatImpressaoEtiquetas, setFatImpressaoEtiquetas] = useState('0');
+  const [fatSerieNotas, setFatSerieNotas] = useState<SerieNotaRow[]>([]);
+  const [fatCondicaoCce, setFatCondicaoCce] = useState('');
+  const [fatGerarGnre, setFatGerarGnre] = useState(false);
+  const [fatFornecedorGnre, setFatFornecedorGnre] = useState('GNRE');
+  const [fatDiretorioGnre, setFatDiretorioGnre] = useState('');
+  const [fatParticipaSimples, setFatParticipaSimples] = useState(false);
+  const [fatAliqIcmsSn, setFatAliqIcmsSn] = useState('');
+
+  // Faturamento — comissão / opções / valores
+  const [fatPermitirAlterarComissao, setFatPermitirAlterarComissao] = useState(false);
+  const [fatBaseComissao, setFatBaseComissao] = useState('2');
+  const [fatVerificarMediaVenda, setFatVerificarMediaVenda] = useState(false);
+  const [fatVerificarRateioEstoque, setFatVerificarRateioEstoque] = useState(false);
+  const [fatValorMinBaseado, setFatValorMinBaseado] = useState<'pedido' | 'nota_fiscal'>('nota_fiscal');
+  const [fatValorMinFaturamento, setFatValorMinFaturamento] = useState('');
+  const [fatValorMinDuplicata, setFatValorMinDuplicata] = useState('');
+  const [fatValorMaxFaturamento, setFatValorMaxFaturamento] = useState('');
+  const [fatValorMaxDuplicata, setFatValorMaxDuplicata] = useState('');
+  const [fatTipoDocContasReceber, setFatTipoDocContasReceber] = useState<'boleto' | 'duplicata'>('duplicata');
 
   const pickValue = (payload: ParametrosNfeResponse, keys: string[]) => {
     for (const key of keys) {
@@ -337,11 +454,31 @@ export function ParametrosGeraisPage() {
     versaoXml,
   ]);
 
+  const handleTabChange = (tab: ActiveTab) => {
+    if (tab === activeTab) return;
+    setIsEditing(false);
+    setModalCertificadoOpen(false);
+    setActiveTab(tab);
+  };
+
+  const handleSerieNotaChange = (id: number, field: keyof SerieNotaRow, value: string) => {
+    setFatSerieNotas((rows) => rows.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
+  };
+
+  const handleAddSerieNota = () => {
+    if (!isEditing) return;
+    const newId = Math.max(0, ...fatSerieNotas.map((r) => r.id)) + 1;
+    setFatSerieNotas((rows) => [
+      ...rows,
+      { id: newId, serie: '', ultNota: '', computador: 'ambas', emissao: 'eletronica_hor', modeloNota: 'nfse_hom' },
+    ]);
+  };
+
   const handleToggleEdicao = () => {
     if (isEditing) {
       setIsEditing(false);
       setModalCertificadoOpen(false);
-      void carregarParametrosNfe();
+      if (activeTab === 'nfe') void carregarParametrosNfe();
       return;
     }
 
@@ -417,8 +554,17 @@ export function ParametrosGeraisPage() {
             <button
               type="button"
               className={`contas-receber-tab${activeTab === 'nfe' ? ' contas-receber-tab--active' : ''}`}
+              onClick={() => handleTabChange('nfe')}
             >
               NF-e
+            </button>
+            <button
+              type="button"
+              className={`contas-receber-tab${activeTab === 'faturamento' ? ' contas-receber-tab--active' : ''} contas-receber-tab--dev`}
+              onClick={() => setDevModalOpen(true)}
+              title="Em desenvolvimento"
+            >
+              Faturamento
             </button>
           </div>
 
@@ -626,8 +772,500 @@ export function ParametrosGeraisPage() {
               </div>
             </div>
           )}
+          {/* Aba Faturamento */}
+          {activeTab === 'faturamento' && (
+            <div className="params-gerais-tab-body">
+              <div className="fat-form">
+                <div className="fat-form__columns">
+
+                  {/* Coluna esquerda */}
+                  <div className="fat-form__col">
+
+                    {/* Layout / Itens / Lotes + CSLL/ISS/IRRF */}
+                    <div className="fat-form__top-grid">
+                      {/* Coluna: Layout / Itens / Lotes */}
+                      <div className="fat-form__group">
+                        <div className="fat-form__field">
+                          <span>Layout</span>
+                          <SearchableSelect
+                            options={layoutOptions}
+                            value={fatLayout}
+                            onChange={setFatLayout}
+                            enableSearch={false}
+                            ariaLabel="Layout"
+                            disabled={!isEditing}
+                            displayValue={
+                              fatLayout
+                                ? `${fatLayout} - ${layoutOptions.find((o) => o.value === fatLayout)?.label ?? ''}`
+                                : undefined
+                            }
+                            minDropdownWidth={420}
+                            listHeader={
+                              <div className="fat-layout-opt fat-layout-opt--header">
+                                <span className="fat-layout-opt__cod">Cod.</span>
+                                <span className="fat-layout-opt__model">Modelo</span>
+                                <span className="fat-layout-opt__fmt">Formato</span>
+                              </div>
+                            }
+                            renderOption={(opt) => (
+                              <div className="fat-layout-opt">
+                                <span className="fat-layout-opt__cod">{opt.value}</span>
+                                <span className="fat-layout-opt__model">{opt.label}</span>
+                                <span className="fat-layout-opt__fmt">{layoutFormatos[opt.value] ?? ''}</span>
+                              </div>
+                            )}
+                          />
+                        </div>
+                        <div className="fat-form__field">
+                          <span>Itens</span>
+                          <input
+                            className="text-field fat-form__layout-num"
+                            value={fatItens}
+                            onChange={(e) => setFatItens(e.target.value)}
+                            disabled={!isEditing}
+                          />
+                        </div>
+                        <div className="fat-form__field">
+                          <span>Lotes</span>
+                          <SearchableSelect
+                            options={loteOptions}
+                            value={fatLotes}
+                            onChange={setFatLotes}
+                            enableSearch={false}
+                            ariaLabel="Lotes"
+                            disabled={!isEditing}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Coluna: CSLL / ISS / IRRF */}
+                      <div className="fat-form__group fat-form__group--taxes">
+                        <div className="fat-form__tax-row">
+                          <span>CSLL</span>
+                          <input
+                            className="text-field fat-form__tax-input"
+                            value={fatCsll}
+                            onChange={(e) => setFatCsll(e.target.value)}
+                            disabled={!isEditing}
+                          />
+                          <span className="fat-form__aliq-pct">%</span>
+                        </div>
+                        <div className="fat-form__tax-row">
+                          <span>ISS</span>
+                          <input
+                            className="text-field fat-form__tax-input"
+                            value={fatIss}
+                            onChange={(e) => setFatIss(e.target.value)}
+                            disabled={!isEditing}
+                          />
+                          <span className="fat-form__aliq-pct">%</span>
+                        </div>
+                        <div className="fat-form__tax-row">
+                          <span>IRRF</span>
+                          <input
+                            className="text-field fat-form__tax-input"
+                            value={fatIrrf}
+                            onChange={(e) => setFatIrrf(e.target.value)}
+                            disabled={!isEditing}
+                          />
+                          <span className="fat-form__aliq-pct">%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Impressão de etiquetas */}
+                    <div className="fat-form__group">
+                      <div className="fat-form__field">
+                        <span>Impressão de etiquetas do faturamento somente após autorização</span>
+                        <SearchableSelect
+                          options={impressaoEtiquetasOptions}
+                          value={fatImpressaoEtiquetas}
+                          onChange={setFatImpressaoEtiquetas}
+                          enableSearch={false}
+                          ariaLabel="Impressão de etiquetas"
+                          disabled={!isEditing}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Tabela série/notas */}
+                    <div className="fat-form__group">
+                      <div className="fat-form__table-wrap">
+                        <table className="fat-form__table">
+                          <thead>
+                            <tr>
+                              <th></th>
+                              <th>Série</th>
+                              <th>Ult. Nota</th>
+                              <th>Computador</th>
+                              <th>Emissão</th>
+                              <th>Modelo Nota</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {fatSerieNotas.map((row) => (
+                              <tr key={row.id}>
+                                <td className="fat-form__table-arrow">▶</td>
+                                <td>
+                                  <input
+                                    className="text-field fat-form__table-input"
+                                    value={row.serie}
+                                    onChange={(e) => handleSerieNotaChange(row.id, 'serie', e.target.value)}
+                                    disabled={!isEditing}
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    className="text-field fat-form__table-input"
+                                    value={row.ultNota}
+                                    onChange={(e) => handleSerieNotaChange(row.id, 'ultNota', e.target.value)}
+                                    disabled={!isEditing}
+                                  />
+                                </td>
+                                <td>
+                                  <SearchableSelect
+                                    options={computadorOptions}
+                                    value={row.computador}
+                                    onChange={(v) => handleSerieNotaChange(row.id, 'computador', v)}
+                                    enableSearch={false}
+                                    ariaLabel="Computador"
+                                    disabled={!isEditing}
+                                  />
+                                </td>
+                                <td>
+                                  <SearchableSelect
+                                    options={emissaoOptions}
+                                    value={row.emissao}
+                                    onChange={(v) => handleSerieNotaChange(row.id, 'emissao', v)}
+                                    enableSearch={false}
+                                    ariaLabel="Emissão"
+                                    disabled={!isEditing}
+                                  />
+                                </td>
+                                <td>
+                                  <SearchableSelect
+                                    options={modeloNotaOptions}
+                                    value={row.modeloNota}
+                                    onChange={(v) => handleSerieNotaChange(row.id, 'modeloNota', v)}
+                                    enableSearch={false}
+                                    ariaLabel="Modelo Nota"
+                                    disabled={!isEditing}
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                            <tr>
+                              <td className="fat-form__table-arrow fat-form__table-new" colSpan={6}>
+                                <button
+                                  type="button"
+                                  className="fat-form__table-add"
+                                  onClick={handleAddSerieNota}
+                                  disabled={!isEditing}
+                                  title="Adicionar nova linha"
+                                >
+                                  *
+                                </button>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Condição de uso da CC-e */}
+                    <div className="fat-form__group">
+                      <div className="fat-form__field">
+                        <span>Condição de uso da CC-e</span>
+                        <textarea
+                          className="text-field fat-form__textarea"
+                          value={fatCondicaoCce}
+                          onChange={(e) => setFatCondicaoCce(e.target.value)}
+                          disabled={!isEditing}
+                          rows={4}
+                        />
+                      </div>
+                    </div>
+
+                    {/* GNRE */}
+                    <div className="fat-form__group fat-form__group--bordered">
+                      <label className="nfe-params-check-row">
+                        <input
+                          type="checkbox"
+                          checked={fatGerarGnre}
+                          onChange={(e) => setFatGerarGnre(e.target.checked)}
+                          disabled={!isEditing}
+                        />
+                        <span>Gerar registro da GNRE no faturamento</span>
+                      </label>
+                      {fatGerarGnre && (
+                        <div className="fat-form__group-indent">
+                          <div className="fat-form__row">
+                            <div className="fat-form__field">
+                              <span>Fornecedor</span>
+                              <SearchableSelect
+                                options={gnreFornecedorOptions}
+                                value={fatFornecedorGnre}
+                                onChange={setFatFornecedorGnre}
+                                enableSearch={false}
+                                ariaLabel="Fornecedor GNRE"
+                                disabled={!isEditing}
+                              />
+                            </div>
+                            <div className="fat-form__field">
+                              <span>Diretório</span>
+                              <input
+                                className="text-field"
+                                value={fatDiretorioGnre}
+                                onChange={(e) => setFatDiretorioGnre(e.target.value)}
+                                disabled={!isEditing}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Simples Nacional */}
+                    <div className="fat-form__group fat-form__group--bordered">
+                      <label className="nfe-params-check-row">
+                        <input
+                          type="checkbox"
+                          checked={fatParticipaSimples}
+                          onChange={(e) => setFatParticipaSimples(e.target.checked)}
+                          disabled={!isEditing}
+                        />
+                        <span>Participante do Simples Nacional</span>
+                      </label>
+                      {fatParticipaSimples && (
+                        <div className="fat-form__group-indent">
+                          <div className="fat-form__row fat-form__row--aliq">
+                            <div className="fat-form__field">
+                              <span>Aliq. ICMS SN</span>
+                              <div className="fat-form__aliq-wrap">
+                                <input
+                                  className="text-field fat-form__aliq-input"
+                                  value={fatAliqIcmsSn}
+                                  onChange={(e) => setFatAliqIcmsSn(e.target.value)}
+                                  disabled={!isEditing}
+                                />
+                                <span className="fat-form__aliq-pct">%</span>
+                                <button
+                                  type="button"
+                                  className="secondary-button"
+                                  disabled={!isEditing}
+                                >
+                                  Alíquotas
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                  </div>{/* /col-left */}
+
+                  {/* Coluna direita */}
+                  <div className="fat-form__col fat-form__col--right">
+
+                    {/* Comissão */}
+                    <div className="fat-form__group">
+                      <label className="nfe-params-check-row">
+                        <input
+                          type="checkbox"
+                          checked={fatPermitirAlterarComissao}
+                          onChange={(e) => setFatPermitirAlterarComissao(e.target.checked)}
+                          disabled={!isEditing}
+                        />
+                        <span>Permitir alterar comissão no pedido</span>
+                      </label>
+                      <div className="fat-form__field">
+                        <span>Base para cálculo da comissão</span>
+                        <SearchableSelect
+                          options={baseComissaoOptions}
+                          value={fatBaseComissao}
+                          onChange={setFatBaseComissao}
+                          enableSearch={false}
+                          ariaLabel="Base para cálculo da comissão"
+                          disabled={!isEditing}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Verificações */}
+                    <div className="fat-form__group">
+                      <label className="nfe-params-check-row">
+                        <input
+                          type="checkbox"
+                          checked={fatVerificarMediaVenda}
+                          onChange={(e) => setFatVerificarMediaVenda(e.target.checked)}
+                          disabled={!isEditing}
+                        />
+                        <span>Verificar média de venda do cliente</span>
+                      </label>
+                      <label className="nfe-params-check-row">
+                        <input
+                          type="checkbox"
+                          checked={fatVerificarRateioEstoque}
+                          onChange={(e) => setFatVerificarRateioEstoque(e.target.checked)}
+                          disabled={!isEditing}
+                        />
+                        <span>Verificar rateio de estoque do cliente</span>
+                      </label>
+                    </div>
+
+                    {/* Valor mínimo baseado */}
+                    <div className="fat-form__group">
+                      <span className="fat-form__group-label">Valor mínimo de faturamento baseado</span>
+                      <div className="fat-form__radio-row">
+                        <label className="fat-form__radio-opt">
+                          <input
+                            type="radio"
+                            name="fatValorMinBaseado"
+                            value="pedido"
+                            checked={fatValorMinBaseado === 'pedido'}
+                            onChange={() => setFatValorMinBaseado('pedido')}
+                            disabled={!isEditing}
+                          />
+                          <span>Pedido</span>
+                        </label>
+                        <label className="fat-form__radio-opt">
+                          <input
+                            type="radio"
+                            name="fatValorMinBaseado"
+                            value="nota_fiscal"
+                            checked={fatValorMinBaseado === 'nota_fiscal'}
+                            onChange={() => setFatValorMinBaseado('nota_fiscal')}
+                            disabled={!isEditing}
+                          />
+                          <span>Nota fiscal</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Valores mínimos e máximos */}
+                    <div className="fat-form__group">
+                      <div className="fat-form__values-grid">
+                        <span>Valor Mínimo para Faturamento</span>
+                        <input
+                          className="text-field"
+                          value={fatValorMinFaturamento}
+                          onChange={(e) => setFatValorMinFaturamento(e.target.value)}
+                          disabled={!isEditing}
+                        />
+                        <span>Valor Mínimo para Duplicata</span>
+                        <input
+                          className="text-field"
+                          value={fatValorMinDuplicata}
+                          onChange={(e) => setFatValorMinDuplicata(e.target.value)}
+                          disabled={!isEditing}
+                        />
+                        <span>Valor Máximo para Faturamento</span>
+                        <input
+                          className="text-field"
+                          value={fatValorMaxFaturamento}
+                          onChange={(e) => setFatValorMaxFaturamento(e.target.value)}
+                          disabled={!isEditing}
+                        />
+                        <span>Valor Máximo para Duplicata</span>
+                        <input
+                          className="text-field"
+                          value={fatValorMaxDuplicata}
+                          onChange={(e) => setFatValorMaxDuplicata(e.target.value)}
+                          disabled={!isEditing}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Tipo de documento contas a receber */}
+                    <div className="fat-form__group">
+                      <span className="fat-form__group-label">Tipo de documento do contas a receber</span>
+                      <div className="fat-form__radio-row">
+                        <label className="fat-form__radio-opt">
+                          <input
+                            type="radio"
+                            name="fatTipoDoc"
+                            value="boleto"
+                            checked={fatTipoDocContasReceber === 'boleto'}
+                            onChange={() => setFatTipoDocContasReceber('boleto')}
+                            disabled={!isEditing}
+                          />
+                          <span>Boleto</span>
+                        </label>
+                        <label className="fat-form__radio-opt">
+                          <input
+                            type="radio"
+                            name="fatTipoDoc"
+                            value="duplicata"
+                            checked={fatTipoDocContasReceber === 'duplicata'}
+                            onChange={() => setFatTipoDocContasReceber('duplicata')}
+                            disabled={!isEditing}
+                          />
+                          <span>Duplicata</span>
+                        </label>
+                      </div>
+                    </div>
+
+                  </div>{/* /col-right */}
+                </div>{/* /columns */}
+
+                {/* Rodapé: botões */}
+                <div className="nfe-params-bottom">
+                  <div className="nfe-params-actions">
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={handleToggleEdicao}
+                    >
+                      {isEditing ? 'Cancelar' : 'Editar'}
+                    </button>
+                    <button
+                      type="button"
+                      className="primary-button"
+                      disabled={!isEditing}
+                    >
+                      Salvar
+                    </button>
+                  </div>
+                </div>
+
+              </div>{/* /fat-form */}
+            </div>
+          )}
+
         </section>
       </main>
+
+      {devModalOpen && (
+        <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Em desenvolvimento">
+          <article className="modal-card modal-card--confirm">
+            <header className="modal-card__header">
+              <h2>Em Desenvolvimento</h2>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Fechar"
+                onClick={() => setDevModalOpen(false)}
+              >
+                <IoCloseOutline size={18} />
+              </button>
+            </header>
+            <div className="modal-card__body modal-card__body--confirm">
+              <IoConstructOutline size={36} className="modal-confirm__icon" style={{ color: 'var(--color-warning, #d97706)' }} />
+              <p>Esse parâmetro está em desenvolvimento, aguarde novas atualizações!</p>
+            </div>
+            <footer className="nfs-nova-footer">
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => setDevModalOpen(false)}
+              >
+                OK
+              </button>
+            </footer>
+          </article>
+        </section>
+      )}
 
       {modalCertificadoOpen && (
         <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Certificado digital">

@@ -8372,6 +8372,17 @@ select.text-field:focus {
   border-bottom-color: var(--color-primary, #2563eb);
 }
 
+.contas-receber-tab--dev {
+  opacity: 0.5;
+  cursor: not-allowed;
+  font-style: italic;
+}
+
+.contas-receber-tab--dev:hover {
+  background: transparent;
+  color: inherit;
+}
+
 /* Barra "Selecionar todas" */
 .contas-receber-select-all {
   display: flex;
@@ -11014,5 +11025,358 @@ select.text-field:focus {
 @media (max-width: 1024px) {
   .nfe-params-fieldsets-row {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ===== Aba Faturamento — Parâmetros Gerais ===== */
+
+.fat-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+.fat-form__columns {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 0 24px;
+  align-items: start;
+  width: 100%;
+}
+
+.fat-form__col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.fat-form__col--right {
+  border-left: 1px solid var(--color-border-soft);
+  padding-left: 24px;
+}
+
+/* Grupo genérico */
+.fat-form__group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fat-form__group--bordered {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.fat-form__group-indent {
+  padding-left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fat-form__group-label {
+  font-size: 0.73rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* Linha com campos lado a lado */
+.fat-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+  align-items: end;
+}
+
+.fat-form__row--aliq {
+  grid-template-columns: auto;
+}
+
+/* Campo padrão */
+.fat-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.fat-form__field--sm {
+  max-width: 180px;
+}
+
+.fat-form__field>span {
+  font-size: 0.73rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.fat-form__field .text-field,
+.fat-form__field .searchable-select {
+  width: 100%;
+}
+
+/* Linha Layout número + label */
+.fat-form__layout-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fat-form__layout-num {
+  width: 60px !important;
+  text-align: right;
+}
+
+.fat-form__layout-label {
+  font-size: 0.86rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+/* Tabela série/notas */
+.fat-form__table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+
+.fat-form__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.83rem;
+}
+
+.fat-form__table thead tr {
+  background: var(--color-surface-alt, var(--color-surface));
+  border-bottom: 1px solid var(--color-border);
+}
+
+.fat-form__table th {
+  padding: 8px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.fat-form__table td {
+  padding: 6px 6px;
+  border-bottom: 1px solid var(--color-border-soft);
+  vertical-align: middle;
+}
+
+.fat-form__table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.fat-form__table-arrow {
+  width: 24px;
+  text-align: center;
+  color: var(--color-primary);
+  font-size: 0.7rem;
+  padding: 0 4px !important;
+}
+
+.fat-form__table-new {
+  padding: 2px 4px !important;
+}
+
+.fat-form__table-add {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  cursor: pointer;
+  padding: 4px 10px;
+  font-family: inherit;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.fat-form__table-add:hover:not(:disabled) {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.fat-form__table-add:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.fat-form__table-input {
+  width: 80px !important;
+}
+
+.fat-form__table .searchable-select {
+  min-width: 130px;
+}
+
+/* Textarea CC-e */
+.fat-form__textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+/* Alíquota ICMS SN */
+.fat-form__aliq-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fat-form__aliq-input {
+  width: 80px !important;
+  text-align: right;
+}
+
+.fat-form__aliq-pct {
+  font-size: 0.86rem;
+  color: var(--color-muted);
+}
+
+/* Layout option — three-column dropdown rows */
+.fat-layout-opt {
+  display: grid;
+  grid-template-columns: 36px 100px 1fr;
+  gap: 0 12px;
+  align-items: center;
+  width: 100%;
+  font-size: 0.84rem;
+}
+
+.fat-layout-opt--header {
+  padding: 6px 10px 6px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  pointer-events: none;
+}
+
+.fat-layout-opt__cod {
+  text-align: right;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.fat-layout-opt__model {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fat-layout-opt__fmt {
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Grid topo: Layout/Itens/Lotes + CSLL/ISS/IRRF */
+.fat-form__top-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 24px;
+  align-items: start;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.fat-form__group--taxes {
+  justify-content: space-between;
+  border-left: 1px solid var(--color-border-soft);
+  padding-left: 20px;
+}
+
+.fat-form__tax-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.fat-form__tax-row>span:first-child {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text);
+  min-width: 36px;
+}
+
+.fat-form__tax-input {
+  width: 72px !important;
+  text-align: right;
+}
+
+/* Grid topo — */
+.fat-form__values-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 16px;
+  align-items: center;
+}
+
+.fat-form__values-grid>span {
+  font-size: 0.86rem;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.fat-form__values-grid .text-field {
+  width: 140px;
+  text-align: right;
+}
+
+/* Radio buttons */
+.fat-form__radio-row {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.fat-form__radio-opt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.86rem;
+  color: var(--color-text);
+}
+
+.fat-form__radio-opt input[type='radio'] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1100px) {
+  .fat-form__columns {
+    grid-template-columns: 1fr;
+  }
+
+  .fat-form__col--right {
+    border-left: none;
+    border-top: 1px solid var(--color-border-soft);
+    padding-left: 0;
+    padding-top: 14px;
   }
 }

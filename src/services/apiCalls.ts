@@ -2264,6 +2264,10 @@ export const enviarDPSCall = async (
     Coindop?: string;
     DescontoIncond?: number;
     DescontoCond?: number;
+    TipoNotaAjuste?: string;
+    ValorIBSAjuste?: number;
+    ValorCBSAjuste?: number;
+    ChaveNFSeRef?: string;
     Usuario: string;
     versao: string;
   },
