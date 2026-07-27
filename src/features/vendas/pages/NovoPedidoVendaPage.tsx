@@ -1367,7 +1367,7 @@ export function PedidoVendaFormPanel({
     const baseUrl = GlobalConfig.getBaseUrl();
     const token = GlobalConfig.getJwToken();
     const usuario = GlobalConfig.getUsuario() || '';
-    const nivel = GlobalConfig.getNivelUsuario() ?? '';
+    const nivelUsuario = GlobalConfig.getNivelUsuario() ?? '';
     const codEmpresa = GlobalConfig.getCodEmpresa();
 
     if (!baseUrl || !token || !usuario) {
@@ -1376,6 +1376,10 @@ export function PedidoVendaFormPanel({
     }
 
     try {
+      // Para pedido de venda normal: passar nivel 9 para listar todos os clientes
+      // Para pedido de venda representantes: manter o nivel do usuário (lista apenas clientes do vendedor)
+      const nivel = isRepresentantes ? nivelUsuario : '9';
+
       const [clientesResp, condResp, vendedorResp, transportadoraResp, representantesResp] = await Promise.all([
         listaClientesCall(baseUrl, token, {
           codigoUsuario: usuario,

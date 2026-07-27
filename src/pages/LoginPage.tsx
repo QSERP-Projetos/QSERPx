@@ -212,7 +212,7 @@ export function LoginPage() {
           <p className="version">v{versao}</p>
         </div>
 
-        <label className="field-label">E-mail</label>
+        <label className="field-label">Usuario</label>
         <div className={`login-password-field ${emailError ? 'has-error' : ''}`}>
           <input
             className="text-field"
@@ -224,7 +224,7 @@ export function LoginPage() {
               setEmail(event.target.value);
               if (emailError) setEmailError('');
             }}
-            placeholder="Usuario"
+            placeholder="informe o usuario"
             autoCapitalize="none"
           />
           {email.trim() && (
@@ -257,7 +257,7 @@ export function LoginPage() {
               setPassword(event.target.value);
               if (passwordError) setPasswordError('');
             }}
-            placeholder="********"
+            placeholder="informe a senha"
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 void handleLogin();
