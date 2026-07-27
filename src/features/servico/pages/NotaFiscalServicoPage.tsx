@@ -253,6 +253,37 @@ const OPTIONS_TIPO_RETENCAO = [
   { value: '9', label: 'COFINS Não Retido, PIS/CSLL Retidos' },
 ];
 
+const OPTIONS_COD_INDICADOR_OPERACAO = [
+  { value: '', label: 'Selecione...' },
+  { value: '010100', label: '010100 - Local da entrega ou disponibilização' },
+  { value: '020101', label: '020101 - Localidade do imóvel' },
+  { value: '020201', label: '020201 - Localidade do imóvel' },
+  { value: '020301', label: '020301 - Localidade do imóvel' },
+  { value: '030101', label: '030101 - Estabelecimento do fornecedor' },
+  { value: '030102', label: '030102 - Endereço do adquirente' },
+  { value: '030103', label: '030103 - Endereço do destinatário' },
+  { value: '030104', label: '030104 - Endereço diverso do fornecedor, adquirente ou destinatário' },
+  { value: '040101', label: '040101 - Local do Evento' },
+  { value: '050101', label: '050101 - Estabelecimento do fornecedor' },
+  { value: '050102', label: '050102 - Endereço do adquirente' },
+  { value: '050103', label: '050103 - Endereço do destinatário' },
+  { value: '050104', label: '050104 - Endereço diverso do fornecedor, adquirente ou destinatário' },
+  { value: '050201', label: '050201 - Local da prestação' },
+  { value: '060101', label: '060101 - Local de início do transporte' },
+  { value: '070101', label: '070101 - Endereço fornecido para entrega' },
+  { value: '070102', label: '070102 - Local da retirada' },
+  { value: '080101', label: '080101 - Local da prestação, correspondente à extensão da via explorada e proporcional ao território dos entes tributantes' },
+  { value: '100101', label: '100101 - Local do domicílio principal do adquirente' },
+  { value: '100102', label: '100102 - Local do domicílio do destinatário, nos casos de adquirente residente ou domiciliado no exterior' },
+  { value: '100201', label: '100201 - Local do domicílio principal do destinatário' },
+  { value: '100301', label: '100301 - Local do domicílio principal do adquirente' },
+  { value: '100302', label: '100302 - Local do domicílio do destinatário, nos casos de adquirente residente ou domiciliado no exterior' },
+  { value: '100401', label: '100401 - Local do domicílio principal do destinatário' },
+  { value: '100501', label: '100501 - Local do domicílio principal do adquirente' },
+  { value: '100502', label: '100502 - Local do domicílio do destinatário, nos casos de adquirente residente ou domiciliado no exterior' },
+  { value: '100601', label: '100601 - Local do domicílio principal do destinatário' },
+];
+
 const normalizeText = (value: any) =>
   String(value ?? '')
     .normalize('NFD')
@@ -395,7 +426,11 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
   }, [carregarDestinatarios]);
 
   const handleFieldNova = useCallback((field: keyof NovaNotaFiscalForm, value: string | boolean) => {
-    setFormNova((prev) => ({ ...prev, [field]: value }));
+    let nextValue = value;
+    if (field === 'codTribNac' && typeof nextValue === 'string') {
+      nextValue = nextValue.replace(/\D/g, '').slice(0, 6);
+    }
+    setFormNova((prev) => ({ ...prev, [field]: nextValue }));
     setFormErrors((prev) => { if (!prev.has(field as string)) return prev; const next = new Set(prev); next.delete(field as string); return next; });
   }, []);
 
@@ -421,7 +456,7 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
     if (!formNova.codigoServico) invalidFields.add('codigoServico');
     if (!formNova.descricao.trim()) invalidFields.add('descricao');
     if (isNfse) {
-      if (!formNova.codTribNac.trim()) invalidFields.add('codTribNac');
+      if (!/^\d{6}$/.test(formNova.codTribNac.trim())) invalidFields.add('codTribNac');
       if (!formNova.tribISSQN) invalidFields.add('tribISSQN');
       if (!formNova.retISSQN) invalidFields.add('retISSQN');
       if (!formNova.tipoRetencao) invalidFields.add('tipoRetencao');
@@ -480,6 +515,34 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
   if (!open) return null;
   const isNfse = formNova.tipo === 'nfse_nacional';
   const isNfServico = formNova.tipo === 'nf_servico';
+  const nfseRequiredFields = new Set<string>([
+    'serie',
+    'numNotaFiscal',
+    'codigoDestinatario',
+    'condPagto',
+    'codigoServico',
+    'descricao',
+    'codTribNac',
+    'tribISSQN',
+    'retISSQN',
+    'tipoRetencao',
+  ]);
+  const isRequiredNfseField = (field: string) => isNfse && nfseRequiredFields.has(field);
+  const getFieldLabel = (label: string, field: string) => (
+    <span>
+      {label}
+      {isRequiredNfseField(field) ? <strong className="nfs-required-asterisk"> (*) obrigatório</strong> : null}
+    </span>
+  );
+  const getInputClassName = (field: string, base?: string) => [
+    base,
+    isRequiredNfseField(field) ? 'nfs-required-field' : '',
+    formErrors.has(field) ? 'nfs-input-error' : '',
+  ].filter(Boolean).join(' ');
+  const getSelectClassName = (field: string) => [
+    formErrors.has(field) ? 'nfs-error is-error' : '',
+    isRequiredNfseField(field) ? 'nfs-required-field' : '',
+  ].filter(Boolean).join(' ');
   return (
     <section className="modal-backdrop" role="dialog" aria-modal="true">
       <article className="modal-card modal-card--nfs-nova">
@@ -506,14 +569,14 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
           {/* Cabeçalho: Série | Nota Fiscal | Emissão */}
           <div className="nfs-nova-row nfs-nova-row--cabecalho">
             <div className="nfs-nova-label">
-              <span>Série</span>
+              {getFieldLabel('Série', 'serie')}
               <SearchableSelect
                 options={seriesOptions}
                 value={formNova.serie}
                 onChange={handleSerieNova}
                 enableSearch={false}
                 disabled={carregandoListas || carregandoDestinatarios}
-                className={formErrors.has('serie') ? 'nfs-error' : ''}
+                className={getSelectClassName('serie')}
                 displayValue={formNova.serie || undefined}
                 minDropdownWidth={320}
                 listHeader={
@@ -534,8 +597,8 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
               />
             </div>
             <label className="nfs-nova-label">
-              <span>Nota Fiscal</span>
-              <input value={formNova.numNotaFiscal} onChange={(e) => handleFieldNova('numNotaFiscal', e.target.value)} style={formErrors.has('numNotaFiscal') ? { borderColor: '#e53e3e' } : undefined} />
+              {getFieldLabel('Nota Fiscal', 'numNotaFiscal')}
+              <input className={getInputClassName('numNotaFiscal')} value={formNova.numNotaFiscal} onChange={(e) => handleFieldNova('numNotaFiscal', e.target.value)} />
             </label>
             <div className="nfs-nova-label">
               <span>Emissão</span>
@@ -548,7 +611,7 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
           {/* Destinatário */}
           <div className="nfs-nova-row nfs-nova-row--destinatario">
             <div className="nfs-nova-label">
-              <span>Destinatário</span>
+              {getFieldLabel('Destinatário', 'codigoDestinatario')}
               <SearchableSelect
                 options={clientesFornOptionsLocal}
                 value={formNova.codigoDestinatario}
@@ -562,7 +625,7 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
                 enableSearch
                 searchPlaceholder="Digite ao menos 3 letras para buscar..."
                 disabled={carregandoListas}
-                className={formErrors.has('codigoDestinatario') ? 'nfs-error' : ''}
+                className={getSelectClassName('codigoDestinatario')}
                 displayValue={formNova.nomeDestinatario || undefined}
                 onSearchInputChange={handleDestinatarioSearchInput}
                 listHeader={
@@ -590,13 +653,13 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
 
           {/* Cond. pagto */}
           <div className="nfs-nova-label">
-            <span>Cond. pagto</span>
-            <SearchableSelect options={condPagtoOptions} value={formNova.condPagto} onChange={(v) => handleFieldNova('condPagto', v)} enableSearch searchPlaceholder="Pesquisar..." disabled={carregandoListas} className={formErrors.has('condPagto') ? 'nfs-error' : ''} />
+            {getFieldLabel('Cond. pagto', 'condPagto')}
+            <SearchableSelect options={condPagtoOptions} value={formNova.condPagto} onChange={(v) => handleFieldNova('condPagto', v)} enableSearch searchPlaceholder="Pesquisar..." disabled={carregandoListas} className={getSelectClassName('condPagto')} />
           </div>
 
           {/* Serviço */}
           <div className="nfs-nova-label">
-            <span>Serviço</span>
+            {getFieldLabel('Serviço', 'codigoServico')}
             <SearchableSelect
               options={servicosOptions}
               value={formNova.codigoServico}
@@ -625,27 +688,27 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
                   setIbsCbsAusente(false);
                 }
               }}
-              enableSearch searchPlaceholder="Pesquisar..." disabled={carregandoListas || isNfServico} className={formErrors.has('codigoServico') ? 'nfs-error' : ''}
+              enableSearch searchPlaceholder="Pesquisar..." disabled={carregandoListas || isNfServico} className={getSelectClassName('codigoServico')}
             />
           </div>
 
           {/* Descrição */}
           <label className="nfs-nova-label">
-            <span>Descrição</span>
-            <textarea rows={3} value={formNova.descricao} onChange={(e) => handleFieldNova('descricao', e.target.value)} style={formErrors.has('descricao') ? { borderColor: '#e53e3e' } : undefined} />
+            {getFieldLabel('Descrição', 'descricao')}
+            <textarea className={getInputClassName('descricao')} rows={3} value={formNova.descricao} onChange={(e) => handleFieldNova('descricao', e.target.value)} />
           </label>
 
           {/* Tipo serv. | Atividade | Cód.Trib.Nac */}
           <div className="nfs-nova-row nfs-nova-row--tipo3">
-            <label className="nfs-nova-label"><span>Tipo serv.</span><input value={formNova.tipoServ} onChange={(e) => handleFieldNova('tipoServ', e.target.value)} disabled={isNfse} style={formErrors.has('tipoServ') ? { borderColor: '#e53e3e' } : undefined} /></label>
-            <label className="nfs-nova-label"><span>Atividade</span><input value={formNova.atividade} onChange={(e) => handleFieldNova('atividade', e.target.value)} disabled={isNfse} style={formErrors.has('atividade') ? { borderColor: '#e53e3e' } : undefined} /></label>
-            <label className="nfs-nova-label"><span>Cód. Trib. Nac</span><input value={formNova.codTribNac} onChange={(e) => handleFieldNova('codTribNac', e.target.value)} disabled={isNfServico} style={formErrors.has('codTribNac') ? { borderColor: '#e53e3e' } : undefined} /></label>
+            <label className="nfs-nova-label"><span>Tipo serv.</span><input className={getInputClassName('tipoServ')} value={formNova.tipoServ} onChange={(e) => handleFieldNova('tipoServ', e.target.value)} disabled={isNfse} /></label>
+            <label className="nfs-nova-label"><span>Atividade</span><input className={getInputClassName('atividade')} value={formNova.atividade} onChange={(e) => handleFieldNova('atividade', e.target.value)} disabled={isNfse} /></label>
+            <label className="nfs-nova-label">{getFieldLabel('Cód. Trib. Nac', 'codTribNac')}<input className={getInputClassName('codTribNac')} value={formNova.codTribNac} onChange={(e) => handleFieldNova('codTribNac', e.target.value)} disabled={isNfServico} inputMode="numeric" maxLength={6} /></label>
           </div>
 
           {/* Trib. ISSQN | Ret. ISSQN | Valor serviço */}
           <div className="nfs-nova-row nfs-nova-row--tipo3">
-            <div className="nfs-nova-label"><span>Trib. ISSQN</span><SearchableSelect enableSearch={false} options={OPTIONS_TRIB_ISSQN} value={formNova.tribISSQN} onChange={(v) => handleFieldNova('tribISSQN', v)} disabled={isNfServico} className={formErrors.has('tribISSQN') ? 'nfs-error' : ''} /></div>
-            <div className="nfs-nova-label"><span>Ret. ISSQN</span><SearchableSelect enableSearch={false} options={OPTIONS_RET_ISSQN} value={formNova.retISSQN} onChange={(v) => handleFieldNova('retISSQN', v)} disabled={isNfServico} className={formErrors.has('retISSQN') ? 'nfs-error' : ''} /></div>
+            <div className="nfs-nova-label">{getFieldLabel('Trib. ISSQN', 'tribISSQN')}<SearchableSelect enableSearch={false} options={OPTIONS_TRIB_ISSQN} value={formNova.tribISSQN} onChange={(v) => handleFieldNova('tribISSQN', v)} disabled={isNfServico} className={getSelectClassName('tribISSQN')} /></div>
+            <div className="nfs-nova-label">{getFieldLabel('Ret. ISSQN', 'retISSQN')}<SearchableSelect enableSearch={false} options={OPTIONS_RET_ISSQN} value={formNova.retISSQN} onChange={(v) => handleFieldNova('retISSQN', v)} disabled={isNfServico} className={getSelectClassName('retISSQN')} /></div>
             <label className="nfs-nova-label"><span>Valor serviço</span><input className="nfs-nova-input--right" value={formNova.valorServico} onChange={(e) => handleFieldNova('valorServico', e.target.value)} placeholder="0,00" /></label>
           </div>
 
@@ -673,16 +736,22 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
               </label>
             </div>
             <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end', marginTop: '0.5rem' }}>
-              <label className="nfs-nova-label" style={{ flexShrink: 0 }}>
+              <div className="nfs-nova-label" style={{ flexShrink: 0 }}>
                 <span style={{ whiteSpace: 'nowrap' }}>Cód. Indicador da Operação</span>
-                <input
+                <SearchableSelect
+                  options={OPTIONS_COD_INDICADOR_OPERACAO}
                   value={formNova.codIndicadorOperacao}
-                  onChange={(e) => handleFieldNova('codIndicadorOperacao', e.target.value)}
+                  onChange={(value) => handleFieldNova('codIndicadorOperacao', value)}
+                  enableSearch
+                  searchPlaceholder="Pesquisar código ou descrição..."
                   disabled={!formNova.cstIBSCBS.trim() || !formNova.classTribIBSCBS.trim()}
-                  placeholder={!formNova.cstIBSCBS.trim() || !formNova.classTribIBSCBS.trim() ? '—' : ''}
-                  style={{ width: '6rem' }}
+                  placeholder={!formNova.cstIBSCBS.trim() || !formNova.classTribIBSCBS.trim() ? '—' : 'Selecione...'}
+                  displayValue={formNova.codIndicadorOperacao || undefined}
+                  minDropdownWidth={540}
+                  renderOption={(opt) => opt.label}
+                  className="nfs-cindop-select"
                 />
-              </label>
+              </div>
               <button
                 type="button"
                 className="icon-button"
@@ -753,7 +822,7 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
           {/* PIS/Cofins/CSLL */}
           <div className="nfs-nova-fieldset">
             <div className="nfs-nova-fieldset__title">PIS/Cofins/CSLL</div>
-            <div className="nfs-nova-label"><span>Tipo Retenção</span><SearchableSelect enableSearch={false} options={OPTIONS_TIPO_RETENCAO} value={formNova.tipoRetencao} onChange={(v) => handleFieldNova('tipoRetencao', v)} disabled={isNfServico} className={formErrors.has('tipoRetencao') ? 'nfs-error' : ''} /></div>
+            <div className="nfs-nova-label">{getFieldLabel('Tipo Retenção', 'tipoRetencao')}<SearchableSelect enableSearch={false} options={OPTIONS_TIPO_RETENCAO} value={formNova.tipoRetencao} onChange={(v) => handleFieldNova('tipoRetencao', v)} disabled={isNfServico} className={getSelectClassName('tipoRetencao')} /></div>
             <div className="nfs-nova-pis-bottom">
               <div className="nfs-nova-pis-col">
                 <div className="nfs-nova-value-row"><span>IRRF</span><input value={formNova.irrf} onChange={(e) => handleFieldNova('irrf', e.target.value)} placeholder="0,00" /></div>

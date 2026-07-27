@@ -64,8 +64,8 @@ export const useDynamicMenu = () => {
                 const normalizedTitle = rawTitle.toLowerCase();
                 const baseTitle =
                   transactionCode.toUpperCase() === 'CFG008' ||
-                  normalizedTitle === 'sessoes qserpx' ||
-                  normalizedTitle === 'sessões qserpx'
+                    normalizedTitle === 'sessoes qserpx' ||
+                    normalizedTitle === 'sessões qserpx'
                     ? 'Sessões'
                     : rawTitle;
 
@@ -102,6 +102,7 @@ export const useDynamicMenu = () => {
               { title: 'Usuários', transactionCode: 'SEG001' },
               { title: 'Tipo de Apontamento', transactionCode: 'SEG002' },
               { title: 'Sessões', transactionCode: 'CFG008' },
+              { title: 'Parâmetros Gerais', transactionCode: 'CFG009' },
             ],
           };
 
@@ -123,30 +124,61 @@ export const useDynamicMenu = () => {
           nivel >= 9
             ? loaded
             : loaded
-                .map((item) => {
-                  const isSecurity = item.transactionCode === 'SEG' || item.title === 'Segurança';
-                  if (!isSecurity) return item;
+              .map((item) => {
+                const isSecurity = item.transactionCode === 'SEG' || item.title === 'Segurança';
+                if (!isSecurity) return item;
 
-                  const subitems = item.subitems.filter((sub) => {
-                    const code = String(sub.transactionCode || '').toUpperCase();
-                    const title = String(sub.title || '').toLowerCase();
-                    if (code === 'SEG001' || code === 'SEG002' || code === 'CFG008' || code === 'CFG009') return false;
-                    if (
-                      title.includes('usuario') ||
-                      title.includes('sessao') ||
-                      title.includes('sessoes') ||
-                      title.includes('tipo apont')
-                    ) {
-                      return false;
-                    }
-                    return true;
-                  });
+                const subitems = item.subitems.filter((sub) => {
+                  const code = String(sub.transactionCode || '').toUpperCase();
+                  const title = String(sub.title || '').toLowerCase();
+                  if (code === 'SEG001' || code === 'SEG002' || code === 'CFG008') return false;
+                  if (
+                    title.includes('usuario') ||
+                    title.includes('sessao') ||
+                    title.includes('sessoes') ||
+                    title.includes('tipo apont')
+                  ) {
+                    return false;
+                  }
+                  return true;
+                });
 
-                  return { ...item, subitems };
-                })
-                .filter((item) => item.subitems.length > 0);
+                return { ...item, subitems };
+              })
+              .filter((item) => item.subitems.length > 0);
 
-        setMenus(filteredByNivel);
+        // Migra a transacao SER003 do modulo Servico para o novo modulo Documentos Fiscais.
+        const menusComDocumentos = [...filteredByNivel];
+        const servicoIndex = menusComDocumentos.findIndex((item) => item.id === 'servico' || item.transactionCode === 'SER');
+        if (servicoIndex >= 0) {
+          const servicoMenu = menusComDocumentos[servicoIndex];
+          const fiscais = servicoMenu.subitems.filter((sub) => String(sub.transactionCode || '').toUpperCase() === 'SER003');
+
+          if (fiscais.length > 0) {
+            servicoMenu.subitems = servicoMenu.subitems.filter((sub) => String(sub.transactionCode || '').toUpperCase() !== 'SER003');
+
+            if (servicoMenu.subitems.length === 0) {
+              menusComDocumentos.splice(servicoIndex, 1);
+            }
+
+            const documentosMenu: MenuItem = {
+              id: 'documentos-fiscais',
+              title: 'Documentos Fiscais',
+              icon: 'document-text-outline',
+              transactionCode: 'DOC',
+              subitems: fiscais,
+            };
+
+            const fiscalIndex = menusComDocumentos.findIndex((item) => item.id === 'fiscal' || item.transactionCode === 'FIS');
+            if (fiscalIndex >= 0) {
+              menusComDocumentos.splice(fiscalIndex + 1, 0, documentosMenu);
+            } else {
+              menusComDocumentos.push(documentosMenu);
+            }
+          }
+        }
+
+        setMenus(menusComDocumentos);
       } finally {
         if (mounted) setLoading(false);
       }
