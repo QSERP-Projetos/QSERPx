@@ -53,7 +53,6 @@ export const getPedidoVendaForEdit = async (
   const isRepresentantes = Boolean(options?.isRepresentantes);
   const tipoPedidoVenda = isRepresentantes ? 2 : 1;
   const situacaoPedido = String(options?.situacaoPedido ?? (isRepresentantes ? 'Elaboração' : 'Todos')).trim();
-  const includeEmitente = isRepresentantes && nivelUsuario !== 9;
   const today = new Date();
   const dataHoje = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
 
@@ -65,7 +64,7 @@ export const getPedidoVendaForEdit = async (
     Situacao_Pedido: situacaoPedido || (isRepresentantes ? 'Elaboração' : 'Todos'),
     Codigo_Cliente: '',
     Codigo_Vendedor: '',
-    Emitente: includeEmitente ? emitente : '',
+    Emitente: emitente,
     Nivel_Usuario: String(nivelUsuario),
     Tipo_Pedido_Venda: String(tipoPedidoVenda),
   });
@@ -112,8 +111,7 @@ export const listPedidosVenda = async (params: {
     ...(params.situacaoPedido && { Situacao_Pedido: params.situacaoPedido }),
     ...(params.codigoCliente && { Codigo_Cliente: params.codigoCliente }),
     ...(params.codigoVendedor && { Codigo_Vendedor: params.codigoVendedor }),
-    ...(params.emitente && { Emitente: params.emitente }),
-    ...(params.emitente && { Codigo_Emitente: params.emitente }),
+    Emitente: params.emitente || GlobalConfig.getUsuario() || '',
   });
 
   const nivelStr = nivelUsuario?.toString() || '0';

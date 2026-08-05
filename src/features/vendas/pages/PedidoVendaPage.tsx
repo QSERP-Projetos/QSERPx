@@ -327,8 +327,6 @@ export function PedidoVendaPage({ isRepresentantes = false }: PedidoVendaPagePro
     setLoading(true);
     try {
       const usuario = GlobalConfig.getUsuario() || '';
-      const nivelUsuario = Number(GlobalConfig.getNivelUsuario() ?? 0);
-      const isNivel9 = nivelUsuario === 9;
       const tipoPedidoVenda = isRepresentantes ? 2 : 1;
 
       const params: any = {
@@ -337,11 +335,8 @@ export function PedidoVendaPage({ isRepresentantes = false }: PedidoVendaPagePro
         situacaoPedido: situacao || (isRepresentantes ? 'Elaboração' : 'Todos'),
         dataDe: dataInicio,
         dataAte: dataFim,
+        emitente: usuario,
       };
-
-      if (isRepresentantes && !isNivel9 && usuario) {
-        params.emitente = usuario;
-      }
 
       if (searchText.trim()) {
         params.numPedido = searchText.trim();
