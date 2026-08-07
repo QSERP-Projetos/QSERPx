@@ -31,4 +31,6 @@ export const ROUTES = {
   qualidadeFichaProcesso: '/qualidade/ficha-inspecao-processo',
   qualidadeFichaRecebimento: '/qualidade/ficha-inspecao-recebimento',
   financeiroContasReceber: '/financeiro/contas-receber',
+  qsAtualiza: '/qs-atualiza',
+  qsAtualizaVersoes: '/qs-atualiza/versoes',
 } as const;

@@ -4,6 +4,7 @@ import {
   IoArrowBack,
   IoAddOutline,
   IoCloseCircleOutline,
+  IoCloseOutline,
   IoFilterOutline,
   IoRefreshOutline,
   IoCheckmarkCircleOutline,
@@ -1366,7 +1367,36 @@ const LancamentoContasReceberModal = memo(function LancamentoContasReceberModal(
             <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--color-heading)' }}>
               Lançamento Contas a Receber
             </h2>
-            <span className="lancamento-badge">Pend.</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="lancamento-badge">Pend.</span>
+              <button
+                type="button"
+                aria-label="Fechar"
+                onClick={onClose}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--color-border)',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--color-text)',
+                  borderRadius: '4px',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--color-primary)';
+                  e.currentTarget.style.color = 'var(--color-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--color-border)';
+                  e.currentTarget.style.color = 'var(--color-text)';
+                }}
+              >
+                <IoCloseOutline size={18} />
+              </button>
+            </div>
           </header>
 
           {/* Body */}

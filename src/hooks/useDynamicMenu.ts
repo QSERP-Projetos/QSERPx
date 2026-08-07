@@ -93,6 +93,22 @@ export const useDynamicMenu = () => {
 
         const nivel = GlobalConfig.getNivelUsuario() ?? 0;
         if (nivel >= 9) {
+          const qsAtualizaMenu: MenuItem = {
+            id: 'qs-atualiza',
+            title: 'QS Atualiza',
+            icon: 'cloud-download-outline',
+            transactionCode: 'QSA',
+            subitems: [
+              { title: 'Configuração URL', transactionCode: 'QSA001' },
+              { title: 'Versões', transactionCode: 'QSA002' },
+            ],
+          };
+
+          const alreadyHasQsAtualiza = loaded.some((item) => item.id === 'qs-atualiza');
+          if (!alreadyHasQsAtualiza) {
+            loaded.push(qsAtualizaMenu);
+          }
+
           const securityMenu: MenuItem = {
             id: 'seguranca',
             title: 'Segurança',

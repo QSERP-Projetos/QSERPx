@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IoArrowBack, IoCloseOutline, IoConstructOutline } from 'react-icons/io5';
+import { IoArrowBack, IoCloseOutline, IoConstructOutline, IoHelpCircleOutline, IoCheckmarkCircle, IoCloseCircle } from 'react-icons/io5';
 import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
 import { SearchableSelect, type SearchableSelectOption } from '../../../components/SearchableSelect';
@@ -153,11 +153,20 @@ export function ParametrosGeraisPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<ActiveTab>('nfe');
-  const certificadoInputRef = useRef<HTMLInputElement | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loadingParametros, setLoadingParametros] = useState(false);
   const [modalCertificadoOpen, setModalCertificadoOpen] = useState(false);
+  const [modalHelpCertOpen, setModalHelpCertOpen] = useState(false);
+  const [deleteCertConfirmOpen, setDeleteCertConfirmOpen] = useState(false);
   const [devModalOpen, setDevModalOpen] = useState(false);
+  const [importConfirmOpen, setImportConfirmOpen] = useState(false);
+  const [importSaving, setImportSaving] = useState(false);
+  const [verifyingApiStatus, setVerifyingApiStatus] = useState(false);
+  const [verifyApiModalOpen, setVerifyApiModalOpen] = useState(false);
+  const [apiStatus, setApiStatus] = useState<'success' | 'error' | null>(null);
+  const [executingApi, setExecutingApi] = useState(false);
+  const [executeApiModalOpen, setExecuteApiModalOpen] = useState(false);
+  const [executeApiStatus, setExecuteApiStatus] = useState<'success' | 'error' | null>(null);
 
   // NF-e — topo
   const [gerenciador, setGerenciador] = useState('QSApi');
@@ -343,10 +352,97 @@ export function ParametrosGeraisPage() {
     }
   }, [showToast]);
 
+  const verificarStatusApi = useCallback(async () => {
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+
+    if (!baseUrl) {
+      setApiStatus('error');
+      return;
+    }
+
+    setVerifyingApiStatus(true);
+    try {
+      const response = await apiManager.makeApiCall<{ message?: string }>(
+        `${baseUrl.replace(/\/$/, '')}/api/v1/VerificarServicoApi`,
+        ApiCallType.GET,
+        token ? { Authorization: `Bearer ${token}` } : {},
+        {},
+      );
+
+      if (response.succeeded) {
+        setApiStatus('success');
+      } else {
+        setApiStatus('error');
+      }
+    } catch (error: any) {
+      setApiStatus('error');
+    } finally {
+      setVerifyingApiStatus(false);
+    }
+  }, []);
+
+  const handleVerificarStatusApi = () => {
+    setVerifyApiModalOpen(true);
+    void verificarStatusApi();
+  };
+
+  const executarServicoApi = useCallback(async () => {
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+
+    if (!baseUrl) {
+      setExecuteApiStatus('error');
+      setExecutingApi(false);
+      return;
+    }
+
+    try {
+      await apiManager.makeApiCall<{ message?: string }>(
+        `${baseUrl.replace(/\/$/, '')}/api/v1/ExecutarServicoApi`,
+        ApiCallType.PUT,
+        token ? { Authorization: `Bearer ${token}` } : {},
+        {},
+      );
+
+      // Aguardar 30 segundos antes de verificar
+      await new Promise((resolve) => setTimeout(resolve, 30000));
+
+      // Depois chamar a verificação
+      const verifyResponse = await apiManager.makeApiCall<{ message?: string }>(
+        `${baseUrl.replace(/\/$/, '')}/api/v1/VerificarServicoApi`,
+        ApiCallType.GET,
+        token ? { Authorization: `Bearer ${token}` } : {},
+        {},
+      );
+
+      if (verifyResponse.succeeded) {
+        setExecuteApiStatus('success');
+        setApiStatus('success');
+      } else {
+        setExecuteApiStatus('error');
+        setApiStatus('error');
+      }
+    } catch (error: any) {
+      setExecuteApiStatus('error');
+      setApiStatus('error');
+    } finally {
+      setExecutingApi(false);
+    }
+  }, []);
+
+  const handleExecutarServicoApi = () => {
+    setExecuteApiModalOpen(true);
+    setExecuteApiStatus(null);
+    setExecutingApi(true);
+    void executarServicoApi();
+  };
+
   useEffect(() => {
     if (activeTab !== 'nfe') return;
     void carregarParametrosNfe();
-  }, [activeTab, carregarParametrosNfe]);
+    void verificarStatusApi();
+  }, [activeTab, carregarParametrosNfe, verificarStatusApi]);
 
   const handleClose = () => {
     if (window.history.length > 1) {
@@ -494,24 +590,54 @@ export function ParametrosGeraisPage() {
     setModalCertificadoOpen(false);
   };
 
-  const handleOpenCertificadoExplorer = () => {
-    certificadoInputRef.current?.click();
+  const handleOpenHelpCertModal = () => {
+    setModalHelpCertOpen(true);
   };
 
-  const handleCertificadoFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const selected = event.target.files?.[0];
-    if (!selected) return;
-
-    setCertEndereco(selected.name);
-    event.target.value = '';
+  const handleCloseHelpCertModal = () => {
+    setModalHelpCertOpen(false);
   };
 
   const handleLimparCertificado = () => {
-    setCertEndereco('');
-    setCertSenha('');
-    setCertValidadeInicio('');
-    setCertValidadeFim('');
+    setDeleteCertConfirmOpen(true);
   };
+
+  const deletarCertificado = useCallback(async () => {
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+    const codigoEmpresa = GlobalConfig.getCodEmpresa();
+
+    if (!baseUrl || !codigoEmpresa) {
+      showToast('Informações de sessão não encontradas.', 'error');
+      return;
+    }
+
+    setLoadingParametros(true);
+    try {
+      const response = await apiManager.makeApiCall<{ message?: string }>(
+        `${baseUrl.replace(/\/$/, '')}/api/v1/DeletarCertificado/${codigoEmpresa}`,
+        ApiCallType.DELETE,
+        token ? { Authorization: `Bearer ${token}` } : {},
+        {},
+      );
+
+      if (response.succeeded) {
+        showToast(response.jsonBody?.message || 'Certificado deletado com sucesso!', 'success');
+        setCertEndereco('');
+        setCertSenha('');
+        setCertValidadeInicio('');
+        setCertValidadeFim('');
+        return;
+      }
+
+      const message = String(response.jsonBody?.message ?? response.data?.message ?? response.bodyText ?? '').trim();
+      showToast(message || 'Erro ao deletar o certificado.', 'error');
+    } catch (error: any) {
+      showToast(error?.message || 'Erro ao deletar o certificado.', 'error');
+    } finally {
+      setLoadingParametros(false);
+    }
+  }, [showToast]);
 
   const handleImportarCertificado = () => {
     if (!isEditing) return;
@@ -520,9 +646,57 @@ export function ParametrosGeraisPage() {
       showToast('Selecione um certificado .pfx para importar.', 'error');
       return;
     }
-    showToast('Certificado preparado para importação.', 'success');
-    setModalCertificadoOpen(false);
+
+    if (!certSenha) {
+      showToast('Informe a senha do certificado.', 'error');
+      return;
+    }
+
+    setImportConfirmOpen(true);
   };
+
+  const handleConfirmImportarCertificado = useCallback(async () => {
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+    const codigoEmpresa = GlobalConfig.getCodEmpresa();
+
+    if (!baseUrl || !codigoEmpresa) {
+      showToast('Informações de sessão não encontradas.', 'error');
+      return;
+    }
+
+    setImportSaving(true);
+    setImportConfirmOpen(false);
+
+    try {
+      const payload = {
+        CodigoEmpresa: Number(codigoEmpresa),
+        CaminhoArq: certEndereco,
+        SenhaCert: certSenha,
+      };
+
+      const response = await apiManager.makeApiCall<{ message?: string }>(`${baseUrl.replace(/\/$/, '')}/api/v1/validaCertificado`,
+        ApiCallType.POST,
+        token ? { Authorization: `Bearer ${token}` } : {},
+        {},
+        payload,
+      );
+
+      if (response.succeeded) {
+        showToast(response.jsonBody?.message || 'Certificado importado com sucesso!', 'success');
+        setModalCertificadoOpen(false);
+        await carregarParametrosNfe();
+        return;
+      }
+
+      const message = String(response.jsonBody?.message ?? response.data?.message ?? response.bodyText ?? '').trim();
+      showToast(message || 'Erro ao importar o certificado.', 'error');
+    } catch (error: any) {
+      showToast(error?.message || 'Erro ao importar o certificado.', 'error');
+    } finally {
+      setImportSaving(false);
+    }
+  }, [certEndereco, certSenha, showToast, carregarParametrosNfe]);
 
   const isFormLocked = !isEditing || loadingParametros;
 
@@ -602,8 +776,16 @@ export function ParametrosGeraisPage() {
                 {/* Linha 2: Botões de ação */}
                 <div className="nfe-params-btns">
                   <button type="button" className="nfe-params-btn" onClick={handleOpenCertificadoModal} disabled={isFormLocked}>Certificado digital</button>
-                  <button type="button" className="nfe-params-btn" disabled={isFormLocked}>Executar API&apos;s GOV</button>
-                  <button type="button" className="nfe-params-btn" disabled={isFormLocked}>Verificar Status API&apos;s GOV</button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <button type="button" className="nfe-params-btn" onClick={handleExecutarServicoApi} disabled={isFormLocked || executingApi}>Executar API&apos;s GOV</button>
+                    {executeApiStatus === 'success' && <IoCheckmarkCircle size={24} style={{ color: '#10b981' }} title="Status OK" />}
+                    {executeApiStatus === 'error' && <IoCloseCircle size={24} style={{ color: '#ef4444' }} title="Status erro" />}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <button type="button" className="nfe-params-btn" onClick={handleVerificarStatusApi} disabled={isFormLocked || verifyingApiStatus}>Verificar Status API&apos;s GOV</button>
+                    {apiStatus === 'success' && <IoCheckmarkCircle size={24} style={{ color: '#10b981' }} title="Status OK" />}
+                    {apiStatus === 'error' && <IoCloseCircle size={24} style={{ color: '#ef4444' }} title="Status erro" />}
+                  </div>
                 </div>
 
                 {loadingParametros && <p className="nfe-params-loading">Carregando parâmetros de NF-e...</p>}
@@ -1292,26 +1474,19 @@ export function ParametrosGeraisPage() {
                       value={certEndereco}
                       onChange={(event) => setCertEndereco(event.target.value)}
                       disabled={!isEditing}
+                      placeholder="Caminho completo do certificado (ex: C:\Certificados\cert.pfx)"
                     />
                     <button
                       type="button"
                       className="icon-button module-action-button clientes-cep-search"
-                      onClick={handleOpenCertificadoExplorer}
-                      aria-label="Selecionar certificado"
-                      title="Selecionar certificado"
+                      onClick={handleOpenHelpCertModal}
+                      aria-label="Informações sobre caminho do certificado"
+                      title="Como informar o caminho?"
                       disabled={!isEditing}
                     >
-                      ...
+                      <IoHelpCircleOutline size={20} />
                     </button>
                   </div>
-
-                  <input
-                    ref={certificadoInputRef}
-                    type="file"
-                    accept=".pfx"
-                    style={{ display: 'none' }}
-                    onChange={handleCertificadoFileChange}
-                  />
                 </label>
 
                 <label>
@@ -1339,10 +1514,10 @@ export function ParametrosGeraisPage() {
                 <button type="button" className="secondary-button" onClick={handleLimparCertificado} disabled={!isEditing}>
                   Limpar
                 </button>
-                <button type="button" className="secondary-button" onClick={handleCloseCertificadoModal}>
+                <button type="button" className="secondary-button" onClick={handleCloseCertificadoModal} disabled={importSaving}>
                   Fechar
                 </button>
-                <button type="button" className="primary-button" onClick={handleImportarCertificado} disabled={!isEditing}>
+                <button type="button" className="primary-button" onClick={handleImportarCertificado} disabled={!isEditing || importSaving}>
                   Importar
                 </button>
               </div>
@@ -1350,6 +1525,273 @@ export function ParametrosGeraisPage() {
           </article>
         </section>
       )}
+
+      {importConfirmOpen && (
+        <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Confirmar importação de certificado">
+          <article className="modal-card modal-card--confirm">
+            <header className="modal-card__header">
+              <h2>Confirmar Importação</h2>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Fechar"
+                onClick={() => setImportConfirmOpen(false)}
+                disabled={importSaving}
+              >
+                <IoCloseOutline size={18} />
+              </button>
+            </header>
+            <div className="modal-card__body modal-card__body--confirm">
+              <p>Deseja importar o certificado digital?</p>
+            </div>
+            <footer className="nfs-nova-footer">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setImportConfirmOpen(false)}
+                disabled={importSaving}
+              >
+                Não
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={handleConfirmImportarCertificado}
+                disabled={importSaving}
+              >
+                {importSaving ? 'Importando...' : 'Sim'}
+              </button>
+            </footer>
+          </article>
+        </section>
+      )}
+
+      {verifyApiModalOpen && (
+        <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Verificando status da API GOV">
+          <article className="modal-card modal-card--confirm">
+            <div className="modal-card__body modal-card__body--confirm" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+              {verifyingApiStatus ? (
+                <>
+                  <div style={{
+                    display: 'inline-flex',
+                    marginBottom: '1rem'
+                  }}>
+                    <div className="loader" style={{
+                      width: '40px',
+                      height: '40px',
+                      border: '4px solid #e5e7eb',
+                      borderTop: '4px solid #3b82f6',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }}></div>
+                  </div>
+                  <p style={{ fontSize: '1rem', fontWeight: '500' }}>Aguarde... Verificando status da API GOV!</p>
+                </>
+              ) : (
+                <>
+                  {apiStatus === 'success' ? (
+                    <>
+                      <IoCheckmarkCircle size={64} style={{ color: '#10b981', marginBottom: '1rem' }} />
+                      <p style={{ fontSize: '1rem', fontWeight: '500', color: '#10b981' }}>Status OK! API GOV funcionando normalmente.</p>
+                    </>
+                  ) : (
+                    <>
+                      <IoCloseCircle size={64} style={{ color: '#ef4444', marginBottom: '1rem' }} />
+                      <p style={{ fontSize: '1rem', fontWeight: '500', color: '#ef4444' }}>Erro ao conectar com a API GOV.</p>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+            {!verifyingApiStatus && (
+              <footer className="nfs-nova-footer">
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => setVerifyApiModalOpen(false)}
+                >
+                  Fechar
+                </button>
+              </footer>
+            )}
+          </article>
+          <style>{`
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </section>
+      )}
+
+      {executeApiModalOpen && (
+        <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Executando API GOV">
+          <article className="modal-card modal-card--confirm">
+            <div className="modal-card__body modal-card__body--confirm" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+              {executingApi ? (
+                <>
+                  <div style={{
+                    display: 'inline-flex',
+                    marginBottom: '1rem'
+                  }}>
+                    <div className="loader" style={{
+                      width: '40px',
+                      height: '40px',
+                      border: '4px solid #e5e7eb',
+                      borderTop: '4px solid #10b981',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }}></div>
+                  </div>
+                  <p style={{ fontSize: '1rem', fontWeight: '500' }}>Iniciando API GOV!</p>
+                </>
+              ) : (
+                <>
+                  {executeApiStatus === 'success' ? (
+                    <>
+                      <IoCheckmarkCircle size={64} style={{ color: '#10b981', marginBottom: '1rem' }} />
+                      <p style={{ fontSize: '1rem', fontWeight: '500', color: '#10b981' }}>API GOV iniciada com sucesso!</p>
+                    </>
+                  ) : (
+                    <>
+                      <IoCloseCircle size={64} style={{ color: '#ef4444', marginBottom: '1rem' }} />
+                      <p style={{ fontSize: '1rem', fontWeight: '500', color: '#ef4444' }}>Erro ao iniciar a API GOV.</p>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+            {!executingApi && (
+              <footer className="nfs-nova-footer">
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => setExecuteApiModalOpen(false)}
+                >
+                  Fechar
+                </button>
+              </footer>
+            )}
+          </article>
+          <style>{`
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </section>
+      )}
+
+      {deleteCertConfirmOpen && (
+        <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Confirmar exclusão de certificado">
+          <article className="modal-card modal-card--confirm">
+            <header className="modal-card__header">
+              <h2>Excluir Certificado Digital</h2>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Fechar"
+                onClick={() => setDeleteCertConfirmOpen(false)}
+                disabled={loadingParametros}
+              >
+                <IoCloseOutline size={18} />
+              </button>
+            </header>
+            <div className="modal-card__body modal-card__body--confirm">
+              <p style={{ marginBottom: '1rem' }}>
+                Deseja realmente excluir esse certificado?
+              </p>
+              <div style={{
+                backgroundColor: '#fef3c7',
+                border: '1px solid #fbbf24',
+                borderRadius: '4px',
+                padding: '1rem',
+                marginTop: '1rem'
+              }}>
+                <p style={{ margin: '0', color: '#92400e', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                  <strong>⚠️ Aviso:</strong> Se outro certificado não for informado, o processo de emissão de NF-e será paralizado.
+                </p>
+              </div>
+            </div>
+            <footer className="nfs-nova-footer">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setDeleteCertConfirmOpen(false)}
+                disabled={loadingParametros}
+              >
+                Não
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => {
+                  setDeleteCertConfirmOpen(false);
+                  void deletarCertificado();
+                }}
+                disabled={loadingParametros}
+              >
+                {loadingParametros ? 'Deletando...' : 'Sim, excluir'}
+              </button>
+            </footer>
+          </article>
+        </section>
+      )}
+
+      {modalHelpCertOpen && (
+        <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Informações sobre certificado digital">
+          <article className="modal-card">
+            <header className="modal-card__header">
+              <h2>Caminho do Certificado Digital</h2>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Fechar"
+                onClick={handleCloseHelpCertModal}
+              >
+                <IoCloseOutline size={18} />
+              </button>
+            </header>
+
+            <div className="modal-card__body" style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem' }}>
+              <p style={{ marginBottom: '1.5rem', lineHeight: '1.6', fontSize: '0.95rem' }}>
+                O caminho do certificado deve ser uma <strong>localização de rede</strong> e não um caminho local.
+              </p>
+
+              <p style={{ marginBottom: '1rem', fontWeight: '600', fontSize: '0.95rem' }}>
+                Exemplos de caminhos válidos:
+              </p>
+
+              <ul style={{ marginLeft: '2rem', marginBottom: '1.5rem', lineHeight: '2', fontSize: '0.9rem', backgroundColor: '#f5f5f5', padding: '1rem', borderRadius: '4px' }}>
+                <li><code>\\server\compartilhado\certificados\empresa.pfx</code></li>
+                <li><code>\\192.168.1.100\certs\certificado.pfx</code></li>
+                <li><code>\\SERVIDOR\Backup\NFe\cert_empresa_2025.pfx</code></li>
+              </ul>
+
+              <p style={{ marginBottom: '1rem', fontWeight: '600', fontSize: '0.95rem' }}>
+                Para encontrar o caminho completo:
+              </p>
+              <ol style={{ marginLeft: '2rem', lineHeight: '1.9', fontSize: '0.9rem' }}>
+                <li>Abra o Explorador de Arquivos</li>
+                <li>Navegue até o arquivo .pfx</li>
+                <li>Clique com botão direito e selecione "Copiar como caminho"</li>
+                <li>Cole o caminho no campo acima</li>
+              </ol>
+            </div>
+
+            <footer className="modal-card__footer">
+              <button
+                type="button"
+                className="primary-button"
+                onClick={handleCloseHelpCertModal}
+              >
+                Entendido
+              </button>
+            </footer>
+          </article>
+        </section>
+      )}
     </>
   );
 }
+

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IoCloseOutline, IoEyeOffOutline, IoEyeOutline, IoLogInOutline } from 'react-icons/io5';
+import { IoAlertCircleOutline, IoCloseOutline, IoEyeOffOutline, IoEyeOutline, IoLogInOutline } from 'react-icons/io5';
 import { APP_NAME, APP_VERSION } from '../constants/appInfo';
 import { ROUTES } from '../constants/routes';
 import { GlobalConfig } from '../services/globalConfig';
@@ -9,7 +9,6 @@ import {
   loginCall,
   loginUsuarioCall,
   tokenCall,
-  usuarioDetalheCall,
 } from '../services/apiCalls';
 import { completeCompanySession } from '../services/authFlow';
 import { useTheme } from '../contexts/ThemeContext';
@@ -31,6 +30,7 @@ export function LoginPage() {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [hdSemLicenca, setHdSemLicenca] = useState<string | null>(null);
+  const [licencaBloqueadaMensagem, setLicencaBloqueadaMensagem] = useState<string | null>(null);
 
   useEffect(() => {
     // Verificar se há URL configurada
@@ -127,25 +127,65 @@ export function LoginPage() {
         .trim()
         .toUpperCase();
 
+      // Busca detalhes do usuário para obter nivel_Usuario
+      let nivelUsuarioLogin = 0;
       try {
-        const userDetalheResp = await usuarioDetalheCall(baseUrl, tokenTipo1, codigoUsuarioDetalhe);
-        const userDetalheData = (userDetalheResp.data as any) || (userDetalheResp.jsonBody as any) || {};
-
-        if (userDetalheResp.succeeded) {
+        const userDetUrl = `${baseUrl.replace(/\/$/, '')}/api/v1/usuarios/${codigoUsuarioDetalhe}`;
+        const userDetRes = await fetch(userDetUrl, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${tokenTipo1}`, 'Content-Type': 'application/json' },
+        });
+        if (userDetRes.ok) {
+          const det = await userDetRes.json() as Record<string, unknown>;
+          nivelUsuarioLogin = Number(
+            det?.nivel_Usuario ?? det?.nivel_usuario ?? det?.Nivel_Usuario ?? 0
+          ) || 0;
           GlobalConfig.setTipoMenuSistema(
-            userDetalheData?.Tipo_Menu_Qserpx ??
-            userDetalheData?.tipo_Menu_Qserpx ??
-            userDetalheData?.tipo_Menu_QSERPx ??
-            userDetalheData?.tipo_menu_qserpx ??
-            userDetalheData?.tipo_Menu ??
-            userDetalheData?.tipo_menu ??
-            userDetalheData?.menu_Sistema ??
-            userDetalheData?.menu_sistema ??
-            userDetalheData?.menu,
+            det?.Tipo_Menu_Qserpx ?? det?.tipo_Menu_Qserpx ?? det?.tipo_Menu_QSERPx ??
+            det?.tipo_menu_qserpx ?? det?.tipo_Menu ?? det?.tipo_menu ??
+            det?.menu_Sistema ?? det?.menu_sistema ?? det?.menu,
           );
         }
       } catch {
-        // Não bloquear login por falha pontual nesta consulta; o tipo de menu é validado novamente no fluxo da sessão.
+        // Não bloquear login por falha pontual; o tipo de menu é validado no fluxo da sessão.
+      }
+
+      // Busca código de licença
+      let codigoLicencaAtual: number | null = null;
+      try {
+        const authHeader = { 'Authorization': `Bearer ${tokenTipo1}`, 'Content-Type': 'application/json' };
+        const licencaRes = await fetch(`${baseUrl.replace(/\/$/, '')}/api/v1/buscaLicencaAtual`, { method: 'GET', headers: authHeader });
+        if (licencaRes.ok) {
+          const licencaData = await licencaRes.json() as { codigoLicenca?: number };
+          if (licencaData.codigoLicenca != null) {
+            codigoLicencaAtual = typeof licencaData.codigoLicenca === 'number'
+              ? licencaData.codigoLicenca
+              : parseInt(String(licencaData.codigoLicenca), 10);
+            if (!Number.isNaN(codigoLicencaAtual)) GlobalConfig.setCodigoLicenca(codigoLicencaAtual);
+            else codigoLicencaAtual = null;
+          }
+        }
+      } catch {
+        // silently ignore
+      }
+
+      // Verifica se a licença está bloqueada
+      if (codigoLicencaAtual != null) {
+        try {
+          const verificaUrl = `${baseUrl.replace(/\/$/, '')}/api/v1/verificalicencabloqueada` +
+            `?CodigoLicenca=${codigoLicencaAtual}&codigoUsuario=${codigoUsuarioDetalhe}&nivelUsuario=${nivelUsuarioLogin}`;
+          const verificaRes = await fetch(verificaUrl, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${tokenTipo1}`, 'Content-Type': 'application/json' },
+          });
+          if (!verificaRes.ok) {
+            const errData = await verificaRes.json().catch(() => ({})) as { message?: string };
+            setLicencaBloqueadaMensagem(errData?.message || 'Sistema inacessível. Entre em contato com o suporte.');
+            return;
+          }
+        } catch {
+          // silently ignore — se não conseguir verificar, prossegue
+        }
       }
 
       const loginUsuarioResp = await loginUsuarioCall(baseUrl, tokenTipo1, usuarioUpper);
@@ -284,6 +324,43 @@ export function LoginPage() {
           Resetar URL e nova conexão
         </button>
       </section>
+
+      {licencaBloqueadaMensagem && (
+        <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Sistema inacessível">
+          <article className="modal-card">
+            <header
+              className="modal-card__header"
+              style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '0.875rem' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                <IoAlertCircleOutline size={22} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                <h2 style={{ fontSize: '1rem', fontWeight: 600 }}>Sistema Inacessível</h2>
+              </div>
+            </header>
+            <div className="modal-card__body" style={{ padding: '1rem 0.25rem 0.5rem' }}>
+              <p style={{ lineHeight: '1.7', fontSize: '0.925rem' }}>{licencaBloqueadaMensagem}</p>
+            </div>
+            <footer
+              className="modal-card__footer"
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                borderTop: '1px solid var(--color-border)',
+                paddingTop: '0.875rem',
+              }}
+            >
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => setLicencaBloqueadaMensagem(null)}
+                style={{ width: 'auto', minWidth: '80px' }}
+              >
+                OK
+              </button>
+            </footer>
+          </article>
+        </section>
+      )}
 
       {hdSemLicenca && (
         <section className="modal-backdrop" role="dialog" aria-modal="true">

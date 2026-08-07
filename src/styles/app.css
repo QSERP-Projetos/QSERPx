@@ -9254,10 +9254,10 @@ select.text-field:focus {
 
 /* Financial values section */
 .lancamento-values-box {
-  border: 1px solid var(--color-border-soft);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm, 10px);
   padding: 8px 10px;
-  background: var(--color-surface-alt);
+  background: transparent;
   display: flex;
   flex-direction: column;
   gap: 6px;

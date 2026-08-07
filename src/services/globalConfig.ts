@@ -21,15 +21,17 @@ type SessionData = {
 
 declare global {
   interface Window {
-    __QSERPX_CONFIG__?: { baseUrl?: string };
+    __QSERPX_CONFIG__?: { baseUrl?: string; baseUrlQSAtualiza?: string };
   }
 }
 
 const STORAGE_KEYS = {
   baseUrl: 'baseUrl',
   baseUrlPersistent: 'qserpx_baseUrl_persistent',
+  baseUrlQSAtualiza: 'qserpx_baseUrl_qs_atualiza',
   session: 'sessionData',
   uuid: 'uuidNavegador',
+  codigoLicenca: 'qserpx_codigo_licenca',
 } as const;
 
 const defaultSession: SessionData = {
@@ -101,6 +103,8 @@ const safeRemove = (key: string): void => {
 export class GlobalConfig {
   private static session: SessionData = { ...defaultSession };
   private static baseUrl = '';
+  private static codigoLicenca: number | null = null;
+  private static _atualizando = false;
 
   /**
    * Salva URL com persistência robusta (sessionStorage + localStorage)
@@ -110,10 +114,10 @@ export class GlobalConfig {
     if (!cleanUrl) return;
 
     this.baseUrl = cleanUrl;
-    
+
     // Salvar no sessionStorage (cache)
     safeSet(STORAGE_KEYS.baseUrl, cleanUrl);
-    
+
     // Salvar no localStorage (persistente)
     try {
       window.localStorage.setItem(STORAGE_KEYS.baseUrlPersistent, cleanUrl);
@@ -169,6 +173,17 @@ export class GlobalConfig {
     const serverUrl = window.__QSERPX_CONFIG__?.baseUrl;
     if (serverUrl) return serverUrl;
     return this.baseUrl;
+  }
+
+  static getBaseUrlQSAtualiza(): string {
+    const fromConfig = window.__QSERPX_CONFIG__?.baseUrlQSAtualiza ?? '';
+    if (fromConfig) return fromConfig;
+    return safeGet(STORAGE_KEYS.baseUrlQSAtualiza) ?? '';
+  }
+
+  static setBaseUrlQSAtualiza(url: string): void {
+    const clean = url?.trim() ?? '';
+    safeSet(STORAGE_KEYS.baseUrlQSAtualiza, clean);
   }
 
   static async clearBaseUrl(): Promise<void> {
@@ -397,5 +412,37 @@ export class GlobalConfig {
 
   static isMenuSimplificado(): boolean {
     return this.getTipoMenuSistema() === 'simplificado';
+  }
+
+  static setCodigoLicenca(value: number | null): void {
+    this.codigoLicenca = value;
+    if (value !== null) {
+      safeSet(STORAGE_KEYS.codigoLicenca, String(value));
+    } else {
+      safeRemove(STORAGE_KEYS.codigoLicenca);
+    }
+  }
+
+  static getCodigoLicenca(): number | null {
+    if (this.codigoLicenca !== null) return this.codigoLicenca;
+    const stored = safeGet(STORAGE_KEYS.codigoLicenca);
+    if (stored) {
+      const num = parseInt(stored, 10);
+      if (!Number.isNaN(num)) {
+        this.codigoLicenca = num;
+        return num;
+      }
+    }
+    return null;
+  }
+
+  static setAtualizando(value: boolean): void {
+    this._atualizando = value;
+    if (value) sessionStorage.setItem('qserpx_atualizando', '1');
+    else sessionStorage.removeItem('qserpx_atualizando');
+  }
+
+  static isAtualizando(): boolean {
+    return this._atualizando || sessionStorage.getItem('qserpx_atualizando') === '1';
   }
 }

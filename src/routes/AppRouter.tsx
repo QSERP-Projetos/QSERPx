@@ -27,6 +27,8 @@ import { OrdensManutencaoPage } from '../features/manutencao/pages/OrdensManuten
 import { FichaInspecaoProcessoPage } from '../features/qualidade/pages/FichaInspecaoProcessoPage';
 import { FichaInspecaoRecebimentoPage } from '../features/qualidade/pages/FichaInspecaoRecebimentoPage';
 import { ContasReceberPage } from '../features/financeiro/pages/ContasReceberPage';
+import { QsAtualizaPage } from '../features/qs-atualiza/pages/QsAtualizaPage';
+import { VersoesPage } from '../features/qs-atualiza/pages/VersoesPage';
 import { AppShellLayout } from '../layouts/AppShellLayout';
 
 const DashboardFinanceiroPage = lazy(() =>
@@ -119,6 +121,8 @@ export function AppRouter() {
           <Route path={ROUTES.qualidadeFichaProcesso} element={<FichaInspecaoProcessoPage />} />
           <Route path={ROUTES.qualidadeFichaRecebimento} element={<FichaInspecaoRecebimentoPage />} />
           <Route path={ROUTES.financeiroContasReceber} element={<ContasReceberPage />} />
+          <Route path={ROUTES.qsAtualiza} element={<QsAtualizaPage />} />
+          <Route path={ROUTES.qsAtualizaVersoes} element={<VersoesPage />} />
         </Route>
       </Route>
 

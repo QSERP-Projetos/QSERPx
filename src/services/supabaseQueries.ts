@@ -1,5 +1,41 @@
 import { supabase } from './supabase';
 
+export type SistemaVersao = {
+  id: number;
+  num_versao: string;
+  data_versao: string | null;
+  id_sistema: number | null;
+  script_sql: string | null;
+  sistema_dependencia: string | null;
+  caminho_backup: string | null;
+  url_download: string | null;
+  script_postgres: string | null;
+};
+
+export const buscarVersoesQsErp = async (): Promise<SistemaVersao[]> => {
+  const { data, error } = await supabase
+    .from('sistema_versao')
+    .select('*')
+    .eq('id_sistema', 3)
+    .not('url_download', 'is', null)
+    .neq('url_download', '')
+    .order('num_versao', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as SistemaVersao[];
+};
+
+export const buscarVersoesPorSistema = async (idSistema: number): Promise<SistemaVersao[]> => {
+  const { data, error } = await supabase
+    .from('sistema_versao')
+    .select('*')
+    .eq('id_sistema', idSistema)
+    .not('url_download', 'is', null)
+    .neq('url_download', '')
+    .order('num_versao', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as SistemaVersao[];
+};
+
 export type LicencaParams = {
   idCliente?: string;
   idLicenca?: string;

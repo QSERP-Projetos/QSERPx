@@ -128,7 +128,8 @@ export function SearchableSelect({
 
       const spaceBelow = Math.max(160, viewportHeight - rect.bottom - 14);
       const spaceAbove = Math.max(160, rect.top - 14);
-      const shouldDropUp = dropUp || spaceBelow < 220;
+      const minNeededSpace = enableSearch ? 220 : 140;
+      const shouldDropUp = dropUp || spaceBelow < minNeededSpace;
 
       const maxHeight = Math.max(160, shouldDropUp ? spaceAbove : spaceBelow);
       const top = shouldDropUp ? rect.top - 6 : rect.bottom + 6;

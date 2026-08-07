@@ -12,4 +12,5 @@
 
 globalThis.__QSERPX_CONFIG__ = {
   baseUrl: "",
+  baseUrlQSAtualiza: "",
 };

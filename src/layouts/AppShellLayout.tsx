@@ -4,6 +4,7 @@ import { IoCloseOutline, IoHomeOutline, IoLogOutOutline, IoMenuOutline } from 'r
 import { createPortal } from 'react-dom';
 import { Sidebar } from '../components/Sidebar';
 import { ConfigScreen } from '../components/ConfigScreen';
+import { QsAtualizaPage } from '../features/qs-atualiza/pages/QsAtualizaPage';
 import { APP_NAME, APP_VERSION } from '../constants/appInfo';
 import { ROUTES } from '../constants/routes';
 import { STORAGE_KEYS } from '../constants/storageKeys';
@@ -46,6 +47,8 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
     SER003: ROUTES.servicoNotaFiscal,
     MAN001: ROUTES.manutencaoOrdens,
     FIN001: ROUTES.financeiroContasReceber,
+    QSA001: ROUTES.qsAtualiza,
+    QSA002: ROUTES.qsAtualizaVersoes,
   };
 
   const dashboardRouteByTitle =
@@ -136,6 +139,8 @@ export function AppShellLayout() {
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [logoutPending, setLogoutPending] = useState(false);
   const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [qsAtualizaModalOpen, setQsAtualizaModalOpen] = useState(false);
+  const [atualizandoAtivo, setAtualizandoAtivo] = useState(() => GlobalConfig.isAtualizando());
 
   const userName = useMemo(() => GlobalConfig.getUsuario() || '', []);
   const companyName = useMemo(() => GlobalConfig.getNomeEmpresa() || '', []);
@@ -160,7 +165,7 @@ export function AppShellLayout() {
       }
     };
 
-    const interval = setInterval(() => { void verificarSessao(); }, 60_000);
+    const interval = setInterval(() => { void verificarSessao(); }, 10_000);
     return () => clearInterval(interval);
   }, [navigate]);
 
@@ -206,6 +211,10 @@ export function AppShellLayout() {
 
   const handleLogout = async () => {
     if (logoutPending) return;
+    if (GlobalConfig.isAtualizando()) {
+      showToast('Não é possível sair durante uma atualização em andamento.', 'error');
+      return;
+    }
 
     setLogoutPending(true);
 
@@ -239,6 +248,22 @@ export function AppShellLayout() {
     };
   }, [handleLogout]);
 
+  // Rastreia atualização em andamento via evento do VersoesPage
+  useEffect(() => {
+    const onAtualizando = (e: Event) => {
+      setAtualizandoAtivo((e as CustomEvent<{ active: boolean }>).detail.active);
+    };
+    window.addEventListener('qserpx:atualizando', onAtualizando);
+    return () => window.removeEventListener('qserpx:atualizando', onAtualizando);
+  }, []);
+
+  // Bloqueia navegação fora do QS Atualiza durante uma atualização em andamento
+  useEffect(() => {
+    if (GlobalConfig.isAtualizando() && !location.pathname.startsWith(ROUTES.qsAtualiza)) {
+      navigate(ROUTES.qsAtualizaVersoes, { replace: true });
+    }
+  }, [location.pathname, navigate]);
+
   const handleNavigateTransaction = (transactionCode: string, title: string) => {
     const normalizedCode = String(transactionCode || '').toUpperCase();
     const normalizedTitle = String(title || '')
@@ -246,6 +271,12 @@ export function AppShellLayout() {
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase();
     const isDashboardCode = normalizedCode.startsWith('DSB');
+
+    if (normalizedCode === 'QSA001') {
+      setMobileNavOpen(false);
+      setQsAtualizaModalOpen(true);
+      return;
+    }
 
     if (
       (isDashboardCode && normalizedTitle.includes('compr')) ||
@@ -276,6 +307,22 @@ export function AppShellLayout() {
       data-menu-mode={menuSimplificadoAtivo ? 'simplificado' : 'padrao'}
     >
       {!menuSimplificadoAtivo && mobileNavOpen ? <div className="sidebar-overlay" onClick={() => setMobileNavOpen(false)} aria-hidden="true" /> : null}
+
+      {atualizandoAtivo && !menuSimplificadoAtivo && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: 'var(--sidebar-width)',
+            bottom: 0,
+            zIndex: 200,
+            cursor: 'not-allowed',
+            backgroundColor: 'rgba(0,0,0,0.4)',
+          }}
+        />
+      )}
 
       {!menuSimplificadoAtivo ? (
         <Sidebar
@@ -332,6 +379,24 @@ export function AppShellLayout() {
         ) : null}
 
         <div className="app-shell__content">
+          {atualizandoAtivo && (
+            <div style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 100,
+              backgroundColor: '#d97706',
+              color: '#fff',
+              padding: '0.5rem 1.25rem',
+              fontWeight: 600,
+              fontSize: '0.875rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              letterSpacing: '0.01em',
+            }}>
+              ⏳ Atualização em andamento — módulos bloqueados até a conclusão.
+            </div>
+          )}
           <Outlet />
         </div>
       </main>
@@ -412,6 +477,28 @@ export function AppShellLayout() {
           </article>
         </section>
       ) : null}
+
+      {qsAtualizaModalOpen
+        ? createPortal(
+          <section
+            className="modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Configuração Site QS Atualiza"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                setQsAtualizaModalOpen(false);
+              }
+            }}
+          >
+            <QsAtualizaPage
+              embedded
+              onClose={() => setQsAtualizaModalOpen(false)}
+            />
+          </section>,
+          document.body,
+        )
+        : null}
 
       {configModalOpen
         ? createPortal(
