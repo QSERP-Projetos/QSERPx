@@ -22,6 +22,7 @@ import { EditarPedidoVendaFormPanel, NovoPedidoVendaFormPanel } from './NovoPedi
 import {
   deletarPedidoVenda,
   duplicarPedidoVenda,
+  getPedidoVendaForEdit,
   listPedidosVenda,
   type PedidoVenda,
 } from '../../../services/pedidoVendaApi';
@@ -78,6 +79,20 @@ const getPedidoValorRaw = (pedido: any) => {
     pedido?.valorTotal ??
     0
   );
+};
+
+const getPedidoEmitenteRaw = (pedido: any) => {
+  return String(
+    pedido?.codigo_Emitente ??
+      pedido?.Codigo_Emitente ??
+      pedido?.emitente ??
+      pedido?.Emitente ??
+      pedido?.codigo_Usuario ??
+      pedido?.Codigo_Usuario ??
+      pedido?.usuario_Emitente ??
+      pedido?.usuarioEmitente ??
+      '',
+  ).trim();
 };
 
 const formatCurrencyBRL = (value: any) => {
@@ -447,7 +462,41 @@ export function PedidoVendaPage({ isRepresentantes = false }: PedidoVendaPagePro
     setPedidoFormOpen(true);
   };
 
-  const handleDuplicar = async (numPedido: number) => {
+  const handleDuplicar = async (pedido: any) => {
+    const numPedido = Number((pedido as any)?.num_Pedido || (pedido as any)?.numPedido || 0);
+
+    if (!numPedido) {
+      showToast('Pedido inválido para duplicação.', 'info');
+      return;
+    }
+
+    if (isRepresentantes) {
+      const usuarioLogado = String(GlobalConfig.getUsuario() || '').trim();
+      let emitentePedido = getPedidoEmitenteRaw(pedido);
+
+      if (!emitentePedido) {
+        try {
+          const detalheResp = await getPedidoVendaForEdit(numPedido, {
+            isRepresentantes: true,
+            situacaoPedido: 'Todos',
+          });
+          const detalheRows = Array.isArray(detalheResp)
+            ? detalheResp
+            : Array.isArray((detalheResp as any)?.data)
+              ? (detalheResp as any).data
+              : [];
+          emitentePedido = getPedidoEmitenteRaw(detalheRows[0] ?? null);
+        } catch {
+          emitentePedido = '';
+        }
+      }
+
+      if (!usuarioLogado || !emitentePedido || normalizeText(emitentePedido) !== normalizeText(usuarioLogado)) {
+        showToast('Não é permitido duplicar pedidos de outros usuários.', 'info');
+        return;
+      }
+    }
+
     const allowed = await checkAcao('6', 'Você não possui permissão para duplicar pedidos.');
     if (!allowed) return;
 
@@ -776,7 +825,7 @@ export function PedidoVendaPage({ isRepresentantes = false }: PedidoVendaPagePro
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation();
-                              void handleDuplicar(numPedido);
+                              void handleDuplicar(pedido);
                             }}
                             title="Duplicar"
                           >
@@ -895,7 +944,7 @@ export function PedidoVendaPage({ isRepresentantes = false }: PedidoVendaPagePro
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          void handleDuplicar(numPedido);
+                          void handleDuplicar(pedido);
                         }}
                         title="Duplicar"
                       >
