@@ -111,6 +111,9 @@ export function VersoesPage() {
   const [mensagemBloqueioAtual, setMensagemBloqueioAtual] = useState<string | null>(null);
   const [loadingDesbloquearManual, setLoadingDesbloquearManual] = useState(false);
   const [modalConfirmAtualizarOpen, setModalConfirmAtualizarOpen] = useState(false);
+  const [modalConfigUrlAtualizaOpen, setModalConfigUrlAtualizaOpen] = useState(false);
+  const [configUrlProtocol, setConfigUrlProtocol] = useState<'http' | 'https'>('https');
+  const [configUrlHost, setConfigUrlHost] = useState('');
   const [ultimaVersao, setUltimaVersao] = useState<string | null>(null);
 
   // — Modais de ajuda —
@@ -1694,8 +1697,79 @@ export function VersoesPage() {
               <button type="button" className="secondary-button" onClick={() => setModalConfirmAtualizarOpen(false)} disabled={loadingAtualizar} style={{ width: 'auto' }}>
                 Não
               </button>
-              <button type="button" className="primary-button" onClick={() => { void executarAtualizacao(); }} disabled={loadingAtualizar} style={{ width: 'auto' }}>
+              <button type="button" className="primary-button" onClick={() => {
+                const urlAtualiza = GlobalConfig.getBaseUrlQSAtualiza();
+                if (!urlAtualiza) {
+                  setModalConfirmAtualizarOpen(false);
+                  const raw = GlobalConfig.getBaseUrlQSAtualiza();
+                  const m = raw.match(/^(https?):?\/\/(.+)$/i);
+                  setConfigUrlProtocol(m ? (m[1].toLowerCase() as 'http' | 'https') : 'https');
+                  setConfigUrlHost(m ? m[2] : '');
+                  setModalConfigUrlAtualizaOpen(true);
+                } else {
+                  void executarAtualizacao();
+                }
+              }} disabled={loadingAtualizar} style={{ width: 'auto' }}>
                 {loadingAtualizar ? 'Atualizando...' : 'Sim, atualizar'}
+              </button>
+            </footer>
+          </article>
+        </section>
+      )}
+
+      {/* Modal: configurar URL do QS Atualiza (exibido quando não está cadastrada) */}
+      {modalConfigUrlAtualizaOpen && (
+        <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Configurar URL do QS Atualiza">
+          <article className="modal-card" style={{ width: 'min(520px, 96vw)' }}>
+            <header className="modal-card__header">
+              <h2>URL do QS Atualiza não configurada</h2>
+              <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setModalConfigUrlAtualizaOpen(false)}>
+                <IoCloseOutline size={18} />
+              </button>
+            </header>
+            <div className="modal-card__body" style={{ padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <p style={{ lineHeight: '1.6', fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
+                Para continuar com a atualização, informe a URL do serviço QS Atualiza.
+              </p>
+              <div className="nfe-params-flds-row" style={{ gap: '0.75rem' }}>
+                <div className="nfe-params-field" style={{ flex: '0 0 auto' }}>
+                  <span>Prefixo</span>
+                  <div className="protocol-group">
+                    <button type="button" className={`protocol-option ${configUrlProtocol === 'http' ? 'is-active' : ''}`} onClick={() => setConfigUrlProtocol('http')}>http</button>
+                    <button type="button" className={`protocol-option ${configUrlProtocol === 'https' ? 'is-active' : ''}`} onClick={() => setConfigUrlProtocol('https')}>https</button>
+                  </div>
+                </div>
+                <label className="nfe-params-field" style={{ flex: 1 }}>
+                  <span>URL</span>
+                  <div className="url-field">
+                    <span>{configUrlProtocol}://</span>
+                    <input
+                      className="text-field"
+                      value={configUrlHost}
+                      onChange={(e) => setConfigUrlHost(e.target.value.replace(/^https?:\/\//, ''))}
+                      placeholder="servidor:porta"
+                      autoFocus
+                    />
+                  </div>
+                </label>
+              </div>
+            </div>
+            <footer className="modal-card__footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button type="button" className="secondary-button" onClick={() => setModalConfigUrlAtualizaOpen(false)} style={{ width: 'auto' }}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                disabled={!configUrlHost.trim()}
+                style={{ width: 'auto' }}
+                onClick={() => {
+                  GlobalConfig.setBaseUrlQSAtualiza(`${configUrlProtocol}://${configUrlHost.trim()}`);
+                  setModalConfigUrlAtualizaOpen(false);
+                  setModalConfirmAtualizarOpen(true);
+                }}
+              >
+                Salvar e continuar
               </button>
             </footer>
           </article>
