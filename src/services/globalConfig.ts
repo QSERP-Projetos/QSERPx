@@ -32,6 +32,7 @@ const STORAGE_KEYS = {
   session: 'sessionData',
   uuid: 'uuidNavegador',
   codigoLicenca: 'qserpx_codigo_licenca',
+  codigoLicencaTeste: 'qserpx_codigo_licenca_teste',
 } as const;
 
 const defaultSession: SessionData = {
@@ -104,6 +105,8 @@ export class GlobalConfig {
   private static session: SessionData = { ...defaultSession };
   private static baseUrl = '';
   private static codigoLicenca: number | null = null;
+  private static codigoLicencaTeste: number | null = null;
+  private static tipoLicenca: string | null = null;
   private static _atualizando = false;
 
   /**
@@ -434,6 +437,36 @@ export class GlobalConfig {
       }
     }
     return null;
+  }
+
+  static setCodigoLicencaTeste(value: number | null): void {
+    this.codigoLicencaTeste = value;
+    if (value !== null) {
+      safeSet(STORAGE_KEYS.codigoLicencaTeste, String(value));
+    } else {
+      safeRemove(STORAGE_KEYS.codigoLicencaTeste);
+    }
+  }
+
+  static getCodigoLicencaTeste(): number | null {
+    if (this.codigoLicencaTeste !== null) return this.codigoLicencaTeste;
+    const stored = safeGet(STORAGE_KEYS.codigoLicencaTeste);
+    if (stored) {
+      const num = parseInt(stored, 10);
+      if (!Number.isNaN(num)) {
+        this.codigoLicencaTeste = num;
+        return num;
+      }
+    }
+    return null;
+  }
+
+  static setTipoLicenca(value: string | null): void {
+    this.tipoLicenca = value;
+  }
+
+  static getTipoLicenca(): string | null {
+    return this.tipoLicenca;
   }
 
   static setAtualizando(value: boolean): void {

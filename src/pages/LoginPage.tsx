@@ -156,7 +156,7 @@ export function LoginPage() {
         const authHeader = { 'Authorization': `Bearer ${tokenTipo1}`, 'Content-Type': 'application/json' };
         const licencaRes = await fetch(`${baseUrl.replace(/\/$/, '')}/api/v1/buscaLicencaAtual`, { method: 'GET', headers: authHeader });
         if (licencaRes.ok) {
-          const licencaData = await licencaRes.json() as { codigoLicenca?: number };
+          const licencaData = await licencaRes.json() as { codigoLicenca?: number; tipo?: string };
           if (licencaData.codigoLicenca != null) {
             codigoLicencaAtual = typeof licencaData.codigoLicenca === 'number'
               ? licencaData.codigoLicenca
@@ -164,6 +164,7 @@ export function LoginPage() {
             if (!Number.isNaN(codigoLicencaAtual)) GlobalConfig.setCodigoLicenca(codigoLicencaAtual);
             else codigoLicencaAtual = null;
           }
+          if (licencaData.tipo) GlobalConfig.setTipoLicenca(licencaData.tipo);
         }
       } catch {
         // silently ignore

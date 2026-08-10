@@ -89,6 +89,7 @@ export function VersoesPage() {
   // — Status do teste de URL API —
   type UrlStatus = 'ok' | 'erro' | 'testando' | null;
   const [urlApiStatus, setUrlApiStatus] = useState<UrlStatus>(null);
+  const [urlTipoLicenca, setUrlTipoLicenca] = useState<string | null>(null);
 
   // — IIS Sites —
   const [iisSites, setIisSites] = useState<IISSite[]>([]);
@@ -305,6 +306,11 @@ export function VersoesPage() {
     }
     setCamposErro({});
 
+    if (tipoAmbiente === TIPO_AMBIENTE_MAP.teste && urlApiStatus !== 'ok') {
+      showToast('Teste a URL API com sucesso antes de salvar.', 'error');
+      return;
+    }
+
     setSavingConfig(true);
     try {
       const payload = {
@@ -317,7 +323,7 @@ export function VersoesPage() {
         prefixo_Http: prefixoHttp,
         url: urlApi.trim() || null,
         ultima_Versao: null,
-        codigo_Licenca: tipoAmbiente === TIPO_AMBIENTE_MAP.producao ? GlobalConfig.getCodigoLicenca() : null,
+        codigo_Licenca: tipoAmbiente === TIPO_AMBIENTE_MAP.producao ? GlobalConfig.getCodigoLicenca() : GlobalConfig.getCodigoLicencaTeste(),
       };
 
       const response = await apiManager.makeApiCall<unknown>(
@@ -344,7 +350,7 @@ export function VersoesPage() {
     } finally {
       setSavingConfig(false);
     }
-  }, [caminhoExtracao, caminhoDestino, caminhoBackup, caminhoLog, prefixoHttp, urlApi]);
+  }, [caminhoExtracao, caminhoDestino, caminhoBackup, caminhoLog, prefixoHttp, urlApi, urlApiStatus]);
 
   const handleCancelar = () => {
     if (!hasConfig) {
@@ -438,6 +444,22 @@ export function VersoesPage() {
     return () => { sseSourceRef.current?.close(); };
   }, []);
 
+  // Busca o código de licença e tipo do ambiente de teste quando a URL é validada
+  useEffect(() => {
+    if (activeEnv !== 'teste' || urlApiStatus !== 'ok' || !urlApi.trim()) return;
+    const endpoint = `${prefixoHttp}://${urlApi.trim().replace(/\/$/, '')}/api/v1/buscaLicencaAtual`;
+    fetch(endpoint)
+      .then((r) => r.ok ? r.json() as Promise<Record<string, unknown>> : null)
+      .then((data) => {
+        const codigo = data?.codigoLicenca;
+        const tipo = typeof data?.tipo === 'string' ? data.tipo : null;
+        if (codigo != null) GlobalConfig.setCodigoLicencaTeste(Number(codigo));
+        setUrlTipoLicenca(tipo);
+      })
+      .catch(() => { /* silently ignore */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlApiStatus]);
+
   // Auto-scroll do container de logs SSE ao receber novas mensagens
   useEffect(() => {
     if (logContainerRef.current) {
@@ -504,7 +526,7 @@ export function VersoesPage() {
           caminhoBackup: caminhoBackup.trim() || null,
           scriptSQL: versaoAtual.script_sql ?? null,
           scriptPostgres: versaoAtual.script_postgres ?? null,
-          codigoInstalacao: GlobalConfig.getCodigoLicenca(),
+          codigoInstalacao: activeEnv === 'teste' ? GlobalConfig.getCodigoLicencaTeste() : GlobalConfig.getCodigoLicenca(),
           urlApiLocal: urlApi.trim() || null,
           prefixoHttp: prefixoHttp,
           caminhoLog: caminhoLog.trim() || null,
@@ -609,7 +631,7 @@ export function VersoesPage() {
                   prefixo_Http: prefixoHttp,
                   url: urlApi.trim() || null,
                   ultima_Versao: versaoAtual.num_versao,
-                  codigo_Licenca: tipoAmb === TIPO_AMBIENTE_MAP.producao ? GlobalConfig.getCodigoLicenca() : null,
+                  codigo_Licenca: tipoAmb === TIPO_AMBIENTE_MAP.producao ? GlobalConfig.getCodigoLicenca() : GlobalConfig.getCodigoLicencaTeste(),
                 }),
               })
                 .then((r) => { if (r.ok) setUltimaVersao(versaoAtual.num_versao); })
@@ -669,7 +691,7 @@ export function VersoesPage() {
           prefixo_Http: prefixoHttp,
           url: urlApi.trim() || null,
           ultima_Versao: versaoAtual.num_versao,
-          codigo_Licenca: tipoAmb === TIPO_AMBIENTE_MAP.producao ? GlobalConfig.getCodigoLicenca() : null,
+          codigo_Licenca: tipoAmb === TIPO_AMBIENTE_MAP.producao ? GlobalConfig.getCodigoLicenca() : GlobalConfig.getCodigoLicencaTeste(),
         };
         fetch(`${baseUrl.replace(/\/$/, '')}/api/v1/adicionaparametrosatualizacao`, {
           method: 'POST', headers: logHeaders, body: JSON.stringify(logPayload),
@@ -1096,7 +1118,7 @@ export function VersoesPage() {
                       <button
                         type="button"
                         className={`protocol-option ${prefixoHttp === 'http' ? 'is-active' : ''}`}
-                        onClick={() => setPrefixoHttp('http')}
+                        onClick={() => { setPrefixoHttp('http'); setUrlApiStatus(null); setUrlTipoLicenca(null); }}
                         disabled={!isEditing}
                       >
                         http
@@ -1104,7 +1126,7 @@ export function VersoesPage() {
                       <button
                         type="button"
                         className={`protocol-option ${prefixoHttp === 'https' ? 'is-active' : ''}`}
-                        onClick={() => setPrefixoHttp('https')}
+                        onClick={() => { setPrefixoHttp('https'); setUrlApiStatus(null); setUrlTipoLicenca(null); }}
                         disabled={!isEditing}
                       >
                         https
@@ -1119,26 +1141,51 @@ export function VersoesPage() {
                         <span>{prefixoHttp}://</span>
                         <input
                           value={urlApi}
-                          onChange={(e) => setUrlApi(e.target.value.replace(/^https?:\/\//, ''))}
+                          onChange={(e) => { setUrlApi(e.target.value.replace(/^https?:\/\//, '')); setUrlApiStatus(null); setUrlTipoLicenca(null); }}
                           disabled={!isEditing}
                         />
                       </div>
-                      {urlApiStatus === 'testando' && (
-                        <span className="icon-button module-action-button clientes-cep-search" style={{ color: 'var(--color-muted)', fontSize: '0.7rem', width: 'auto', padding: '0 6px' }}>...</span>
-                      )}
-                      {urlApiStatus === 'ok' && (
-                        <span className="icon-button module-action-button clientes-cep-search" title="URL acessível" style={{ color: '#10b981', cursor: 'default' }}>
-                          <IoCheckmarkCircle size={20} />
-                        </span>
-                      )}
-                      {urlApiStatus === 'erro' && (
-                        <span className="icon-button module-action-button clientes-cep-search" title="URL inacessível" style={{ color: '#ef4444', cursor: 'default' }}>
-                          <IoCloseCircle size={20} />
-                        </span>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {urlApiStatus === 'testando' && (
+                          <span className="icon-button module-action-button clientes-cep-search" style={{ color: 'var(--color-muted)', fontSize: '0.7rem', width: 'auto', padding: '0 6px' }}>...</span>
+                        )}
+                        {urlApiStatus === 'ok' && (
+                          <span className="icon-button module-action-button clientes-cep-search" title="URL acessível" style={{ color: '#10b981', cursor: 'default' }}>
+                            <IoCheckmarkCircle size={20} />
+                          </span>
+                        )}
+                        {urlApiStatus === 'erro' && (
+                          <span className="icon-button module-action-button clientes-cep-search" title="URL inacessível" style={{ color: '#ef4444', cursor: 'default' }}>
+                            <IoCloseCircle size={20} />
+                          </span>
+                        )}
+                        {activeEnv === 'teste' && isEditing && (
+                          <button
+                            type="button"
+                            className="icon-button module-action-button clientes-cep-search"
+                            title="Testar URL API"
+                            disabled={urlApiStatus === 'testando' || !urlApi.trim()}
+                            onClick={() => void testarUrlApi(prefixoHttp, urlApi)}
+                            style={{ fontSize: '0.72rem', width: 'auto', padding: '0 8px', fontWeight: 600 }}
+                          >
+                            Testar
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </label>
                 </div>
+
+                {/* Aviso: URL de produção usada no ambiente de teste */}
+                {activeEnv === 'teste' && urlTipoLicenca && urlTipoLicenca !== 'Teste' && (
+                  <div className="status-box status-box--error" style={{ marginTop: '0.5rem' }}>
+                    <IoWarningOutline size={16} />
+                    <p>
+                      A URL informada pertence a uma licença de <strong>{urlTipoLicenca}</strong>.
+                      Utilize uma URL de ambiente de <strong>Teste</strong> para continuar.
+                    </p>
+                  </div>
+                )}
 
                 {/* Botões Salvar/Editar e Cancelar */}
                 <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
@@ -1146,7 +1193,7 @@ export function VersoesPage() {
                     type="button"
                     className="primary-button"
                     onClick={() => (isEditing ? void salvarConfiguracoes(ID_SISTEMA_MAP[activeTab], TIPO_AMBIENTE_MAP[activeEnv]) : setIsEditing(true))}
-                    disabled={btnDisabled}
+                    disabled={btnDisabled || (isEditing && activeEnv === 'teste' && !(urlApiStatus === 'ok' && urlTipoLicenca === 'Teste'))}
                     style={{ width: 'auto' }}
                   >
                     {savingConfig ? 'Salvando...' : isEditing ? 'Salvar' : 'Editar'}
