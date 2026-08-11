@@ -92,7 +92,7 @@ export const useDynamicMenu = () => {
         if (!mounted) return;
 
         const nivel = GlobalConfig.getNivelUsuario() ?? 0;
-        if (nivel >= 9) {
+        if (nivel >= 9 && GlobalConfig.getTipoLicenca() !== 'Teste') {
           const qsAtualizaMenu: MenuItem = {
             id: 'qs-atualiza',
             title: 'QS Atualiza',

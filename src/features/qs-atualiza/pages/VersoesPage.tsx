@@ -114,6 +114,7 @@ export function VersoesPage() {
   const [modalConfigUrlAtualizaOpen, setModalConfigUrlAtualizaOpen] = useState(false);
   const [configUrlProtocol, setConfigUrlProtocol] = useState<'http' | 'https'>('https');
   const [configUrlHost, setConfigUrlHost] = useState('');
+  const [configApiStatus, setConfigApiStatus] = useState<'success' | 'error' | 'checking' | null>(null);
   const [ultimaVersao, setUltimaVersao] = useState<string | null>(null);
 
   // — Modais de ajuda —
@@ -462,6 +463,28 @@ export function VersoesPage() {
       .catch(() => { /* silently ignore */ });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlApiStatus]);
+
+  const verificarConfigUrl = useCallback(async () => {
+    const host = configUrlHost.trim();
+    if (!host) return;
+    setConfigApiStatus('checking');
+    const endpoint = `${configUrlProtocol}://${host.replace(/\/$/, '')}/api/v1/status`;
+    try {
+      const res = await fetch(endpoint, { method: 'GET', signal: AbortSignal.timeout(10000) });
+      setConfigApiStatus(res.ok ? 'success' : 'error');
+    } catch (err) {
+      if (err instanceof TypeError) {
+        try {
+          await fetch(endpoint, { method: 'GET', mode: 'no-cors', signal: AbortSignal.timeout(10000) });
+          setConfigApiStatus('success');
+        } catch {
+          setConfigApiStatus('error');
+        }
+      } else {
+        setConfigApiStatus('error');
+      }
+    }
+  }, [configUrlProtocol, configUrlHost]);
 
   // Auto-scroll do container de logs SSE ao receber novas mensagens
   useEffect(() => {
@@ -1499,8 +1522,8 @@ export function VersoesPage() {
                             Atenção: esta versão possui script de banco de dados
                           </p>
                           <p style={{ color: '#78350f', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                            Antes de atualizar é obrigatório realizar o <strong>backup do banco de dados</strong> e
-                            garantir que todos os <strong>usuários estejam offline</strong> no sistema.
+                            Antes de atualizar será realizado o <strong>backup do banco de dados</strong> e
+                            todos os <strong>usuários devem ser desconectados</strong> do sistema.
                           </p>
                           {!loadingAtualizar && !sessoesDerrubadas && (
                             <button
@@ -1688,7 +1711,7 @@ export function VersoesPage() {
               {precisaScript && (
                 <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', backgroundColor: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '6px' }}>
                   <p style={{ color: '#92400e', fontWeight: 600, fontSize: '0.9rem' }}>
-                    ⚠️ Esta versão possui script de banco de dados. Certifique-se de que o backup foi realizado antes de continuar.
+                    ⚠️ Esta versão possui script de banco de dados. Ao atualizar o backup será efetuado de forma atumatica, aguarde o término do processo.
                   </p>
                 </div>
               )}
@@ -1720,52 +1743,92 @@ export function VersoesPage() {
       {/* Modal: configurar URL do QS Atualiza (exibido quando não está cadastrada) */}
       {modalConfigUrlAtualizaOpen && (
         <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Configurar URL do QS Atualiza">
-          <article className="modal-card" style={{ width: 'min(520px, 96vw)' }}>
+          <article className="modal-card" style={{ width: 'min(460px, 96vw)' }}>
             <header className="modal-card__header">
-              <h2>URL do QS Atualiza não configurada</h2>
-              <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setModalConfigUrlAtualizaOpen(false)}>
+              <h2>Configurar URL do QS Atualiza</h2>
+              <button type="button" className="icon-button" aria-label="Fechar" onClick={() => { setModalConfigUrlAtualizaOpen(false); setConfigApiStatus(null); }}>
                 <IoCloseOutline size={18} />
               </button>
             </header>
-            <div className="modal-card__body" style={{ padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <p style={{ lineHeight: '1.6', fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
-                Para continuar com a atualização, informe a URL do serviço QS Atualiza.
+            <div className="modal-card__body" style={{ padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <p style={{ lineHeight: '1.6', fontSize: '0.9rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                Para continuar com a atualização, informe e confirme a URL do serviço QS Atualiza.
               </p>
-              <div className="nfe-params-flds-row" style={{ gap: '0.75rem' }}>
-                <div className="nfe-params-field" style={{ flex: '0 0 auto' }}>
-                  <span>Prefixo</span>
-                  <div className="protocol-group">
-                    <button type="button" className={`protocol-option ${configUrlProtocol === 'http' ? 'is-active' : ''}`} onClick={() => setConfigUrlProtocol('http')}>http</button>
-                    <button type="button" className={`protocol-option ${configUrlProtocol === 'https' ? 'is-active' : ''}`} onClick={() => setConfigUrlProtocol('https')}>https</button>
-                  </div>
+
+              <div className="nfe-params-field">
+                <span>Prefixo HTTP</span>
+                <div className="protocol-group">
+                  <button type="button" className={`protocol-option ${configUrlProtocol === 'http' ? 'is-active' : ''}`}
+                    onClick={() => { setConfigUrlProtocol('http'); setConfigApiStatus(null); }}>http</button>
+                  <button type="button" className={`protocol-option ${configUrlProtocol === 'https' ? 'is-active' : ''}`}
+                    onClick={() => { setConfigUrlProtocol('https'); setConfigApiStatus(null); }}>https</button>
                 </div>
-                <label className="nfe-params-field" style={{ flex: 1 }}>
-                  <span>URL</span>
+              </div>
+
+              <label className="nfe-params-field">
+                <span>URL</span>
+                <div className="clientes-cep-input">
                   <div className="url-field">
                     <span>{configUrlProtocol}://</span>
                     <input
-                      className="text-field"
                       value={configUrlHost}
-                      onChange={(e) => setConfigUrlHost(e.target.value.replace(/^https?:\/\//, ''))}
+                      onChange={(e) => { setConfigUrlHost(e.target.value.replace(/^https?:\/\//, '')); setConfigApiStatus(null); }}
                       placeholder="servidor:porta"
                       autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && configUrlHost.trim() && configApiStatus !== 'checking') {
+                          void verificarConfigUrl();
+                        }
+                      }}
                     />
                   </div>
-                </label>
-              </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {configApiStatus === 'checking' && (
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-muted)', padding: '0 6px' }}>...</span>
+                    )}
+                    {configApiStatus === 'success' && (
+                      <span title="URL acessível" style={{ color: '#10b981', display: 'flex', alignItems: 'center' }}>
+                        <IoCheckmarkCircle size={20} />
+                      </span>
+                    )}
+                    {configApiStatus === 'error' && (
+                      <span title="URL inacessível" style={{ color: '#ef4444', display: 'flex', alignItems: 'center' }}>
+                        <IoCloseCircle size={20} />
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      className="icon-button module-action-button clientes-cep-search"
+                      disabled={!configUrlHost.trim() || configApiStatus === 'checking'}
+                      onClick={() => void verificarConfigUrl()}
+                      style={{ fontSize: '0.72rem', width: 'auto', padding: '0 8px', fontWeight: 600 }}
+                    >
+                      Testar
+                    </button>
+                  </div>
+                </div>
+              </label>
+
+              {configApiStatus === 'error' && (
+                <div className="status-box status-box--error" style={{ margin: 0 }}>
+                  <IoWarningOutline size={16} />
+                  <p>Não foi possível conectar ao QS Atualiza. Verifique a URL e tente novamente.</p>
+                </div>
+              )}
             </div>
             <footer className="modal-card__footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-              <button type="button" className="secondary-button" onClick={() => setModalConfigUrlAtualizaOpen(false)} style={{ width: 'auto' }}>
+              <button type="button" className="secondary-button" onClick={() => { setModalConfigUrlAtualizaOpen(false); setConfigApiStatus(null); }} style={{ width: 'auto' }}>
                 Cancelar
               </button>
               <button
                 type="button"
                 className="primary-button"
-                disabled={!configUrlHost.trim()}
+                disabled={configApiStatus !== 'success'}
                 style={{ width: 'auto' }}
                 onClick={() => {
                   GlobalConfig.setBaseUrlQSAtualiza(`${configUrlProtocol}://${configUrlHost.trim()}`);
                   setModalConfigUrlAtualizaOpen(false);
+                  setConfigApiStatus(null);
                   setModalConfirmAtualizarOpen(true);
                 }}
               >
