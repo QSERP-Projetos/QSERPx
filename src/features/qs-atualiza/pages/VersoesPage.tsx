@@ -119,6 +119,12 @@ export function VersoesPage() {
 
   // — Modais de ajuda —
   const [modalCaminhoOpen, setModalCaminhoOpen] = useState<'destino' | 'backup' | null>(null);
+  const [modalAtualizaQserpOpen, setModalAtualizaQserpOpen] = useState(false);
+  const [modalCaminhoFisicoOpen, setModalCaminhoFisicoOpen] = useState(false);
+  const [caminhoFisicoSugerido, setCaminhoFisicoSugerido] = useState('');
+
+  // — Atualiza QSERP automático —
+  const [atualizaQserp, setAtualizaQserp] = useState(false);
 
   // — Bloqueio de licença / derrubada de sessões —
   type BloquearStep = 'confirmar' | 'mensagem' | 'confirmarDerrubar';
@@ -231,6 +237,7 @@ export function VersoesPage() {
     setCaminhoDestino('');
     setCaminhoBackup('');
     setCaminhoLog('');
+    setAtualizaQserp(false);
     setUltimaVersao(null);
     setUrlApiStatus(null);
 
@@ -254,6 +261,7 @@ export function VersoesPage() {
           setCaminhoLog(String(config.caminho_Log ?? '').trim());
           const uv = String(config.ultima_Versao ?? '').trim();
           setUltimaVersao(uv || null);
+          setAtualizaQserp(Number(config.atualiza_QSERP ?? config.Atualiza_QSERP ?? 0) !== 0);
           // prefixo_Http e url: usar retorno se válido
           // Em Teste (tipoAmbiente=2) não aplica fallback para a URL global
           const isTest = tipoAmbiente === 2;
@@ -292,15 +300,17 @@ export function VersoesPage() {
     }
   }, [testarUrlApi]);
 
-  const salvarConfiguracoes = useCallback(async (idSistema: number, tipoAmbiente: number) => {
+  const salvarConfiguracoes = useCallback(async (idSistema: number, tipoAmbiente: number, overrides?: { caminhoDestino?: string }) => {
     const baseUrl = GlobalConfig.getBaseUrl();
     const token = GlobalConfig.getJwToken();
     if (!baseUrl) return;
 
+    const destinoFinal = overrides?.caminhoDestino ?? caminhoDestino;
+
     // Validação de campos obrigatórios
     const erros: Record<string, boolean> = {};
     if (!caminhoExtracao.trim()) erros['caminhoExtracao'] = true;
-    if (!caminhoDestino.trim()) erros['caminhoDestino'] = true;
+    if (!destinoFinal.trim()) erros['caminhoDestino'] = true;
     if (!caminhoBackup.trim()) erros['caminhoBackup'] = true;
     if (!caminhoLog.trim()) erros['caminhoLog'] = true;
     if (Object.keys(erros).length > 0) {
@@ -320,7 +330,7 @@ export function VersoesPage() {
       const payload = {
         id_Sistema: idSistema,
         caminho_Extracao: caminhoExtracao.trim() || null,
-        caminho_Destino: caminhoDestino.trim() || null,
+        caminho_Destino: destinoFinal.trim() || null,
         caminho_Backup: caminhoBackup.trim() || null,
         caminho_Log: caminhoLog.trim() || null,
         tipo_Ambiente: tipoAmbiente,
@@ -328,6 +338,7 @@ export function VersoesPage() {
         url: urlApi.trim() || null,
         ultima_Versao: null,
         codigo_Licenca: tipoAmbiente === TIPO_AMBIENTE_MAP.producao ? GlobalConfig.getCodigoLicenca() : GlobalConfig.getCodigoLicencaTeste(),
+        Atualiza_QSERP: idSistema === ID_SISTEMA_MAP['qserp'] ? (atualizaQserp ? -1 : 0) : 0,
       };
 
       const response = await apiManager.makeApiCall<unknown>(
@@ -341,20 +352,33 @@ export function VersoesPage() {
       if (response.succeeded) {
         const msg = (response.jsonBody as Record<string, unknown>)?.message;
         showToast(msg ? String(msg) : 'Configurações salvas com sucesso!', 'success');
+        setErroConfig('');
         setHasConfig(true);
         setIsEditing(false);
       } else {
         const msg = (response.jsonBody as Record<string, unknown>)?.message;
-        showToast(msg ? String(msg) : `Erro ao salvar configurações. (${response.statusCode})`, 'error');
-        setErroConfig('Erro ao salvar configurações.');
+        const detalhe = msg ? String(msg) : `(${response.statusCode})`;
+        showToast(`Erro ao salvar configurações. ${detalhe}`, 'error');
+        setErroConfig(`Erro ao salvar configurações. ${detalhe}`);
       }
-    } catch {
-      showToast('Erro ao salvar configurações.', 'error');
-      setErroConfig('Erro ao salvar configurações.');
+    } catch (err) {
+      const detalhe = err instanceof Error ? err.message : String(err);
+      showToast(`Erro ao salvar configurações. ${detalhe}`, 'error');
+      setErroConfig(`Erro ao salvar configurações. ${detalhe}`);
     } finally {
       setSavingConfig(false);
     }
-  }, [caminhoExtracao, caminhoDestino, caminhoBackup, caminhoLog, prefixoHttp, urlApi, urlApiStatus]);
+  }, [caminhoExtracao, caminhoDestino, caminhoBackup, caminhoLog, prefixoHttp, urlApi, urlApiStatus, atualizaQserp]);
+
+  const handleIisSiteChange = useCallback((val: string) => {
+    setIisSiteSelected(val);
+    const site = iisSites.find(s => String(s.id) === val);
+    const fisico = site?.caminhoFisico?.trim();
+    if (fisico) {
+      setCaminhoFisicoSugerido(fisico);
+      setModalCaminhoFisicoOpen(true);
+    }
+  }, [iisSites]);
 
   const handleCancelar = () => {
     if (!hasConfig) {
@@ -1202,6 +1226,34 @@ export function VersoesPage() {
                   </label>
                 </div>
 
+                {/* Checkbox Atualiza QSERP — apenas na aba QSERP */}
+                {activeTab === 'qserp' && (
+                  <div className="nfe-params-flds-row">
+                    <div className="nfe-params-field">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingTop: '0.25rem' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: isEditing ? 'pointer' : 'default', userSelect: 'none' }}>
+                          <input
+                            type="checkbox"
+                            checked={atualizaQserp}
+                            onChange={(e) => setAtualizaQserp(e.target.checked)}
+                            disabled={!isEditing}
+                          />
+                          <span>Atualiza QSERP</span>
+                        </label>
+                        <button
+                          type="button"
+                          className="icon-button module-action-button clientes-cep-search"
+                          title="Informações sobre Atualiza QSERP"
+                          aria-label="Ajuda Atualiza QSERP"
+                          onClick={() => setModalAtualizaQserpOpen(true)}
+                        >
+                          <IoHelpCircleOutline size={20} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Aviso: URL de produção usada no ambiente de teste */}
                 {activeEnv === 'teste' && urlTipoLicenca && urlTipoLicenca !== 'Teste' && (
                   <div className="status-box status-box--error" style={{ marginTop: '0.5rem' }}>
@@ -1292,7 +1344,7 @@ export function VersoesPage() {
                         <SearchableSelect
                           options={iisOptions}
                           value={iisSiteSelected}
-                          onChange={setIisSiteSelected}
+                          onChange={handleIisSiteChange}
                           ariaLabel="Site IIS"
                           enableSearch={iisOptions.length > 5}
                           placeholder={iisOptions.length === 0 ? 'Nenhum site encontrado' : 'Selecione o site IIS...'}
@@ -1619,6 +1671,35 @@ export function VersoesPage() {
         </section>
       </main>
 
+      {/* Modal: ajuda Atualiza QSERP */}
+      {modalAtualizaQserpOpen && (
+        <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Atualiza QSERP">
+          <article className="modal-card">
+            <header className="modal-card__header">
+              <h2>Atualiza QSERP</h2>
+              <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setModalAtualizaQserpOpen(false)}>
+                <IoCloseOutline size={18} />
+              </button>
+            </header>
+            <div className="modal-card__body" style={{ padding: '1.5rem 2rem' }}>
+              <p style={{ marginBottom: '1rem', lineHeight: '1.6' }}>
+                Ao marcar essa opção o sistema irá validar se a versão que o usuário está tentando logar é inferior
+                à da última versão atualizada. Se for menor, ele irá avisá-lo e iniciará a atualização automática
+                do sistema.
+              </p>
+              <p style={{ lineHeight: '1.6', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
+                <strong>Obs:</strong> O arquivo será copiado da pasta <strong>Caminho de Destino</strong>. É importante
+                que o usuário possua acesso a essa pasta. Essa rotina substituirá o uso do arquivo{' '}
+                <code style={{ fontFamily: 'monospace' }}>Atualiza Q4</code>.
+              </p>
+            </div>
+            <footer className="modal-card__footer">
+              <button type="button" className="primary-button" onClick={() => setModalAtualizaQserpOpen(false)}>Entendido</button>
+            </footer>
+          </article>
+        </section>
+      )}
+
       {/* Modal: ajuda caminho de destino */}
       {modalCaminhoOpen === 'destino' && (
         <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Caminho de destino">
@@ -1630,27 +1711,84 @@ export function VersoesPage() {
               </button>
             </header>
             <div className="modal-card__body" style={{ padding: '1.5rem 2rem' }}>
-              <p style={{ marginBottom: '1rem', lineHeight: '1.6' }}>
-                O caminho de destino deve ser obrigatoriamente um <strong>caminho de rede</strong>.
-                Caminhos locais <strong>não são permitidos</strong> pois o processo de atualização é
-                executado pelo servidor e precisa ter acesso ao diretório.
-              </p>
-
-              <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>✅ Exemplos válidos (rede):</p>
-              <ul style={{ marginLeft: '1.5rem', marginBottom: '1.25rem', lineHeight: '2', fontSize: '0.9rem', backgroundColor: 'var(--color-surface-alt, #f5f5f5)', padding: '0.75rem 1rem', borderRadius: '4px' }}>
-                <li><code>\\servidor\qserp</code></li>
-                <li><code>\\192.168.1.100\sistemas\qserp</code></li>
-                <li><code>\\SERVIDOR01\Compartilhado\QsErp</code></li>
-              </ul>
-
-              <p style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#dc2626' }}>❌ Exemplos inválidos (local):</p>
-              <ul style={{ marginLeft: '1.5rem', lineHeight: '2', fontSize: '0.9rem', backgroundColor: 'var(--color-surface-alt, #f5f5f5)', padding: '0.75rem 1rem', borderRadius: '4px' }}>
-                <li><code>C:\QsErp</code></li>
-                <li><code>D:\Sistemas\QsErp</code></li>
-              </ul>
+              {activeTab === 'qserp' ? (
+                <>
+                  <p style={{ marginBottom: '1rem', lineHeight: '1.6' }}>
+                    O caminho de destino deve ser obrigatoriamente um <strong>caminho de rede</strong>.
+                    Caminhos locais <strong>não são permitidos</strong> pois o processo de atualização é
+                    executado pelo servidor e precisa ter acesso ao diretório.
+                  </p>
+                  <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>✅ Exemplos válidos (rede):</p>
+                  <ul style={{ marginLeft: '1.5rem', marginBottom: '1.25rem', lineHeight: '2', fontSize: '0.9rem', backgroundColor: 'var(--color-surface-alt, #f5f5f5)', padding: '0.75rem 1rem', borderRadius: '4px' }}>
+                    <li><code>\\servidor\qserp</code></li>
+                    <li><code>\\192.168.1.100\sistemas\qserp</code></li>
+                    <li><code>\\SERVIDOR01\Compartilhado\QsErp</code></li>
+                  </ul>
+                  <p style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#dc2626' }}>❌ Exemplos inválidos (local):</p>
+                  <ul style={{ marginLeft: '1.5rem', lineHeight: '2', fontSize: '0.9rem', backgroundColor: 'var(--color-surface-alt, #f5f5f5)', padding: '0.75rem 1rem', borderRadius: '4px' }}>
+                    <li><code>C:\QsErp</code></li>
+                    <li><code>D:\Sistemas\QsErp</code></li>
+                  </ul>
+                </>
+              ) : (
+                <>
+                  <p style={{ marginBottom: '1rem', lineHeight: '1.6' }}>
+                    Informe o <strong>caminho físico ou de rede</strong> da pasta onde o site{' '}
+                    <strong>{TAB_LABEL[activeTab]}</strong> está hospedado no servidor IIS.
+                    Este é o diretório raiz do site que será atualizado.
+                  </p>
+                  <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>✅ Exemplos válidos:</p>
+                  <ul style={{ marginLeft: '1.5rem', marginBottom: '1.25rem', lineHeight: '2', fontSize: '0.9rem', backgroundColor: 'var(--color-surface-alt, #f5f5f5)', padding: '0.75rem 1rem', borderRadius: '4px' }}>
+                    <li><code>C:\inetpub\wwwroot\qsapi</code></li>
+                    <li><code>D:\Sistemas\QsApi</code></li>
+                    <li><code>\\servidor\sites\qsapi</code></li>
+                  </ul>
+                  <p style={{ lineHeight: '1.6', fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
+                    Dica: ao selecionar o site IIS acima, o sistema oferece preencher este campo
+                    automaticamente com o caminho físico configurado no IIS.
+                  </p>
+                </>
+              )}
             </div>
             <footer className="modal-card__footer">
               <button type="button" className="primary-button" onClick={() => setModalCaminhoOpen(null)}>Entendido</button>
+            </footer>
+          </article>
+        </section>
+      )}
+
+      {/* Modal: confirmar preenchimento de caminho de destino com caminho físico do IIS */}
+      {modalCaminhoFisicoOpen && (
+        <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Preencher caminho de destino">
+          <article className="modal-card" style={{ width: 'min(500px, 96vw)' }}>
+            <header className="modal-card__header">
+              <h2>Preencher caminho de destino?</h2>
+              <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setModalCaminhoFisicoOpen(false)}>
+                <IoCloseOutline size={18} />
+              </button>
+            </header>
+            <div className="modal-card__body" style={{ padding: '1.5rem 2rem' }}>
+              <p style={{ lineHeight: '1.6', marginBottom: '1rem' }}>
+                Deseja preencher o campo <strong>Caminho de destino</strong> com o caminho físico do site selecionado?
+              </p>
+              <code style={{ display: 'block', padding: '0.6rem 1rem', backgroundColor: 'var(--color-surface-alt, #f5f5f5)', borderRadius: '4px', fontSize: '0.9rem', wordBreak: 'break-all' }}>
+                {caminhoFisicoSugerido}
+              </code>
+            </div>
+            <footer className="modal-card__footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button type="button" className="secondary-button" style={{ width: 'auto' }} onClick={() => setModalCaminhoFisicoOpen(false)}>Não</button>
+              <button
+                type="button"
+                className="primary-button"
+                style={{ width: 'auto' }}
+                onClick={() => {
+                  setCaminhoDestino(caminhoFisicoSugerido);
+                  setModalCaminhoFisicoOpen(false);
+                  void salvarConfiguracoes(ID_SISTEMA_MAP[activeTab], TIPO_AMBIENTE_MAP[activeEnv], { caminhoDestino: caminhoFisicoSugerido });
+                }}
+              >
+                Sim, preencher e salvar
+              </button>
             </footer>
           </article>
         </section>
