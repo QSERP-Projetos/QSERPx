@@ -89,7 +89,6 @@ export function VersoesPage() {
   // — Status do teste de URL API —
   type UrlStatus = 'ok' | 'erro' | 'testando' | null;
   const [urlApiStatus, setUrlApiStatus] = useState<UrlStatus>(null);
-  const [urlTipoLicenca, setUrlTipoLicenca] = useState<string | null>(null);
 
   // — IIS Sites —
   const [iisSites, setIisSites] = useState<IISSite[]>([]);
@@ -480,9 +479,7 @@ export function VersoesPage() {
       .then((r) => r.ok ? r.json() as Promise<Record<string, unknown>> : null)
       .then((data) => {
         const codigo = data?.codigoLicenca;
-        const tipo = typeof data?.tipo === 'string' ? data.tipo : null;
         if (codigo != null) GlobalConfig.setCodigoLicencaTeste(Number(codigo));
-        setUrlTipoLicenca(tipo);
       })
       .catch(() => { /* silently ignore */ });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1168,7 +1165,7 @@ export function VersoesPage() {
                       <button
                         type="button"
                         className={`protocol-option ${prefixoHttp === 'http' ? 'is-active' : ''}`}
-                        onClick={() => { setPrefixoHttp('http'); setUrlApiStatus(null); setUrlTipoLicenca(null); }}
+                        onClick={() => { setPrefixoHttp('http'); setUrlApiStatus(null); }}
                         disabled={!isEditing}
                       >
                         http
@@ -1176,7 +1173,7 @@ export function VersoesPage() {
                       <button
                         type="button"
                         className={`protocol-option ${prefixoHttp === 'https' ? 'is-active' : ''}`}
-                        onClick={() => { setPrefixoHttp('https'); setUrlApiStatus(null); setUrlTipoLicenca(null); }}
+                        onClick={() => { setPrefixoHttp('https'); setUrlApiStatus(null); }}
                         disabled={!isEditing}
                       >
                         https
@@ -1191,7 +1188,7 @@ export function VersoesPage() {
                         <span>{prefixoHttp}://</span>
                         <input
                           value={urlApi}
-                          onChange={(e) => { setUrlApi(e.target.value.replace(/^https?:\/\//, '')); setUrlApiStatus(null); setUrlTipoLicenca(null); }}
+                          onChange={(e) => { setUrlApi(e.target.value.replace(/^https?:\/\//, '')); setUrlApiStatus(null); }}
                           disabled={!isEditing}
                         />
                       </div>
