@@ -1254,24 +1254,13 @@ export function VersoesPage() {
                   </div>
                 )}
 
-                {/* Aviso: URL de produção usada no ambiente de teste */}
-                {activeEnv === 'teste' && urlTipoLicenca && urlTipoLicenca !== 'Teste' && (
-                  <div className="status-box status-box--error" style={{ marginTop: '0.5rem' }}>
-                    <IoWarningOutline size={16} />
-                    <p>
-                      A URL informada pertence a uma licença de <strong>{urlTipoLicenca}</strong>.
-                      Utilize uma URL de ambiente de <strong>Teste</strong> para continuar.
-                    </p>
-                  </div>
-                )}
-
                 {/* Botões Salvar/Editar e Cancelar */}
                 <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
                   <button
                     type="button"
                     className="primary-button"
                     onClick={() => (isEditing ? void salvarConfiguracoes(ID_SISTEMA_MAP[activeTab], TIPO_AMBIENTE_MAP[activeEnv]) : setIsEditing(true))}
-                    disabled={btnDisabled || (isEditing && activeEnv === 'teste' && !(urlApiStatus === 'ok' && urlTipoLicenca === 'Teste'))}
+                    disabled={btnDisabled}
                     style={{ width: 'auto' }}
                   >
                     {savingConfig ? 'Salvando...' : isEditing ? 'Salvar' : 'Editar'}
