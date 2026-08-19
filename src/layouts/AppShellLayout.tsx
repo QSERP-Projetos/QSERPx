@@ -150,6 +150,7 @@ export function AppShellLayout() {
 
   useEffect(() => {
     const verificarSessao = async () => {
+      if (GlobalConfig.isAtualizando()) return;
       const baseUrl = GlobalConfig.getBaseUrl();
       const token = GlobalConfig.getJwToken();
       const idSessao = GlobalConfig.getIdSessaoUsuario();
