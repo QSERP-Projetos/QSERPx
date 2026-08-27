@@ -335,7 +335,7 @@ export function VersoesPage() {
         tipo_Ambiente: tipoAmbiente,
         prefixo_Http: prefixoHttp,
         url: urlApi.trim() || null,
-        ultima_Versao: null,
+        ultima_Versao: ultimaVersao || null,
         codigo_Licenca: tipoAmbiente === TIPO_AMBIENTE_MAP.producao ? GlobalConfig.getCodigoLicenca() : GlobalConfig.getCodigoLicencaTeste(),
         Atualiza_QSERP: idSistema === ID_SISTEMA_MAP['qserp'] ? (atualizaQserp ? -1 : 0) : 0,
       };
@@ -367,7 +367,7 @@ export function VersoesPage() {
     } finally {
       setSavingConfig(false);
     }
-  }, [caminhoExtracao, caminhoDestino, caminhoBackup, caminhoLog, prefixoHttp, urlApi, urlApiStatus, atualizaQserp]);
+  }, [caminhoExtracao, caminhoDestino, caminhoBackup, caminhoLog, prefixoHttp, urlApi, urlApiStatus, atualizaQserp, ultimaVersao]);
 
   const handleIisSiteChange = useCallback((val: string) => {
     setIisSiteSelected(val);
@@ -679,6 +679,7 @@ export function VersoesPage() {
                   url: urlApi.trim() || null,
                   ultima_Versao: versaoAtual.num_versao,
                   codigo_Licenca: tipoAmb === TIPO_AMBIENTE_MAP.producao ? GlobalConfig.getCodigoLicenca() : GlobalConfig.getCodigoLicencaTeste(),
+                  Atualiza_QSERP: idSistema === ID_SISTEMA_MAP['qserp'] ? (atualizaQserp ? -1 : 0) : 0,
                 }),
               })
                 .then((r) => { if (r.ok) setUltimaVersao(versaoAtual.num_versao); })
@@ -739,6 +740,7 @@ export function VersoesPage() {
           url: urlApi.trim() || null,
           ultima_Versao: versaoAtual.num_versao,
           codigo_Licenca: tipoAmb === TIPO_AMBIENTE_MAP.producao ? GlobalConfig.getCodigoLicenca() : GlobalConfig.getCodigoLicencaTeste(),
+          Atualiza_QSERP: idSistema === ID_SISTEMA_MAP['qserp'] ? (atualizaQserp ? -1 : 0) : 0,
         };
         fetch(`${baseUrl.replace(/\/$/, '')}/api/v1/adicionaparametrosatualizacao`, {
           method: 'POST', headers: logHeaders, body: JSON.stringify(logPayload),
@@ -771,7 +773,7 @@ export function VersoesPage() {
         setLoadingAtualizar(false);
       }
     }
-  }, [activeTab, activeEnv, versaoAtual, caminhoExtracao, caminhoDestino, caminhoBackup, caminhoLog, prefixoHttp, urlApi, usuarioIIS, senhaIIS, servidorIIS, iisSiteSelected, iisSites, precisaScript, showToast, logErroAtualizacao, setProgressLogs, setProgressStatus, setProgressModalOpen, setLicencaBloqueada]);
+  }, [activeTab, activeEnv, versaoAtual, caminhoExtracao, caminhoDestino, caminhoBackup, caminhoLog, prefixoHttp, urlApi, usuarioIIS, senhaIIS, servidorIIS, iisSiteSelected, iisSites, precisaScript, atualizaQserp, showToast, logErroAtualizacao, setProgressLogs, setProgressStatus, setProgressModalOpen, setLicencaBloqueada]);
 
   const desbloquearManual = useCallback(async () => {
     const baseUrl = GlobalConfig.getBaseUrl();
