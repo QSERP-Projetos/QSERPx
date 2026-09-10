@@ -355,6 +355,8 @@ const resolveDetalheRow = (row: any) => {
     ),
     descricaoOperacao: getRowText(row, ['descricao_Operacao', 'descricaoOperacao', 'operacao_Descricao', 'operacaoDescricao'], '-'),
     mensagem: getRowText(row, ['mensagem', 'Mensagem', 'msg', 'message'], '-'),
+    loteApont: getRowText(row, ['lote_Apont', 'Lote_Apont', 'loteApont'], '-'),
+    obsApontProd: getRowText(row, ['obs_Apont_Prod', 'Obs_Apont_Prod', 'obsApontProd'], ''),
   };
 };
 
@@ -468,6 +470,7 @@ const createInitialForm = () => ({
   qtdProduzida: '0,000',
   qtdRejeitada: '0,000',
   parcial: false,
+  loteApont: '',
 });
 
 type FormErrors = {
@@ -526,6 +529,11 @@ export function ApontamentoProducaoPage() {
   const [form, setForm] = useState(createInitialForm());
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [filtroErrors, setFiltroErrors] = useState<FiltroErrors>({});
+
+  const [obsModalOpen, setObsModalOpen] = useState(false);
+  const [obsApontProd, setObsApontProd] = useState('');
+  const [obsApontProdDraft, setObsApontProdDraft] = useState('');
+  const [obsConsultaOpen, setObsConsultaOpen] = useState(false);
 
   const [funcionarios, setFuncionarios] = useState<SelectOption[]>([]);
   const [maquinas, setMaquinas] = useState<SelectOption[]>([]);
@@ -600,6 +608,8 @@ export function ApontamentoProducaoPage() {
 
   const qtdRejeitadaInformada = useMemo(() => parseQuantidade(form.qtdRejeitada) > 0, [form.qtdRejeitada]);
 
+  const detalheAtual = useMemo(() => (detalheRow ? resolveDetalheRow(detalheRow) : null), [detalheRow]);
+
   const resetModalState = useCallback(() => {
     setForm(createInitialForm());
     setFormErrors({});
@@ -609,6 +619,8 @@ export function ApontamentoProducaoPage() {
     setProcessoOF(undefined);
     setRevisaoOF(undefined);
     setSituacaoOF(undefined);
+    setObsApontProd('');
+    setObsApontProdDraft('');
   }, []);
 
   const handleAbrirModal = () => {
@@ -943,6 +955,8 @@ export function ApontamentoProducaoPage() {
           qtdProduzida: toApiQuantidade(form.qtdProduzida),
           qtdRejeitada: toApiQuantidade(form.qtdRejeitada),
           permitirApontamentoSemOperacao: permitirApontSemOperacao,
+          loteApont: form.loteApont.trim(),
+          obsApontProd: obsApontProd.trim(),
         });
 
       if (!resp.succeeded) {
@@ -1391,6 +1405,16 @@ export function ApontamentoProducaoPage() {
               </div>
 
               <label>
+                <span>Lote Apont</span>
+                <input
+                  value={form.loteApont}
+                  maxLength={25}
+                  onChange={(event) => setForm((prev) => ({ ...prev, loteApont: event.target.value.slice(0, 25) }))}
+                  placeholder="Lote Apont"
+                />
+              </label>
+
+              <label>
                 <span>Funcionário</span>
                 <SearchableSelect
                   value={form.numRegistro}
@@ -1592,7 +1616,17 @@ export function ApontamentoProducaoPage() {
               ) : null}
             </div>
 
-            <div className="form-actions apontamento-producao-modal__actions">
+            <div className="form-actions apontamento-producao-modal__actions apontamento-producao-modal__actions--split">
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => {
+                  setObsApontProdDraft(obsApontProd);
+                  setObsModalOpen(true);
+                }}
+              >
+                Observações
+              </button>
               <button className="primary-button" type="button" onClick={() => void handleSalvar()} disabled={saving}>
                 {saving ? 'Salvando...' : 'Confirmar'}
               </button>
@@ -1601,7 +1635,51 @@ export function ApontamentoProducaoPage() {
         </section>
       )}
 
-      {detalheOpen && detalheRow && (
+      {obsModalOpen && (
+        <section className="modal-backdrop" role="dialog" aria-modal="true">
+          <article className="modal-card apontamento-producao-modal">
+            <header className="modal-card__header">
+              <h2>Observações do Apontamento</h2>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Fechar"
+                onClick={() => setObsModalOpen(false)}
+              >
+                <IoCloseOutline size={18} />
+              </button>
+            </header>
+
+            <div className="form-grid-3">
+              <label className="form-grid-3__full">
+                <span>Observação</span>
+                <textarea
+                  rows={5}
+                  value={obsApontProdDraft}
+                  maxLength={255}
+                  onChange={(event) => setObsApontProdDraft(event.target.value.slice(0, 255))}
+                  placeholder="Digite a observação do apontamento"
+                />
+              </label>
+            </div>
+
+            <div className="form-actions apontamento-producao-modal__actions">
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => {
+                  setObsApontProd(obsApontProdDraft);
+                  setObsModalOpen(false);
+                }}
+              >
+                Confirmar
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      {detalheOpen && detalheRow && detalheAtual && (
         <section className="modal-backdrop" role="dialog" aria-modal="true">
           <article className="modal-card modal-card--wide apontamento-producao-modal">
             <header className="modal-card__header">
@@ -1619,108 +1697,146 @@ export function ApontamentoProducaoPage() {
               </button>
             </header>
 
-            {(() => {
-              const detalhe = resolveDetalheRow(detalheRow);
+            <div className="form-grid-3">
+              <div className="apontamento-producao-modal__read-only">
+                <span>OF</span>
+                <strong>{detalheAtual.numOrdem}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Operação</span>
+                <strong>{detalheAtual.numOperacao}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Descrição operação</span>
+                <strong>{detalheAtual.descricaoOperacao}</strong>
+              </div>
 
-              return (
-                <div className="form-grid-3">
-                  <div className="apontamento-producao-modal__read-only">
-                    <span>OF</span>
-                    <strong>{detalhe.numOrdem}</strong>
-                  </div>
-                  <div className="apontamento-producao-modal__read-only">
-                    <span>Operação</span>
-                    <strong>{detalhe.numOperacao}</strong>
-                  </div>
-                  <div className="apontamento-producao-modal__read-only">
-                    <span>Descrição operação</span>
-                    <strong>{detalhe.descricaoOperacao}</strong>
-                  </div>
+              <div className="form-grid-3__full apontamento-producao-modal__read-only">
+                <span>Código Produto</span>
+                <strong>{detalheAtual.codigoProduto}</strong>
+              </div>
 
-                  <div className="form-grid-3__full apontamento-producao-modal__read-only">
-                    <span>Código Produto</span>
-                    <strong>{detalhe.codigoProduto}</strong>
-                  </div>
+              <div className="form-grid-3__full apontamento-producao-modal__read-only">
+                <span>Descrição em Português</span>
+                <strong>{detalheAtual.descricaoPortugues}</strong>
+              </div>
 
-                  <div className="form-grid-3__full apontamento-producao-modal__read-only">
-                    <span>Descrição em Português</span>
-                    <strong>{detalhe.descricaoPortugues}</strong>
-                  </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Lote Apont</span>
+                <strong>{detalheAtual.loteApont}</strong>
+              </div>
 
-                  <div className="apontamento-producao-modal__read-only">
-                    <span>Funcionário</span>
-                    <strong>{detalhe.numRegistro}</strong>
-                  </div>
-                  <div className="apontamento-producao-modal__read-only">
-                    <span>Máquina</span>
-                    <strong>{detalhe.numMaquina}</strong>
-                  </div>
-                  <div className="apontamento-producao-modal__read-only">
-                    <span>Parcial</span>
-                    <strong>{detalhe.parcial}</strong>
-                  </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Funcionário</span>
+                <strong>{detalheAtual.numRegistro}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Máquina</span>
+                <strong>{detalheAtual.numMaquina}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Parcial</span>
+                <strong>{detalheAtual.parcial}</strong>
+              </div>
 
-                  <div className="apontamento-producao-modal__read-only apontamento-producao-modal__date-time-mobile">
-                    <span>Data início</span>
-                    <strong>{detalhe.dataInicio}</strong>
-                  </div>
-                  <div className="apontamento-producao-modal__read-only apontamento-producao-modal__date-time-mobile">
-                    <span>Hora início</span>
-                    <strong>{detalhe.horaInicio}</strong>
-                  </div>
-                  <div className="apontamento-producao-modal__read-only apontamento-producao-modal__date-time-mobile">
-                    <span>Data fim</span>
-                    <strong>{detalhe.dataFim}</strong>
-                  </div>
+              <div className="apontamento-producao-modal__read-only apontamento-producao-modal__date-time-mobile">
+                <span>Data início</span>
+                <strong>{detalheAtual.dataInicio}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only apontamento-producao-modal__date-time-mobile">
+                <span>Hora início</span>
+                <strong>{detalheAtual.horaInicio}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only apontamento-producao-modal__date-time-mobile">
+                <span>Data fim</span>
+                <strong>{detalheAtual.dataFim}</strong>
+              </div>
 
-                  <div className="apontamento-producao-modal__read-only apontamento-producao-modal__date-time-mobile">
-                    <span>Hora fim</span>
-                    <strong>{detalhe.horaFim}</strong>
-                  </div>
+              <div className="apontamento-producao-modal__read-only apontamento-producao-modal__date-time-mobile">
+                <span>Hora fim</span>
+                <strong>{detalheAtual.horaFim}</strong>
+              </div>
 
-                  <div className="apontamento-producao-modal__read-only apontamento-producao-modal__date-time-desktop">
-                    <span>Início</span>
-                    <strong>{formatDateTimeLabel(detalhe.dataInicio, detalhe.horaInicio)}</strong>
-                  </div>
-                  <div className="apontamento-producao-modal__read-only apontamento-producao-modal__date-time-desktop">
-                    <span>Fim</span>
-                    <strong>{formatDateTimeLabel(detalhe.dataFim, detalhe.horaFim)}</strong>
-                  </div>
-                  <div className="apontamento-producao-modal__read-only">
-                    <span>Código motivo rejeição</span>
-                    <strong>{detalhe.codigoMotivo}</strong>
-                  </div>
-                  <div className="apontamento-producao-modal__read-only">
-                    <span>Código motivo bloqueio</span>
-                    <strong>{detalhe.codigoBloqueio}</strong>
-                  </div>
+              <div className="apontamento-producao-modal__read-only apontamento-producao-modal__date-time-desktop">
+                <span>Início</span>
+                <strong>{formatDateTimeLabel(detalheAtual.dataInicio, detalheAtual.horaInicio)}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only apontamento-producao-modal__date-time-desktop">
+                <span>Fim</span>
+                <strong>{formatDateTimeLabel(detalheAtual.dataFim, detalheAtual.horaFim)}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Código motivo rejeição</span>
+                <strong>{detalheAtual.codigoMotivo}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Código motivo bloqueio</span>
+                <strong>{detalheAtual.codigoBloqueio}</strong>
+              </div>
 
-                  <div className="apontamento-producao-modal__read-only">
-                    <span>Qtd. produzida</span>
-                    <strong>{detalhe.qtdProduzida}</strong>
-                  </div>
-                  <div className="apontamento-producao-modal__read-only">
-                    <span>Qtd. rejeitada</span>
-                    <strong>{detalhe.qtdRejeitada}</strong>
-                  </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Qtd. produzida</span>
+                <strong>{detalheAtual.qtdProduzida}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Qtd. rejeitada</span>
+                <strong>{detalheAtual.qtdRejeitada}</strong>
+              </div>
 
-                  <div className="form-grid-3__full apontamento-producao-modal__read-only">
-                    <span>Mensagem</span>
-                    <strong>{detalhe.mensagem}</strong>
-                  </div>
-                </div>
-              );
-            })()}
+              <div className="form-grid-3__full apontamento-producao-modal__read-only">
+                <span>Mensagem</span>
+                <strong>{detalheAtual.mensagem}</strong>
+              </div>
+            </div>
 
-            <div className="form-actions apontamento-producao-modal__actions">
+            <div className="form-actions apontamento-producao-modal__actions apontamento-producao-modal__actions--split">
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => setObsConsultaOpen(true)}
+              >
+                Observações
+              </button>
               <button
                 className="secondary-button"
                 type="button"
                 onClick={() => {
                   setDetalheOpen(false);
                   setDetalheRow(null);
+                  setObsConsultaOpen(false);
                 }}
               >
+                Fechar
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      {obsConsultaOpen && detalheAtual && (
+        <section className="modal-backdrop" role="dialog" aria-modal="true">
+          <article className="modal-card apontamento-producao-modal">
+            <header className="modal-card__header">
+              <h2>Observações do Apontamento</h2>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Fechar"
+                onClick={() => setObsConsultaOpen(false)}
+              >
+                <IoCloseOutline size={18} />
+              </button>
+            </header>
+
+            <div className="form-grid-3">
+              <div className="form-grid-3__full apontamento-producao-modal__read-only">
+                <span>Observação</span>
+                <strong>{detalheAtual.obsApontProd || '-'}</strong>
+              </div>
+            </div>
+
+            <div className="form-actions apontamento-producao-modal__actions">
+              <button className="secondary-button" type="button" onClick={() => setObsConsultaOpen(false)}>
                 Fechar
               </button>
             </div>

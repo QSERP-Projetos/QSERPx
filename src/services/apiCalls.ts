@@ -1050,6 +1050,8 @@ export const incluirApontProdPadraoCall = async (
     qtdProduzida?: string;
     qtdRejeitada?: string;
     permitirApontamentoSemOperacao?: boolean;
+    loteApont?: string;
+    obsApontProd?: string;
   },
 ): Promise<ApiCallResponse> => {
   const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ApontamentosProducao/Padrao`;
@@ -1076,6 +1078,8 @@ export const incluirApontProdPadraoCall = async (
       Qtd_Rejeitada: payload.qtdRejeitada ?? '0',
       Permitir_Apontamento_Sem_Operacao: payload.permitirApontamentoSemOperacao ? 1 : 0,
       Validar_Operacao: payload.permitirApontamentoSemOperacao ? 0 : 1,
+      Lote_Apont: payload.loteApont ?? '',
+      Obs_Apont_Prod: payload.obsApontProd ?? '',
     },
   );
 };

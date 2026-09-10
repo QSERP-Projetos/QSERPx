@@ -6279,6 +6279,16 @@ select.text-field:focus {
   min-width: 156px;
 }
 
+.apontamento-producao-modal__actions .secondary-button {
+  min-width: 156px;
+}
+
+.apontamento-producao-modal__actions--split {
+  display: flex;
+  width: 100%;
+  justify-content: space-between !important;
+}
+
 .apontamento-producao-modal__actions {
   margin-top: 4px;
 }
