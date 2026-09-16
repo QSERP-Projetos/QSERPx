@@ -154,7 +154,7 @@ export const incluirPedidoVenda = async (pedido: any): Promise<any> => {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${jwToken}`,
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify(pedido),
   });

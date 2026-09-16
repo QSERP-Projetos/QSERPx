@@ -1126,11 +1126,20 @@ export const alterarApontProdCronometroCall = async (
     codigoEmpresa?: number;
     numApontamento?: number;
     numOrdem?: string;
+    numOperacao?: number;
+    numMaquina?: string;
+    numRegistro?: string;
+    dataInicio?: string;
+    horaInicio?: string;
+    dataFim?: string;
+    horaFim?: string;
     codigoMotivo?: string;
     codigoBloqueio?: string;
     qtdProduzida?: string;
     qtdRejeitada?: string;
     usuario?: string;
+    loteApont?: string;
+    obsApontProd?: string;
   },
 ): Promise<ApiCallResponse> => {
   const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ApontamentosProducao`;
@@ -1143,11 +1152,20 @@ export const alterarApontProdCronometroCall = async (
       Codigo_Empresa: payload.codigoEmpresa,
       Num_Apontamento: payload.numApontamento ?? 0,
       Num_Ordem: payload.numOrdem ?? '',
+      Num_Operacao: payload.numOperacao,
+      Num_Maquina: payload.numMaquina ?? '',
+      Num_Registro: payload.numRegistro ?? '',
+      Data_Inicio: payload.dataInicio ?? '',
+      Hora_Inicio: payload.horaInicio ?? '',
+      Data_Fim: payload.dataFim ?? '',
+      Hora_Fim: payload.horaFim ?? '',
       Codigo_Motivo: payload.codigoMotivo ?? '',
       Codigo_Bloqueio: payload.codigoBloqueio ?? '',
       Qtd_Produzida: payload.qtdProduzida ?? '0',
       Qtd_Rejeitada: payload.qtdRejeitada ?? '0',
       Usuario: payload.usuario ?? '',
+      Lote_Apont: payload.loteApont ?? '',
+      Obs_Apont_Prod: payload.obsApontProd ?? '',
     },
   );
 };

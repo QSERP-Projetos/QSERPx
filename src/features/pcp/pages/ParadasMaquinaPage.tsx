@@ -3,12 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import {
   IoAddOutline,
   IoArrowBack,
-  IoChevronDownOutline,
-  IoChevronForwardOutline,
   IoCloseCircleOutline,
   IoCloseOutline,
   IoFilterOutline,
   IoRefreshOutline,
+  IoTimeOutline,
 } from 'react-icons/io5';
 import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
@@ -19,7 +18,9 @@ import { ListSearchField } from '../../../components/ListSearchField';
 import { SearchableSelect } from '../../../components/SearchableSelect';
 import { GlobalConfig } from '../../../services/globalConfig';
 import {
+  alterarParadaMaquinaCronometroCall,
   buscaOFCall,
+  incluirParadaMaquinaCronometroCall,
   incluirParadaMaquinaPadraoCall,
   listMotivoParadaMaquinaCall,
   listParadasMaquinaCall,
@@ -72,49 +73,6 @@ const getRows = (payload: any): any[] => {
   return [];
 };
 
-const parseDateTimeForSort = (dateValue: any, timeValue: any) => {
-  const dateText = String(dateValue ?? '').trim();
-  const fullMatch = dateText.match(/^(\d{2})\/(\d{2})\/(\d{2,4})(?:\s+(\d{2}):(\d{2})(?::\d{2})?)?$/);
-
-  let day = 0;
-  let month = 0;
-  let year = 0;
-  let embeddedHour = 0;
-  let embeddedMinute = 0;
-
-  if (fullMatch) {
-    day = Number(fullMatch[1]);
-    month = Number(fullMatch[2]);
-    const rawYear = Number(fullMatch[3]);
-    year = fullMatch[3].length === 2 ? 2000 + rawYear : rawYear;
-    embeddedHour = fullMatch[4] ? Number(fullMatch[4]) : 0;
-    embeddedMinute = fullMatch[5] ? Number(fullMatch[5]) : 0;
-  } else {
-    const parsed = new Date(dateText);
-    if (!Number.isFinite(parsed.getTime())) return 0;
-
-    day = parsed.getDate();
-    month = parsed.getMonth() + 1;
-    year = parsed.getFullYear();
-    embeddedHour = parsed.getHours();
-    embeddedMinute = parsed.getMinutes();
-  }
-
-  const timeMatch = String(timeValue ?? '').trim().match(/^(\d{2}):(\d{2})/);
-  const hour = timeMatch ? Number(timeMatch[1]) : embeddedHour;
-  const minute = timeMatch ? Number(timeMatch[2]) : embeddedMinute;
-
-  const date = new Date(
-    year,
-    month - 1,
-    day,
-    Number.isFinite(hour) ? hour : 0,
-    Number.isFinite(minute) ? minute : 0,
-  );
-
-  return Number.isFinite(date.getTime()) ? date.getTime() : 0;
-};
-
 const getFirstFilledValue = (source: any, keys: string[]) => {
   for (const key of keys) {
     const value = source?.[key];
@@ -126,7 +84,7 @@ const getFirstFilledValue = (source: any, keys: string[]) => {
   return undefined;
 };
 
-type SortField = 'ordem' | 'maquina' | 'motivo' | 'inicio' | 'fim';
+type SortField = 'ordem' | 'maquina';
 type SortDirection = 'asc' | 'desc';
 type SelectOption = { value: string; label: string };
 type FormErrors = {
@@ -186,9 +144,41 @@ const resolveParadaListRow = (row: any) => {
     motivo: String(getFirstFilledValue(row, ['motivo_Parada', 'Motivo_Parada', 'descricao_Motivo', 'Descricao_Motivo']) ?? '-'),
     inicioData: inicioDataHora.date || formatDateLabel(getFirstFilledValue(row, ['data_Inicio', 'Data_Inicio', 'data_Apont', 'Data_Apont'])),
     inicioHora: inicioDataHora.time || String(getFirstFilledValue(row, ['hora_Inicio', 'Hora_Inicio']) ?? '').trim(),
-    fimData: fimDataHora.date || formatDateLabel(getFirstFilledValue(row, ['data_Fim', 'Data_Fim', 'data_Apont', 'Data_Apont'])),
+    fimData: fimDataHora.date || formatDateLabel(getFirstFilledValue(row, ['data_Fim', 'Data_Fim'])),
     fimHora: fimDataHora.time || String(getFirstFilledValue(row, ['hora_Fim', 'Hora_Fim']) ?? '').trim(),
   };
+};
+
+const normalizeTipoApontamento = (value?: string) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const isCronometroTipo = (value?: string) => {
+  const normalized = normalizeTipoApontamento(value);
+  return normalized === 'apontamento cronometro' || normalized === 'apontamento por cronometro';
+};
+
+// Origem_Parada = 7 identifica uma parada de máquina registrada por cronômetro.
+const isParadaCronometroTipo = (row: any) =>
+  String(
+    getFirstFilledValue(row, ['origem_Parada', 'Origem_Parada', 'origemParada', 'origem_Apont', 'Origem_Apont', 'origemApont']) ?? '',
+  ).trim() === '7';
+
+// Cronômetro ainda em aberto: sem data/hora fim, pendente de finalização.
+const isParadaCronometroAberta = (row: any) => {
+  if (!isParadaCronometroTipo(row)) return false;
+  const { fimData, fimHora } = resolveParadaListRow(row);
+  return !fimHora.trim() && (fimData === '-' || !fimData.trim());
+};
+
+type CronometroStatus = 'pendente' | 'concluido' | null;
+
+const getParadaCronometroStatus = (row: any): CronometroStatus => {
+  if (!isParadaCronometroTipo(row)) return null;
+  return isParadaCronometroAberta(row) ? 'pendente' : 'concluido';
 };
 
 export function ParadasMaquinaPage() {
@@ -208,7 +198,6 @@ export function ParadasMaquinaPage() {
   const [filtroErrors, setFiltroErrors] = useState<FiltroErrors>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filtrosOpen, setFiltrosOpen] = useState(false);
-  const [expandedParadaCards, setExpandedParadaCards] = useState<Record<string, boolean>>({});
   const [sortField, setSortField] = useState<SortField>('ordem');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const initialLoadRef = useRef(false);
@@ -228,6 +217,12 @@ export function ParadasMaquinaPage() {
   const [codigoProduto, setCodigoProduto] = useState('');
   const [descricaoPortugues, setDescricaoPortugues] = useState('');
 
+  const [finalizarOpen, setFinalizarOpen] = useState(false);
+  const [finalizarRow, setFinalizarRow] = useState<any | null>(null);
+  const [finalizando, setFinalizando] = useState(false);
+
+  const paradaCronometro = isCronometroTipo(GlobalConfig.getTipoParadaMaquina());
+
   const rowsOrdenadas = useMemo(() => {
     const list = [...rows];
     const collator = new Intl.Collator('pt-BR');
@@ -239,19 +234,10 @@ export function ParadasMaquinaPage() {
       const ordemB = Number(rowB.ordem || 0);
       const maquinaA = rowA.maquina;
       const maquinaB = rowB.maquina;
-      const motivoA = rowA.motivo;
-      const motivoB = rowB.motivo;
-      const inicioA = parseDateTimeForSort(rowA.inicioData, rowA.inicioHora);
-      const inicioB = parseDateTimeForSort(rowB.inicioData, rowB.inicioHora);
-      const fimA = parseDateTimeForSort(rowA.fimData, rowA.fimHora);
-      const fimB = parseDateTimeForSort(rowB.fimData, rowB.fimHora);
 
       let comparison = 0;
       if (sortField === 'ordem') comparison = ordemA - ordemB;
       if (sortField === 'maquina') comparison = collator.compare(maquinaA, maquinaB);
-      if (sortField === 'motivo') comparison = collator.compare(motivoA, motivoB);
-      if (sortField === 'inicio') comparison = inicioA - inicioB;
-      if (sortField === 'fim') comparison = fimA - fimB;
 
       return sortDirection === 'asc' ? comparison : comparison * -1;
     });
@@ -495,17 +481,25 @@ export function ParadasMaquinaPage() {
 
     setSaving(true);
     try {
-      const resp = await incluirParadaMaquinaPadraoCall(baseUrl, token, {
-        codigoEmpresa,
-        numOrdem: semOF ? 0 : Number(form.numOrdem) || 0,
-        numMaquina: form.numMaquina,
-        dataInicio: form.dataInicio,
-        horaInicio: form.horaInicio,
-        dataFim: form.dataFim,
-        horaFim: form.horaFim,
-        codigoMotivo: form.codigoMotivo,
-        usuario: GlobalConfig.getUsuario(),
-      });
+      const resp = paradaCronometro
+        ? await incluirParadaMaquinaCronometroCall(baseUrl, token, {
+          codigoEmpresa,
+          numOrdem: semOF ? 0 : Number(form.numOrdem) || 0,
+          numMaquina: form.numMaquina,
+          codigoMotivo: form.codigoMotivo,
+          usuario: GlobalConfig.getUsuario(),
+        })
+        : await incluirParadaMaquinaPadraoCall(baseUrl, token, {
+          codigoEmpresa,
+          numOrdem: semOF ? 0 : Number(form.numOrdem) || 0,
+          numMaquina: form.numMaquina,
+          dataInicio: form.dataInicio,
+          horaInicio: form.horaInicio,
+          dataFim: form.dataFim,
+          horaFim: form.horaFim,
+          codigoMotivo: form.codigoMotivo,
+          usuario: GlobalConfig.getUsuario(),
+        });
 
       if (!resp.succeeded) {
         showToast(getApiErrorMessage(resp, 'Falha ao incluir parada de máquina.'), 'error');
@@ -522,8 +516,60 @@ export function ParadasMaquinaPage() {
     }
   };
 
+  const [detalheOpen, setDetalheOpen] = useState(false);
+  const [detalheRow, setDetalheRow] = useState<any | null>(null);
+
+  const abrirConsulta = (row: any) => {
+    setDetalheRow(row);
+    setDetalheOpen(true);
+  };
+
+  const abrirFinalizarCronometro = (row: any) => {
+    setFinalizarRow(row);
+    setFinalizarOpen(true);
+  };
+
+  const handleFinalizarCronometroParada = async () => {
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+    const codigoEmpresa = GlobalConfig.getCodEmpresa();
+
+    if (!baseUrl || !token || !codigoEmpresa || !finalizarRow) {
+      showToast('Sessão inválida para finalizar parada.', 'error');
+      return;
+    }
+
+    const numOrdem = String(getFirstFilledValue(finalizarRow, ['num_Ordem', 'Num_Ordem', 'numOrdem']) ?? '').trim();
+
+    setFinalizando(true);
+    try {
+      const resp = await alterarParadaMaquinaCronometroCall(baseUrl, token, {
+        codigoEmpresa,
+        numOrdem,
+        usuario: GlobalConfig.getUsuario(),
+      });
+
+      if (!resp.succeeded) {
+        showToast(getApiErrorMessage(resp, 'Falha ao finalizar parada de máquina.'), 'error');
+        return;
+      }
+
+      showToast('Parada de máquina cronômetro finalizada com sucesso.', 'success');
+      setFinalizarOpen(false);
+      setFinalizarRow(null);
+      void carregar();
+    } catch (error: any) {
+      showToast(error?.message || 'Erro ao finalizar parada de máquina.', 'error');
+    } finally {
+      setFinalizando(false);
+    }
+  };
+
+  const finalizarAtual = useMemo(() => (finalizarRow ? resolveParadaListRow(finalizarRow) : null), [finalizarRow]);
+  const detalheAtual = useMemo(() => (detalheRow ? resolveParadaListRow(detalheRow) : null), [detalheRow]);
+
   return (
-    <main className="clientes-page list-layout-page">
+    <main className="clientes-page list-layout-page paradas-maquina-page">
       <section className="clientes-page__header">
         <div className="clientes-page__title-wrap">
           <button className="icon-button" type="button" onClick={() => navigate(ROUTES.home)} aria-label="Voltar">
@@ -532,6 +578,7 @@ export function ParadasMaquinaPage() {
           <div>
             <h1>Paradas de Máquina</h1>
             <p>Consulta e inclusão de paradas de máquinas.</p>
+            <p className="apontamento-producao-subtitle">Modo configurado: {paradaCronometro ? 'Cronômetro' : 'Normal'}</p>
           </div>
         </div>
       </section>
@@ -710,6 +757,7 @@ export function ParadasMaquinaPage() {
                 <table>
                   <thead>
                     <tr>
+                      <th className="paradas-maquina-status-col">Status</th>
                       <th>
                         <button className="module-table__sort" type="button" onClick={() => handleSort('ordem')}>
                           Ordem <span>{getSortIndicator('ordem')}</span>
@@ -720,38 +768,47 @@ export function ParadasMaquinaPage() {
                           Máquina <span>{getSortIndicator('maquina')}</span>
                         </button>
                       </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('motivo')}>
-                          Motivo <span>{getSortIndicator('motivo')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('inicio')}>
-                          Início <span>{getSortIndicator('inicio')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('fim')}>
-                          Fim <span>{getSortIndicator('fim')}</span>
-                        </button>
-                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {rowsFiltradas.map((row, index) => {
                       const current = resolveParadaListRow(row);
+                      const cronometroAberta = isParadaCronometroAberta(row);
+                      const cronometroStatus = getParadaCronometroStatus(row);
 
                       return (
-                        <tr key={`pm-${index}`}>
+                        <tr
+                          key={`pm-${index}`}
+                          className={`module-row-clickable${cronometroAberta ? ' paradas-maquina-row--cronometro' : ''}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => (cronometroAberta ? abrirFinalizarCronometro(row) : abrirConsulta(row))}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              if (cronometroAberta) {
+                                abrirFinalizarCronometro(row);
+                              } else {
+                                abrirConsulta(row);
+                              }
+                            }
+                          }}
+                        >
+                          <td className="paradas-maquina-status-col">
+                            {cronometroStatus ? (
+                              <IoTimeOutline
+                                size={18}
+                                className={`paradas-maquina-status-icon paradas-maquina-status-icon--${cronometroStatus}`}
+                                title={
+                                  cronometroStatus === 'pendente'
+                                    ? 'Parada cronômetro pendente de finalização'
+                                    : 'Parada cronômetro concluída'
+                                }
+                              />
+                            ) : null}
+                          </td>
                           <td>{current.ordem}</td>
                           <td>{current.maquina}</td>
-                          <td>{current.motivo}</td>
-                          <td>
-                            {current.inicioData} {current.inicioHora}
-                          </td>
-                          <td>
-                            {current.fimData} {current.fimHora}
-                          </td>
                         </tr>
                       );
                     })}
@@ -762,56 +819,48 @@ export function ParadasMaquinaPage() {
               <div className="module-cards">
                 {rowsFiltradas.map((row, index) => {
                   const current = resolveParadaListRow(row);
-                  const cardKey = `${current.ordem || `idx-${index}`}-${current.maquina}`;
-                  const isExpandedCard = Boolean(expandedParadaCards[cardKey]);
+                  const cronometroAberta = isParadaCronometroAberta(row);
+                  const cronometroStatus = getParadaCronometroStatus(row);
 
                   return (
-                    <article className="module-card" key={`card-pm-${index}`}>
+                    <article
+                      className={`module-card module-row-clickable${cronometroAberta ? ' paradas-maquina-row--cronometro' : ''}`}
+                      key={`card-pm-${index}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => (cronometroAberta ? abrirFinalizarCronometro(row) : abrirConsulta(row))}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          if (cronometroAberta) {
+                            abrirFinalizarCronometro(row);
+                          } else {
+                            abrirConsulta(row);
+                          }
+                        }
+                      }}
+                    >
                       <div className="module-card__row module-card__row--split">
                         <div className="module-card__row-stack">
                           <span>Ordem</span>
                           <strong>{current.ordem}</strong>
                         </div>
-                        <button
-                          type="button"
-                          className="module-card__expand-toggle"
-                          onClick={() =>
-                            setExpandedParadaCards((prev) => ({
-                              ...prev,
-                              [cardKey]: !prev[cardKey],
-                            }))
-                          }
-                          aria-label={isExpandedCard ? 'Recolher detalhes da parada' : 'Expandir detalhes da parada'}
-                          title={isExpandedCard ? 'Recolher detalhes' : 'Expandir detalhes'}
-                        >
-                          {isExpandedCard ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
-                        </button>
+                        {cronometroStatus ? (
+                          <IoTimeOutline
+                            size={18}
+                            className={`paradas-maquina-status-icon paradas-maquina-status-icon--${cronometroStatus}`}
+                            title={
+                              cronometroStatus === 'pendente'
+                                ? 'Parada cronômetro pendente de finalização'
+                                : 'Parada cronômetro concluída'
+                            }
+                          />
+                        ) : null}
                       </div>
                       <div className="module-card__row">
                         <span>Máquina</span>
                         <strong>{current.maquina}</strong>
                       </div>
-
-                      {isExpandedCard ? (
-                        <>
-                          <div className="module-card__row">
-                            <span>Motivo</span>
-                            <strong>{current.motivo}</strong>
-                          </div>
-                          <div className="module-card__row">
-                            <span>Início</span>
-                            <strong>
-                              {current.inicioData} {current.inicioHora}
-                            </strong>
-                          </div>
-                          <div className="module-card__row">
-                            <span>Fim</span>
-                            <strong>
-                              {current.fimData} {current.fimHora}
-                            </strong>
-                          </div>
-                        </>
-                      ) : null}
                     </article>
                   );
                 })}
@@ -825,7 +874,7 @@ export function ParadasMaquinaPage() {
         <section className="modal-backdrop" role="dialog" aria-modal="true">
           <article className="modal-card modal-card--wide paradas-maquina-modal">
             <header className="modal-card__header">
-              <h2>Nova parada de máquina</h2>
+              <h2>Nova parada de máquina ({paradaCronometro ? 'Cronômetro' : 'Normal'})</h2>
               <button
                 type="button"
                 className="icon-button"
@@ -938,28 +987,38 @@ export function ParadasMaquinaPage() {
                 />
                 {formErrors.codigoMotivo ? <small className="module-field-error">{formErrors.codigoMotivo}</small> : null}
               </label>
-              <label>
-                <span>Data início</span>
-                <CustomDatePicker
-                  value={form.dataInicio}
-                  onChange={(nextDate) => setForm((prev) => ({ ...prev, dataInicio: nextDate }))}
-                />
-              </label>
-              <label>
-                <span>Hora início</span>
-                <CustomTimePicker value={form.horaInicio} onChange={(nextValue) => setForm((prev) => ({ ...prev, horaInicio: nextValue }))} />
-              </label>
-              <label>
-                <span>Data fim</span>
-                <CustomDatePicker
-                  value={form.dataFim}
-                  onChange={(nextDate) => setForm((prev) => ({ ...prev, dataFim: nextDate }))}
-                />
-              </label>
-              <label>
-                <span>Hora fim</span>
-                <CustomTimePicker value={form.horaFim} onChange={(nextValue) => setForm((prev) => ({ ...prev, horaFim: nextValue }))} />
-              </label>
+              {!paradaCronometro ? (
+                <>
+                  <label>
+                    <span>Data início</span>
+                    <CustomDatePicker
+                      value={form.dataInicio}
+                      onChange={(nextDate) => setForm((prev) => ({ ...prev, dataInicio: nextDate }))}
+                    />
+                  </label>
+                  <label>
+                    <span>Hora início</span>
+                    <CustomTimePicker value={form.horaInicio} onChange={(nextValue) => setForm((prev) => ({ ...prev, horaInicio: nextValue }))} />
+                  </label>
+                  <label>
+                    <span>Data fim</span>
+                    <CustomDatePicker
+                      value={form.dataFim}
+                      onChange={(nextDate) => setForm((prev) => ({ ...prev, dataFim: nextDate }))}
+                    />
+                  </label>
+                  <label>
+                    <span>Hora fim</span>
+                    <CustomTimePicker value={form.horaFim} onChange={(nextValue) => setForm((prev) => ({ ...prev, horaFim: nextValue }))} />
+                  </label>
+                </>
+              ) : (
+                <div className="form-grid-3__full">
+                  <p className="module-empty">
+                    Modo cronômetro: a data e hora de início serão registradas automaticamente no momento da confirmação. Para finalizar, clique na parada pendente na listagem.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="form-actions">
@@ -968,6 +1027,131 @@ export function ParadasMaquinaPage() {
               </button>
               <button className="primary-button" type="button" onClick={() => void handleSalvar()} disabled={saving}>
                 {saving ? 'Salvando...' : 'Incluir parada'}
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      {finalizarOpen && finalizarRow && finalizarAtual && (
+        <section className="modal-backdrop" role="dialog" aria-modal="true">
+          <article className="modal-card paradas-maquina-modal">
+            <header className="modal-card__header">
+              <h2>Finalizar Parada Cronômetro</h2>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Fechar"
+                onClick={() => {
+                  setFinalizarOpen(false);
+                  setFinalizarRow(null);
+                }}
+              >
+                <IoCloseOutline size={18} />
+              </button>
+            </header>
+
+            <div className="form-grid-3">
+              <div className="apontamento-producao-modal__read-only">
+                <span>OF</span>
+                <strong>{finalizarAtual.ordem}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Máquina</span>
+                <strong>{finalizarAtual.maquina}</strong>
+              </div>
+              <div className="form-grid-3__full apontamento-producao-modal__read-only">
+                <span>Motivo</span>
+                <strong>{finalizarAtual.motivo}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Data início</span>
+                <strong>{finalizarAtual.inicioData || '-'}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Hora início</span>
+                <strong>{finalizarAtual.inicioHora || '-'}</strong>
+              </div>
+            </div>
+
+            <div className="form-actions">
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => {
+                  setFinalizarOpen(false);
+                  setFinalizarRow(null);
+                }}
+              >
+                Cancelar
+              </button>
+              <button className="primary-button" type="button" onClick={() => void handleFinalizarCronometroParada()} disabled={finalizando}>
+                {finalizando ? 'Finalizando...' : 'Finalizar'}
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      {detalheOpen && detalheRow && detalheAtual && (
+        <section className="modal-backdrop" role="dialog" aria-modal="true">
+          <article className="modal-card paradas-maquina-modal">
+            <header className="modal-card__header">
+              <h2>Consulta de Parada de Máquina</h2>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Fechar"
+                onClick={() => {
+                  setDetalheOpen(false);
+                  setDetalheRow(null);
+                }}
+              >
+                <IoCloseOutline size={18} />
+              </button>
+            </header>
+
+            <div className="form-grid-3">
+              <div className="apontamento-producao-modal__read-only">
+                <span>OF</span>
+                <strong>{detalheAtual.ordem}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Máquina</span>
+                <strong>{detalheAtual.maquina}</strong>
+              </div>
+              <div className="form-grid-3__full apontamento-producao-modal__read-only">
+                <span>Motivo</span>
+                <strong>{detalheAtual.motivo}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Data início</span>
+                <strong>{detalheAtual.inicioData || '-'}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Hora início</span>
+                <strong>{detalheAtual.inicioHora || '-'}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Data fim</span>
+                <strong>{detalheAtual.fimData || '-'}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Hora fim</span>
+                <strong>{detalheAtual.fimHora || '-'}</strong>
+              </div>
+            </div>
+
+            <div className="form-actions">
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => {
+                  setDetalheOpen(false);
+                  setDetalheRow(null);
+                }}
+              >
+                Fechar
               </button>
             </div>
           </article>

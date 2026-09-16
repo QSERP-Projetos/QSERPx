@@ -15,6 +15,7 @@ type SessionData = {
   nivelUsuario?: number;
   tipoApontProd: string;
   tipoApontMaoObra: string;
+  tipoParadaMaquina: string;
   permitirApontamentoSemOperacao: boolean;
   tipoMenuSistema: 'padrao' | 'simplificado';
 };
@@ -52,6 +53,7 @@ const defaultSession: SessionData = {
   nivelUsuario: undefined,
   tipoApontProd: 'Apontamento Padrão',
   tipoApontMaoObra: 'Apontamento Padrão',
+  tipoParadaMaquina: 'Apontamento Padrão',
   permitirApontamentoSemOperacao: false,
   tipoMenuSistema: 'padrao',
 };
@@ -206,6 +208,7 @@ export class GlobalConfig {
         ...parsed,
         tipoApontProd: parsed.tipoApontProd || parsed.tipoApontProd || 'Apontamento Padrão',
         tipoApontMaoObra: parsed.tipoApontMaoObra || parsed.tipoApontMaoObra || 'Apontamento Padrão',
+        tipoParadaMaquina: parsed.tipoParadaMaquina || 'Apontamento Padrão',
         permitirApontamentoSemOperacao: Boolean(parsed.permitirApontamentoSemOperacao),
         tipoMenuSistema: normalizeTipoMenuSistema(parsed.tipoMenuSistema),
       };
@@ -219,8 +222,26 @@ export class GlobalConfig {
   }
 
   static async clearConfig(): Promise<void> {
-    this.session = { ...defaultSession };
-    safeRemove(STORAGE_KEYS.session);
+    // Preserva preferências de dispositivo/usuário (tipo de apontamento, menu etc.) ao fazer logout.
+    const {
+      uuidNavegador,
+      tipoApontProd,
+      tipoApontMaoObra,
+      tipoParadaMaquina,
+      permitirApontamentoSemOperacao,
+      tipoMenuSistema,
+    } = this.session;
+
+    this.session = {
+      ...defaultSession,
+      uuidNavegador,
+      tipoApontProd,
+      tipoApontMaoObra,
+      tipoParadaMaquina,
+      permitirApontamentoSemOperacao,
+      tipoMenuSistema,
+    };
+    await this.saveSession();
   }
 
   static async ensureUuidNavegador(): Promise<string> {
@@ -393,6 +414,15 @@ export class GlobalConfig {
 
   static getTipoApontMaoObra(): string {
     return this.session.tipoApontMaoObra;
+  }
+
+  static setTipoParadaMaquina(value: string): void {
+    this.session.tipoParadaMaquina = value;
+    void this.saveSession();
+  }
+
+  static getTipoParadaMaquina(): string {
+    return this.session.tipoParadaMaquina;
   }
 
   static setPermitirApontamentoSemOperacao(value: boolean): void {

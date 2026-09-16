@@ -45,12 +45,14 @@ export function TipoApontamentoPage({ embedded = false, onRequestClose }: TipoAp
   const navigate = useNavigate();
   const [apontamentoProd, setApontamentoProd] = useState(apontamentoOptions[0].value);
   const [apontamentoMaoObra, setApontamentoMaoObra] = useState(apontamentoOptions[0].value);
+  const [apontamentoParada, setApontamentoParada] = useState(apontamentoOptions[0].value);
   const [permitirApontSemOper, setPermitirApontSemOper] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     setApontamentoProd(getValidOption(GlobalConfig.getTipoApontProd()));
     setApontamentoMaoObra(getValidOption(GlobalConfig.getTipoApontMaoObra()));
+    setApontamentoParada(getValidOption(GlobalConfig.getTipoParadaMaquina()));
     setPermitirApontSemOper(GlobalConfig.getPermitirApontamentoSemOperacao());
     setInitialized(true);
   }, []);
@@ -60,8 +62,9 @@ export function TipoApontamentoPage({ embedded = false, onRequestClose }: TipoAp
 
     GlobalConfig.setTipoApontProd(apontamentoProd);
     GlobalConfig.setTipoApontMaoObra(apontamentoMaoObra);
+    GlobalConfig.setTipoParadaMaquina(apontamentoParada);
     GlobalConfig.setPermitirApontamentoSemOperacao(permitirApontSemOper);
-  }, [initialized, apontamentoProd, apontamentoMaoObra, permitirApontSemOper]);
+  }, [initialized, apontamentoProd, apontamentoMaoObra, apontamentoParada, permitirApontSemOper]);
 
   const handleClose = () => {
     if (onRequestClose) {
@@ -104,6 +107,17 @@ export function TipoApontamentoPage({ embedded = false, onRequestClose }: TipoAp
             onChange={setApontamentoMaoObra}
             options={apontamentoOptions}
             ariaLabel="Tipo apontamento mão de obra"
+            searchPlaceholder="Pesquisar tipo"
+          />
+        </label>
+
+        <label className="tipo-apontamento-card__field">
+          <span className="field-label">Tipo parada de máquina</span>
+          <SearchableSelect
+            value={apontamentoParada}
+            onChange={setApontamentoParada}
+            options={apontamentoOptions}
+            ariaLabel="Tipo parada de máquina"
             searchPlaceholder="Pesquisar tipo"
           />
         </label>

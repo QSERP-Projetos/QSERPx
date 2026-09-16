@@ -7,6 +7,7 @@ import {
   IoCloseOutline,
   IoFilterOutline,
   IoRefreshOutline,
+  IoTimeOutline,
 } from 'react-icons/io5';
 import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
@@ -17,6 +18,7 @@ import { ListSearchField } from '../../../components/ListSearchField';
 import { SearchableSelect } from '../../../components/SearchableSelect';
 import { GlobalConfig } from '../../../services/globalConfig';
 import {
+  alterarApontProdCronometroCall,
   buscaOFCall,
   buscaOperCall,
   incluirApontProdCronometroCall,
@@ -25,7 +27,6 @@ import {
   listaFuncionariosCall,
   listaMaquinasCall,
   listMotivoBloqueioCall,
-  listMotivoRejeicaoCall,
 } from '../../../services/apiCalls';
 import { filterListByTerm } from '../../../utils/filterListByTerm';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
@@ -162,6 +163,43 @@ const getRowText = (row: any, keys: string[], fallback = '-'): string => {
   return text || fallback;
 };
 
+// Quando descricao_Bloqueio vem preenchido, a qtd_Apontada refere-se a uma rejeição, não a produção.
+const resolveQuantidades = (row: any) => {
+  const descricaoBloqueio = getRowText(row, ['descricao_Bloqueio', 'Descricao_Bloqueio', 'descricaoBloqueio'], '');
+  const isRejeicao = Boolean(descricaoBloqueio);
+  const qtdApontada = getRowText(row, ['qtd_Apontada', 'Qtd_Apontada', 'qtdApontada', 'qtd_apontada'], '0');
+
+  return {
+    descricaoBloqueio,
+    qtdProduzida: isRejeicao
+      ? '0'
+      : getRowText(
+        row,
+        [
+          'qtd_Produzida',
+          'Qtd_Produzida',
+          'qtdProduzida',
+          'qtd_Apontada',
+          'Qtd_Apontada',
+          'qtdApontada',
+          'quantidade_Produzida',
+          'Quantidade_Produzida',
+          'quantidadeProduzida',
+          'qtd_Boa',
+          'Qtd_Boa',
+        ],
+        '0',
+      ),
+    qtdRejeitada: isRejeicao
+      ? qtdApontada
+      : getRowText(
+        row,
+        ['qtd_Rejeitada', 'Qtd_Rejeitada', 'qtdRejeitada', 'quantidade_Rejeitada', 'Quantidade_Rejeitada', 'qtd_Sucata', 'Qtd_Sucata'],
+        '0',
+      ),
+  };
+};
+
 const resolveListRow = (row: any) => {
   const inicioDataHora = splitDateTimeValue(getFirstFilledValue(row, ['dataHoraInicApont', 'dataHora_InicApont', 'data_Hora_Inic_Apont']));
   const fimDataHora = splitDateTimeValue(getFirstFilledValue(row, ['dataHoraFimApont', 'dataHora_FimApont', 'data_Hora_Fim_Apont']));
@@ -199,8 +237,6 @@ const resolveListRow = (row: any) => {
       'Data_Fim_Apont',
       'data_Final',
       'Data_Final',
-      'data_Apont',
-      'Data_Apont',
     ]),
   );
   const fimHora = getRowText(
@@ -225,41 +261,7 @@ const resolveListRow = (row: any) => {
     inicioHora: inicioDataHora.time || inicioHora,
     fimData: fimDataHora.date || fimData,
     fimHora: fimDataHora.time || fimHora,
-    ...(() => {
-      const tipoApontamento = String(
-        getFirstFilledValue(row, ['tipo_Apontamento', 'Tipo_Apontamento', 'tipoApontamento', 'tipo_apontamento']) ?? '',
-      ).trim();
-      const isRejeicao = tipoApontamento === '2';
-      const qtdApontada = getRowText(row, ['qtd_Apontada', 'Qtd_Apontada', 'qtdApontada', 'qtd_apontada'], '0');
-      return {
-        qtdProduzida: isRejeicao
-          ? '0'
-          : getRowText(
-            row,
-            [
-              'qtd_Produzida',
-              'Qtd_Produzida',
-              'qtdProduzida',
-              'qtd_Apontada',
-              'Qtd_Apontada',
-              'qtdApontada',
-              'quantidade_Produzida',
-              'Quantidade_Produzida',
-              'quantidadeProduzida',
-              'qtd_Boa',
-              'Qtd_Boa',
-            ],
-            '0',
-          ),
-        qtdRejeitada: isRejeicao
-          ? qtdApontada
-          : getRowText(
-            row,
-            ['qtd_Rejeitada', 'Qtd_Rejeitada', 'qtdRejeitada', 'quantidade_Rejeitada', 'Quantidade_Rejeitada', 'qtd_Sucata', 'Qtd_Sucata'],
-            '0',
-          ),
-      };
-    })(),
+    ...resolveQuantidades(row),
   };
 };
 
@@ -311,8 +313,6 @@ const resolveDetalheRow = (row: any) => {
           'Data_Fim_Apont',
           'data_Final',
           'Data_Final',
-          'data_Apont',
-          'Data_Apont',
         ]),
       ),
     horaFim:
@@ -322,30 +322,7 @@ const resolveDetalheRow = (row: any) => {
         ['hora_Fim', 'Hora_Fim', 'horaFim', 'horaFimApontamento', 'hora_Fim_Apont', 'Hora_Fim_Apont', 'horaFinal'],
         '-',
       ),
-    codigoMotivo: getRowText(row, ['codigo_Motivo', 'codigoMotivo', 'cod_Motivo', 'codMotivo']),
-    codigoBloqueio: getRowText(row, ['codigo_Bloqueio', 'codigoBloqueio', 'cod_Bloqueio', 'codBloqueio']),
-    qtdProduzida: getRowText(
-      row,
-      [
-        'qtd_Produzida',
-        'Qtd_Produzida',
-        'qtdProduzida',
-        'qtd_Apontada',
-        'Qtd_Apontada',
-        'qtdApontada',
-        'quantidade_Produzida',
-        'Quantidade_Produzida',
-        'quantidadeProduzida',
-        'qtd_Boa',
-        'Qtd_Boa',
-      ],
-      '0',
-    ),
-    qtdRejeitada: getRowText(
-      row,
-      ['qtd_Rejeitada', 'Qtd_Rejeitada', 'qtdRejeitada', 'quantidade_Rejeitada', 'Quantidade_Rejeitada', 'qtd_Sucata', 'Qtd_Sucata'],
-      '0',
-    ),
+    ...resolveQuantidades(row),
     parcial: getRowText(row, ['parcial', 'Parcial', 'ehParcial'], 'Não'),
     codigoProduto: getRowText(row, ['codigo_Produto', 'codigoProduto', 'cod_Prod', 'codProd', 'produto']),
     descricaoPortugues: getRowText(
@@ -400,6 +377,29 @@ const isCronometroTipo = (value?: string) => {
   return normalized === 'apontamento cronometro' || normalized === 'apontamento por cronometro';
 };
 
+// Origem_Apont = 7 identifica um apontamento por cronômetro.
+const isApontCronometroTipo = (row: any) =>
+  String(getFirstFilledValue(row, ['origem_Apont', 'Origem_Apont', 'origemApont', 'Origem_apont']) ?? '').trim() === '7';
+
+// Cronômetro ainda em aberto: nenhuma quantidade informada ainda, pendente de finalização.
+const isApontCronometroAberto = (row: any) => {
+  if (!isApontCronometroTipo(row)) return false;
+
+  const qtdProduzida = parseNumber(
+    getFirstFilledValue(row, ['qtd_Produzida', 'Qtd_Produzida', 'qtdProduzida', 'qtd_Apontada', 'Qtd_Apontada', 'qtdApontada']),
+  );
+  const qtdRejeitada = parseNumber(getFirstFilledValue(row, ['qtd_Rejeitada', 'Qtd_Rejeitada', 'qtdRejeitada']));
+
+  return qtdProduzida <= 0 && qtdRejeitada <= 0;
+};
+
+type CronometroStatus = 'pendente' | 'concluido' | null;
+
+const getCronometroStatus = (row: any): CronometroStatus => {
+  if (!isApontCronometroTipo(row)) return null;
+  return isApontCronometroAberto(row) ? 'pendente' : 'concluido';
+};
+
 const toFuncionarioOptions = (payload: any): SelectOption[] => {
   const rows = getRows(payload);
 
@@ -442,15 +442,20 @@ const toMotivoOptions = (payload: any, type: 'rej' | 'bloq'): SelectOption[] => 
     .map((row) => {
       const value =
         type === 'rej'
-          ? String(row?.codDescricaoRej ?? row?.cod_descricao_rej ?? row?.codigo ?? '').trim()
-          : String(row?.codDescricaoBloq ?? row?.cod_descricao_bloq ?? row?.codigo ?? '').trim();
+          ? String(row?.codigo_Rejeicao ?? row?.codigo_rejeicao ?? row?.codigo ?? row?.Codigo ?? '').trim()
+          : String(row?.codigo_Bloqueio ?? row?.codigo_bloqueio ?? row?.codigo ?? row?.Codigo ?? '').trim();
 
-      const descricao = String(row?.descricao ?? row?.Descricao ?? value).trim();
+      const descricaoCombinada =
+        type === 'rej'
+          ? String(row?.codDescricaoRej ?? row?.cod_descricao_rej ?? '').trim()
+          : String(row?.codDescricaoBloq ?? row?.cod_descricao_bloq ?? '').trim();
+
+      const descricao = String(row?.descricao ?? row?.Descricao ?? '').trim();
 
       if (!value) return null;
       return {
         value,
-        label: descricao ? `${value} - ${descricao}` : value,
+        label: descricaoCombinada || (descricao ? `${value} - ${descricao}` : value),
       };
     })
     .filter((item): item is SelectOption => Boolean(item));
@@ -465,7 +470,6 @@ const createInitialForm = () => ({
   horaInicio: '',
   dataFim: formatToday(),
   horaFim: '',
-  codigoMotivo: '',
   codigoBloqueio: '',
   qtdProduzida: '0,000',
   qtdRejeitada: '0,000',
@@ -484,7 +488,6 @@ type FormErrors = {
   horaFim?: string;
   qtdProduzida?: string;
   qtdRejeitada?: string;
-  codigoMotivo?: string;
   codigoBloqueio?: string;
 };
 
@@ -535,9 +538,19 @@ export function ApontamentoProducaoPage() {
   const [obsApontProdDraft, setObsApontProdDraft] = useState('');
   const [obsConsultaOpen, setObsConsultaOpen] = useState(false);
 
+  const [finalizarOpen, setFinalizarOpen] = useState(false);
+  const [finalizarRow, setFinalizarRow] = useState<any | null>(null);
+  const [finalizarForm, setFinalizarForm] = useState({ qtdProduzida: '', qtdRejeitada: '', codigoBloqueio: '' });
+  const [finalizarErrors, setFinalizarErrors] = useState<{
+    qtdProduzida?: string;
+    qtdRejeitada?: string;
+    codigoBloqueio?: string;
+  }>({});
+  const [finalizarConfirmacao, setFinalizarConfirmacao] = useState({ data: '', hora: '' });
+  const [finalizando, setFinalizando] = useState(false);
+
   const [funcionarios, setFuncionarios] = useState<SelectOption[]>([]);
   const [maquinas, setMaquinas] = useState<SelectOption[]>([]);
-  const [motivosRejeicao, setMotivosRejeicao] = useState<SelectOption[]>([]);
   const [motivosBloqueio, setMotivosBloqueio] = useState<SelectOption[]>([]);
 
   const [codigoProduto, setCodigoProduto] = useState('');
@@ -603,12 +616,14 @@ export function ApontamentoProducaoPage() {
 
   const funcionarioOptions = useMemo<SelectOption[]>(() => [{ value: '', label: 'Selecione' }, ...funcionarios], [funcionarios]);
   const maquinaOptions = useMemo<SelectOption[]>(() => [{ value: '', label: 'Selecione' }, ...maquinas], [maquinas]);
-  const motivoRejeicaoOptions = useMemo<SelectOption[]>(() => [{ value: '', label: 'Selecione' }, ...motivosRejeicao], [motivosRejeicao]);
   const motivoBloqueioOptions = useMemo<SelectOption[]>(() => [{ value: '', label: 'Selecione' }, ...motivosBloqueio], [motivosBloqueio]);
 
   const qtdRejeitadaInformada = useMemo(() => parseQuantidade(form.qtdRejeitada) > 0, [form.qtdRejeitada]);
 
   const detalheAtual = useMemo(() => (detalheRow ? resolveDetalheRow(detalheRow) : null), [detalheRow]);
+
+  const finalizarAtual = useMemo(() => (finalizarRow ? resolveListRow(finalizarRow) : null), [finalizarRow]);
+  const qtdRejeitadaInformadaFinalizar = useMemo(() => parseQuantidade(finalizarForm.qtdRejeitada) > 0, [finalizarForm.qtdRejeitada]);
 
   const resetModalState = useCallback(() => {
     setForm(createInitialForm());
@@ -636,10 +651,9 @@ export function ApontamentoProducaoPage() {
     if (!baseUrl || !token || !usuario) return;
 
     try {
-      const [funcResp, maqResp, rejResp, bloqResp] = await Promise.all([
+      const [funcResp, maqResp, bloqResp] = await Promise.all([
         listaFuncionariosCall(baseUrl, token, usuario),
         listaMaquinasCall(baseUrl, token),
-        listMotivoRejeicaoCall(baseUrl, token),
         listMotivoBloqueioCall(baseUrl, token),
       ]);
 
@@ -651,7 +665,6 @@ export function ApontamentoProducaoPage() {
 
       setFuncionarios(toFuncionarioOptions(funcionariosPayload));
       setMaquinas(toMaquinaOptions(maqResp.jsonBody || maqResp.data));
-      setMotivosRejeicao(toMotivoOptions(rejResp.jsonBody || rejResp.data, 'rej'));
       setMotivosBloqueio(toMotivoOptions(bloqResp.jsonBody || bloqResp.data, 'bloq'));
     } catch {
       // Mantém a tela funcional mesmo se uma lista auxiliar falhar.
@@ -659,9 +672,9 @@ export function ApontamentoProducaoPage() {
   }, []);
 
   useEffect(() => {
-    if (!modalOpen) return;
+    if (!modalOpen && !finalizarOpen) return;
     void carregarListasModal();
-  }, [carregarListasModal, modalOpen]);
+  }, [carregarListasModal, finalizarOpen, modalOpen]);
 
   const handleBlurOF = useCallback(async () => {
     const baseUrl = GlobalConfig.getBaseUrl();
@@ -884,15 +897,15 @@ export function ApontamentoProducaoPage() {
       nextErrors.numMaquina = 'Máquina é obrigatória.';
     }
 
-    if (!form.dataInicio) {
-      nextErrors.dataInicio = 'Data início é obrigatória.';
-    }
-
-    if (!isValidHour(form.horaInicio)) {
-      nextErrors.horaInicio = 'Hora início inválida.';
-    }
-
     if (!apontamentoCronometro) {
+      if (!form.dataInicio) {
+        nextErrors.dataInicio = 'Data início é obrigatória.';
+      }
+
+      if (!isValidHour(form.horaInicio)) {
+        nextErrors.horaInicio = 'Hora início inválida.';
+      }
+
       if (!form.dataFim) {
         nextErrors.dataFim = 'Data fim é obrigatória.';
       }
@@ -909,9 +922,8 @@ export function ApontamentoProducaoPage() {
         nextErrors.qtdRejeitada = 'Informe ao menos uma quantidade maior que zero.';
       }
 
-      if (qtdRejeitadaNum > 0 && (!form.codigoMotivo || !form.codigoBloqueio)) {
-        if (!form.codigoMotivo) nextErrors.codigoMotivo = 'Motivo rejeição é obrigatório.';
-        if (!form.codigoBloqueio) nextErrors.codigoBloqueio = 'Motivo bloqueio é obrigatório.';
+      if (qtdRejeitadaNum > 0 && !form.codigoBloqueio) {
+        nextErrors.codigoBloqueio = 'Motivo bloqueio é obrigatório.';
       }
     }
 
@@ -949,7 +961,6 @@ export function ApontamentoProducaoPage() {
           horaInicio: form.horaInicio,
           dataFim: form.dataFim,
           horaFim: form.horaFim,
-          codigoMotivo: form.codigoMotivo.trim(),
           codigoBloqueio: form.codigoBloqueio.trim(),
           usuario: GlobalConfig.getUsuario(),
           qtdProduzida: toApiQuantidade(form.qtdProduzida),
@@ -983,6 +994,90 @@ export function ApontamentoProducaoPage() {
   const abrirConsulta = (row: any) => {
     setDetalheRow(row);
     setDetalheOpen(true);
+  };
+
+  const abrirFinalizarCronometro = (row: any) => {
+    setFinalizarRow(row);
+    setFinalizarForm({ qtdProduzida: '', qtdRejeitada: '', codigoBloqueio: '' });
+    setFinalizarErrors({});
+    const now = new Date();
+    setFinalizarConfirmacao({
+      data: formatToday(),
+      hora: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+    });
+    setFinalizarOpen(true);
+  };
+
+  const handleFinalizarCronometro = async () => {
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+    const codigoEmpresa = GlobalConfig.getCodEmpresa();
+
+    if (!baseUrl || !token || !codigoEmpresa || !finalizarRow) {
+      showToast('Sessão inválida para finalizar apontamento.', 'error');
+      return;
+    }
+
+    const qtdProduzidaNum = parseQuantidade(finalizarForm.qtdProduzida);
+    const qtdRejeitadaNum = parseQuantidade(finalizarForm.qtdRejeitada);
+    const nextErrors: typeof finalizarErrors = {};
+
+    if (qtdProduzidaNum <= 0 && qtdRejeitadaNum <= 0) {
+      nextErrors.qtdProduzida = 'Informe ao menos uma quantidade maior que zero.';
+      nextErrors.qtdRejeitada = 'Informe ao menos uma quantidade maior que zero.';
+    }
+
+    if (qtdRejeitadaNum > 0) {
+      if (!finalizarForm.codigoBloqueio) nextErrors.codigoBloqueio = 'Motivo bloqueio é obrigatório.';
+    }
+
+    setFinalizarErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      return;
+    }
+
+    const numApontamento = Number(
+      getFirstFilledValue(finalizarRow, ['num_Apontamento', 'Num_Apontamento', 'numApontamento']) ?? 0,
+    );
+    const numOrdem = String(getFirstFilledValue(finalizarRow, ['num_Ordem', 'Num_Ordem', 'numOrdem']) ?? '').trim();
+    const dadosFinalizar = resolveListRow(finalizarRow);
+    const agora = new Date();
+    const dataFim = formatToday();
+    const horaFim = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
+
+    setFinalizando(true);
+    try {
+      const resp = await alterarApontProdCronometroCall(baseUrl, token, {
+        codigoEmpresa,
+        numApontamento,
+        numOrdem,
+        numOperacao: Number(dadosFinalizar.operacao) || undefined,
+        numMaquina: dadosFinalizar.maquina !== '-' ? dadosFinalizar.maquina : '',
+        numRegistro: dadosFinalizar.funcionario !== '-' ? dadosFinalizar.funcionario : '',
+        dataInicio: dadosFinalizar.inicioData !== '-' ? dadosFinalizar.inicioData : '',
+        horaInicio: dadosFinalizar.inicioHora,
+        dataFim,
+        horaFim,
+        codigoBloqueio: finalizarForm.codigoBloqueio.trim(),
+        qtdProduzida: toApiQuantidade(finalizarForm.qtdProduzida),
+        qtdRejeitada: toApiQuantidade(finalizarForm.qtdRejeitada),
+        usuario: GlobalConfig.getUsuario(),
+      });
+
+      if (!resp.succeeded) {
+        showToast(getApiErrorMessage(resp, 'Falha ao finalizar apontamento.'), 'error');
+        return;
+      }
+
+      showToast('Apontamento cronômetro finalizado com sucesso.', 'success');
+      setFinalizarOpen(false);
+      setFinalizarRow(null);
+      void carregar();
+    } catch (error: any) {
+      showToast(error?.message || 'Erro ao finalizar apontamento.', 'error');
+    } finally {
+      setFinalizando(false);
+    }
   };
 
   return (
@@ -1171,6 +1266,7 @@ export function ApontamentoProducaoPage() {
                 <table>
                   <thead>
                     <tr>
+                      <th className="apontamento-producao-status-col">Status</th>
                       <th>
                         <button className="module-table__sort" type="button" onClick={() => handleSort('ordem')}>
                           Ordem <span>{getSortIndicator('ordem')}</span>
@@ -1213,21 +1309,40 @@ export function ApontamentoProducaoPage() {
                   <tbody>
                     {rowsFiltradas.map((row, index) => {
                       const current = resolveListRow(row);
+                      const cronometroAberto = isApontCronometroAberto(row);
+                      const cronometroStatus = getCronometroStatus(row);
 
                       return (
                         <tr
                           key={`ap-${index}`}
-                          className="module-row-clickable"
+                          className={`module-row-clickable${cronometroAberto ? ' apontamento-producao-row--cronometro' : ''}`}
                           role="button"
                           tabIndex={0}
-                          onClick={() => abrirConsulta(row)}
+                          onClick={() => (cronometroAberto ? abrirFinalizarCronometro(row) : abrirConsulta(row))}
                           onKeyDown={(event) => {
                             if (event.key === 'Enter' || event.key === ' ') {
                               event.preventDefault();
-                              abrirConsulta(row);
+                              if (cronometroAberto) {
+                                abrirFinalizarCronometro(row);
+                              } else {
+                                abrirConsulta(row);
+                              }
                             }
                           }}
                         >
+                          <td className="apontamento-producao-status-col">
+                            {cronometroStatus ? (
+                              <IoTimeOutline
+                                size={18}
+                                className={`apontamento-producao-status-icon apontamento-producao-status-icon--${cronometroStatus}`}
+                                title={
+                                  cronometroStatus === 'pendente'
+                                    ? 'Apontamento cronômetro pendente de finalização'
+                                    : 'Apontamento cronômetro concluído'
+                                }
+                              />
+                            ) : null}
+                          </td>
                           <td>{current.ordem}</td>
                           <td>{current.operacao}</td>
                           <td>{current.produto}</td>
@@ -1247,6 +1362,8 @@ export function ApontamentoProducaoPage() {
               <div className="module-cards">
                 {rowsFiltradas.map((row, index) => {
                   const current = resolveListRow(row);
+                  const cronometroAberto = isApontCronometroAberto(row);
+                  const cronometroStatus = getCronometroStatus(row);
                   const produtoLinha =
                     current.produto !== '-' && current.descricaoProduto !== '-'
                       ? `${current.produto} - ${current.descricaoProduto}`
@@ -1256,18 +1373,33 @@ export function ApontamentoProducaoPage() {
 
                   return (
                     <article
-                      className="module-card module-row-clickable"
+                      className={`module-card module-row-clickable${cronometroAberto ? ' apontamento-producao-row--cronometro' : ''}`}
                       key={`card-ap-${index}`}
                       role="button"
                       tabIndex={0}
-                      onClick={() => abrirConsulta(row)}
+                      onClick={() => (cronometroAberto ? abrirFinalizarCronometro(row) : abrirConsulta(row))}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
                           event.preventDefault();
-                          abrirConsulta(row);
+                          if (cronometroAberto) {
+                            abrirFinalizarCronometro(row);
+                          } else {
+                            abrirConsulta(row);
+                          }
                         }
                       }}
                     >
+                      {cronometroStatus ? (
+                        <IoTimeOutline
+                          size={18}
+                          className={`apontamento-producao-status-icon apontamento-producao-status-icon--${cronometroStatus} apontamento-producao-status-icon--card`}
+                          title={
+                            cronometroStatus === 'pendente'
+                              ? 'Apontamento cronômetro pendente de finalização'
+                              : 'Apontamento cronômetro concluído'
+                          }
+                        />
+                      ) : null}
                       <div className="module-card__row">
                         <span>Ordem</span>
                         <strong>{current.ordem}</strong>
@@ -1446,36 +1578,40 @@ export function ApontamentoProducaoPage() {
                 {formErrors.numMaquina ? <small className="module-field-error">{formErrors.numMaquina}</small> : null}
               </label>
 
-              <label>
-                <span>Data início</span>
-                <CustomDatePicker
-                  className={formErrors.dataInicio ? 'pcp-date-error' : undefined}
-                  value={form.dataInicio}
-                  onChange={(nextDate) => {
-                    setForm((prev) => ({ ...prev, dataInicio: nextDate }));
-                    if (formErrors.dataInicio) setFormErrors((prev) => ({ ...prev, dataInicio: undefined }));
-                  }}
-                />
-                {formErrors.dataInicio ? <small className="module-field-error">{formErrors.dataInicio}</small> : null}
-              </label>
+              {!apontamentoCronometro ? (
+                <>
+                  <label>
+                    <span>Data início</span>
+                    <CustomDatePicker
+                      className={formErrors.dataInicio ? 'pcp-date-error' : undefined}
+                      value={form.dataInicio}
+                      onChange={(nextDate) => {
+                        setForm((prev) => ({ ...prev, dataInicio: nextDate }));
+                        if (formErrors.dataInicio) setFormErrors((prev) => ({ ...prev, dataInicio: undefined }));
+                      }}
+                    />
+                    {formErrors.dataInicio ? <small className="module-field-error">{formErrors.dataInicio}</small> : null}
+                  </label>
 
-              <label>
-                <span>Hora início</span>
-                <CustomTimePicker
-                  className={formErrors.horaInicio ? 'pcp-time-error' : undefined}
-                  value={form.horaInicio}
-                  onChange={(nextValue) => {
-                    setForm((prev) => ({ ...prev, horaInicio: nextValue }));
-                    if (formErrors.horaInicio) setFormErrors((prev) => ({ ...prev, horaInicio: undefined }));
-                  }}
-                />
-                {formErrors.horaInicio ? <small className="module-field-error">{formErrors.horaInicio}</small> : null}
-              </label>
+                  <label>
+                    <span>Hora início</span>
+                    <CustomTimePicker
+                      className={formErrors.horaInicio ? 'pcp-time-error' : undefined}
+                      value={form.horaInicio}
+                      onChange={(nextValue) => {
+                        setForm((prev) => ({ ...prev, horaInicio: nextValue }));
+                        if (formErrors.horaInicio) setFormErrors((prev) => ({ ...prev, horaInicio: undefined }));
+                      }}
+                    />
+                    {formErrors.horaInicio ? <small className="module-field-error">{formErrors.horaInicio}</small> : null}
+                  </label>
+                </>
+              ) : null}
 
               {apontamentoCronometro ? (
                 <div className="form-grid-3__full">
                   <p className="module-empty">
-                    Modo cronômetro: o apontamento será iniciado agora e deverá ser concluído na rotina de conclusão.
+                    Modo cronômetro: a data e hora de início serão registradas automaticamente no momento da confirmação.
                   </p>
                 </div>
               ) : null}
@@ -1576,24 +1712,7 @@ export function ApontamentoProducaoPage() {
                   </div>
 
                   {qtdRejeitadaInformada ? (
-                    <div className="form-grid-2 form-grid-3__full">
-                      <label>
-                        <span>Motivo rejeição</span>
-                        <SearchableSelect
-                          value={form.codigoMotivo}
-                          onChange={(nextValue) => {
-                            setForm((prev) => ({ ...prev, codigoMotivo: nextValue }));
-                            if (formErrors.codigoMotivo) setFormErrors((prev) => ({ ...prev, codigoMotivo: undefined }));
-                          }}
-                          options={motivoRejeicaoOptions}
-                          ariaLabel="Motivo rejeição"
-                          searchPlaceholder="Pesquisar motivo de rejeição"
-                          className={formErrors.codigoMotivo ? 'is-error' : undefined}
-                          dropUp
-                        />
-                        {formErrors.codigoMotivo ? <small className="module-field-error">{formErrors.codigoMotivo}</small> : null}
-                      </label>
-
+                    <div className="form-grid-3__full">
                       <label>
                         <span>Motivo bloqueio</span>
                         <SearchableSelect
@@ -1766,12 +1885,8 @@ export function ApontamentoProducaoPage() {
                 <strong>{formatDateTimeLabel(detalheAtual.dataFim, detalheAtual.horaFim)}</strong>
               </div>
               <div className="apontamento-producao-modal__read-only">
-                <span>Código motivo rejeição</span>
-                <strong>{detalheAtual.codigoMotivo}</strong>
-              </div>
-              <div className="apontamento-producao-modal__read-only">
-                <span>Código motivo bloqueio</span>
-                <strong>{detalheAtual.codigoBloqueio}</strong>
+                <span>Motivo bloqueio</span>
+                <strong>{detalheAtual.descricaoBloqueio || '-'}</strong>
               </div>
 
               <div className="apontamento-producao-modal__read-only">
@@ -1838,6 +1953,155 @@ export function ApontamentoProducaoPage() {
             <div className="form-actions apontamento-producao-modal__actions">
               <button className="secondary-button" type="button" onClick={() => setObsConsultaOpen(false)}>
                 Fechar
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      {finalizarOpen && finalizarRow && finalizarAtual && (
+        <section className="modal-backdrop" role="dialog" aria-modal="true">
+          <article className="modal-card modal-card--wide apontamento-producao-modal">
+            <header className="modal-card__header">
+              <h2>Finalizar Apontamento Cronômetro</h2>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Fechar"
+                onClick={() => {
+                  setFinalizarOpen(false);
+                  setFinalizarRow(null);
+                }}
+              >
+                <IoCloseOutline size={18} />
+              </button>
+            </header>
+
+            <div className="form-grid-3">
+              <div className="apontamento-producao-modal__read-only">
+                <span>OF</span>
+                <strong>{finalizarAtual.ordem}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Operação</span>
+                <strong>{finalizarAtual.operacao}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Máquina</span>
+                <strong>{finalizarAtual.maquina}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Funcionário</span>
+                <strong>{finalizarAtual.funcionario}</strong>
+              </div>
+
+              <div className="form-grid-3__full apontamento-producao-modal__read-only">
+                <span>Produto</span>
+                <strong>
+                  {finalizarAtual.produto !== '-' && finalizarAtual.descricaoProduto !== '-'
+                    ? `${finalizarAtual.produto} - ${finalizarAtual.descricaoProduto}`
+                    : finalizarAtual.produto}
+                </strong>
+              </div>
+
+              <div className="apontamento-producao-modal__read-only">
+                <span>Data início</span>
+                <strong>{finalizarAtual.inicioData || '-'}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Hora início</span>
+                <strong>{finalizarAtual.inicioHora || '-'}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Data fim</span>
+                <strong>{finalizarConfirmacao.data || '-'}</strong>
+              </div>
+              <div className="apontamento-producao-modal__read-only">
+                <span>Hora fim</span>
+                <strong>{finalizarConfirmacao.hora || '-'}</strong>
+              </div>
+
+              <div className="form-grid-3__full apontamento-producao-modal__quantidades">
+                <label>
+                  <span>Qtd. produzida</span>
+                  <div className="apontamento-producao-modal-field apontamento-producao-modal-field--clearable">
+                    <input
+                      className={finalizarErrors.qtdProduzida ? 'module-input-error' : ''}
+                      value={finalizarForm.qtdProduzida}
+                      inputMode="decimal"
+                      onChange={(event) => {
+                        setFinalizarForm((prev) => ({ ...prev, qtdProduzida: event.target.value }));
+                        if (finalizarErrors.qtdProduzida) setFinalizarErrors((prev) => ({ ...prev, qtdProduzida: undefined }));
+                      }}
+                    />
+                    {finalizarForm.qtdProduzida.trim() ? (
+                      <button
+                        type="button"
+                        className="field-clear-button"
+                        aria-label="Limpar quantidade produzida"
+                        title="Limpar"
+                        onClick={() => setFinalizarForm((prev) => ({ ...prev, qtdProduzida: '' }))}
+                      >
+                        <IoCloseCircleOutline size={16} />
+                      </button>
+                    ) : null}
+                  </div>
+                  {finalizarErrors.qtdProduzida ? <small className="module-field-error">{finalizarErrors.qtdProduzida}</small> : null}
+                </label>
+
+                <label>
+                  <span>Qtd. rejeitada</span>
+                  <div className="apontamento-producao-modal-field apontamento-producao-modal-field--clearable">
+                    <input
+                      className={finalizarErrors.qtdRejeitada ? 'module-input-error' : ''}
+                      value={finalizarForm.qtdRejeitada}
+                      inputMode="decimal"
+                      onChange={(event) => {
+                        setFinalizarForm((prev) => ({ ...prev, qtdRejeitada: event.target.value }));
+                        if (finalizarErrors.qtdRejeitada) setFinalizarErrors((prev) => ({ ...prev, qtdRejeitada: undefined }));
+                      }}
+                    />
+                    {finalizarForm.qtdRejeitada.trim() ? (
+                      <button
+                        type="button"
+                        className="field-clear-button"
+                        aria-label="Limpar quantidade rejeitada"
+                        title="Limpar"
+                        onClick={() => setFinalizarForm((prev) => ({ ...prev, qtdRejeitada: '' }))}
+                      >
+                        <IoCloseCircleOutline size={16} />
+                      </button>
+                    ) : null}
+                  </div>
+                  {finalizarErrors.qtdRejeitada ? <small className="module-field-error">{finalizarErrors.qtdRejeitada}</small> : null}
+                </label>
+              </div>
+
+              {qtdRejeitadaInformadaFinalizar ? (
+                <div className="form-grid-3__full">
+                  <label>
+                    <span>Motivo bloqueio</span>
+                    <SearchableSelect
+                      value={finalizarForm.codigoBloqueio}
+                      onChange={(nextValue) => {
+                        setFinalizarForm((prev) => ({ ...prev, codigoBloqueio: nextValue }));
+                        if (finalizarErrors.codigoBloqueio) setFinalizarErrors((prev) => ({ ...prev, codigoBloqueio: undefined }));
+                      }}
+                      options={motivoBloqueioOptions}
+                      ariaLabel="Motivo bloqueio"
+                      searchPlaceholder="Pesquisar motivo de bloqueio"
+                      className={finalizarErrors.codigoBloqueio ? 'is-error' : undefined}
+                      dropUp
+                    />
+                    {finalizarErrors.codigoBloqueio ? <small className="module-field-error">{finalizarErrors.codigoBloqueio}</small> : null}
+                  </label>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="form-actions apontamento-producao-modal__actions">
+              <button className="primary-button" type="button" onClick={() => void handleFinalizarCronometro()} disabled={finalizando}>
+                {finalizando ? 'Finalizando...' : 'Finalizar'}
               </button>
             </div>
           </article>
