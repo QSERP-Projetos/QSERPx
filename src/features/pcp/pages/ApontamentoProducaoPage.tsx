@@ -1089,8 +1089,9 @@ export function ApontamentoProducaoPage() {
           </button>
           <div>
             <h1>Apontamento de Produção</h1>
-            <p className="apontamento-producao-subtitle">Incluir e consultar apontamentos de produção.</p>
-            <p className="apontamento-producao-subtitle">Modo configurado: {apontamentoCronometro ? 'Cronômetro' : 'Normal'}</p>
+            <p className="apontamento-producao-subtitle">
+              Incluir e consultar apontamentos de produção. Modo configurado: {apontamentoCronometro ? 'Cronômetro' : 'Normal'}
+            </p>
           </div>
         </div>
       </section>

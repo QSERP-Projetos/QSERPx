@@ -577,8 +577,9 @@ export function ParadasMaquinaPage() {
           </button>
           <div>
             <h1>Paradas de Máquina</h1>
-            <p>Consulta e inclusão de paradas de máquinas.</p>
-            <p className="apontamento-producao-subtitle">Modo configurado: {paradaCronometro ? 'Cronômetro' : 'Normal'}</p>
+            <p>
+              Consulta e inclusão de paradas de máquinas. Modo configurado: {paradaCronometro ? 'Cronômetro' : 'Normal'}
+            </p>
           </div>
         </div>
       </section>
