@@ -140,15 +140,12 @@ export function LoginPage() {
           nivelUsuarioLogin = Number(
             det?.nivel_Usuario ?? det?.nivel_usuario ?? det?.Nivel_Usuario ?? 0
           ) || 0;
-          GlobalConfig.setTipoMenuSistema(
-            det?.Tipo_Menu_Qserpx ?? det?.tipo_Menu_Qserpx ?? det?.tipo_Menu_QSERPx ??
-            det?.tipo_menu_qserpx ?? det?.tipo_Menu ?? det?.tipo_menu ??
-            det?.menu_Sistema ?? det?.menu_sistema ?? det?.menu,
-          );
         }
       } catch {
-        // Não bloquear login por falha pontual; o tipo de menu é validado no fluxo da sessão.
+        // Não bloquear login por falha pontual.
       }
+      // Tipo de menu e preferencia local do front-end (por usuario), nao vem do banco.
+      GlobalConfig.aplicarTipoMenuUsuario(codigoUsuarioDetalhe);
 
       // Busca código de licença
       let codigoLicencaAtual: number | null = null;

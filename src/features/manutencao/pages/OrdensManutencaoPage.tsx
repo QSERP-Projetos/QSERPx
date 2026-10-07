@@ -17,7 +17,7 @@ import {
   acoesUsuariosCall,
   incluirOrdemManutCall,
   listOrdensManutCall,
-  listaMaquinasCall,
+  listaMaquinasEquipamentosCall,
   obterUsuariosTransacoesSistemaAcaoCall,
 } from '../../../services/apiCalls';
 import { AdvancedFiltersPanel } from '../../../components/AdvancedFiltersPanel';
@@ -286,7 +286,7 @@ export function OrdensManutencaoPage() {
 
     if (!baseUrl || !token) return;
 
-    const resp = await listaMaquinasCall(baseUrl, token);
+    const resp = await listaMaquinasEquipamentosCall(baseUrl, token);
     setMaquinas(toMaquinaOptions(getRows(resp.jsonBody || resp.data)));
   }, []);
 

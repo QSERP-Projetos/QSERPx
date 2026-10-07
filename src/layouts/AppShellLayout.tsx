@@ -145,8 +145,15 @@ export function AppShellLayout() {
   const userName = useMemo(() => GlobalConfig.getUsuario() || '', []);
   const companyName = useMemo(() => GlobalConfig.getNomeEmpresa() || '', []);
   const nivelUsuario = useMemo(() => Number(GlobalConfig.getNivelUsuario() ?? 0), []);
-  const menuSimplificadoPreferencia = useMemo(() => GlobalConfig.isMenuSimplificado(), []);
-  const menuSimplificadoAtivo = menuSimplificadoPreferencia && isMobileViewport;
+  const [menuSimplificadoPreferencia, setMenuSimplificadoPreferencia] = useState(() => GlobalConfig.isMenuSimplificado());
+  // Preferencia de menu simplificado vale para qualquer tamanho de tela, nao apenas mobile.
+  const menuSimplificadoAtivo = menuSimplificadoPreferencia;
+
+  useEffect(() => {
+    const onTipoMenuChanged = () => setMenuSimplificadoPreferencia(GlobalConfig.isMenuSimplificado());
+    window.addEventListener('qserpx:tipo-menu-changed', onTipoMenuChanged);
+    return () => window.removeEventListener('qserpx:tipo-menu-changed', onTipoMenuChanged);
+  }, []);
 
   useEffect(() => {
     const verificarSessao = async () => {

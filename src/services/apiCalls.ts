@@ -140,7 +140,6 @@ export const alterarParamUsuariosCall = async (
     eMailUsuario: string;
     eMailSenha: string;
     usuarioExterno: number;
-    tipoMenuQserpx: number;
   },
 ): Promise<ApiCallResponse> => {
   const url = `${normalizeBaseUrl(baseUrl)}/api/v1/usuarios/${codigoUsuario}`;
@@ -156,7 +155,6 @@ export const alterarParamUsuariosCall = async (
       E_mail_Usuario: payload.eMailUsuario,
       E_mail_Senha: payload.eMailSenha,
       Usuario_Externo: payload.usuarioExterno,
-      Tipo_Menu_Qserpx: payload.tipoMenuQserpx,
     },
   );
 };
@@ -1564,6 +1562,21 @@ export const listaMaquinasCall = async (
   jwtToken: string | undefined,
 ): Promise<ApiCallResponse> => {
   const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ListaMaquinas`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+// ============================================
+// API: Lista Maquinas e Equipamentos
+// ============================================
+export const listaMaquinasEquipamentosCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ListaMaquinasEquipamentos`;
   return apiManager.makeApiCall(
     url,
     ApiCallType.GET,
@@ -3028,6 +3041,7 @@ export default {
   listaCentroTrabalhoCall,
   buscaFuncionarioCall,
   listaMaquinasCall,
+  listaMaquinasEquipamentosCall,
   buscaOFCall,
   buscaOperCall,
   buscaMaterialCall,

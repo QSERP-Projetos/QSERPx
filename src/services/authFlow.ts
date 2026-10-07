@@ -36,38 +36,6 @@ const formatDate = (value?: string) => {
   return `${year}-${month}-${day}`;
 };
 
-const resolveTipoMenuSistema = (userDetData: any): 'padrao' | 'simplificado' => {
-  const rawValue =
-    userDetData?.Tipo_Menu_Qserpx ??
-    userDetData?.tipo_Menu_Qserpx ??
-    userDetData?.tipo_Menu_QSERPx ??
-    userDetData?.tipo_menu_qserpx ??
-    userDetData?.tipo_Menu ??
-    userDetData?.tipo_menu ??
-    userDetData?.menu_Sistema ??
-    userDetData?.menu_sistema ??
-    userDetData?.menu;
-
-  const normalized = String(rawValue ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase();
-
-  if (
-    normalized === '2' ||
-    normalized === 'menu simplificado' ||
-    normalized === 'simplificado' ||
-    normalized === 'simples' ||
-    normalized === '-1' ||
-    normalized === 'true'
-  ) {
-    return 'simplificado';
-  }
-
-  return 'padrao';
-};
-
 export const completeCompanySession = async ({
   baseUrl,
   tokenTipo1,
@@ -101,7 +69,8 @@ export const completeCompanySession = async ({
 
   const nivelUsuario = (userDet.data as any)?.nivel_Usuario ?? (userDet.data as any)?.nivel_usuario ?? 0;
   GlobalConfig.setNivelUsuario(Number(nivelUsuario) || 0);
-  GlobalConfig.setTipoMenuSistema(resolveTipoMenuSistema(userDet.data));
+  // Tipo de menu e preferencia local do front-end (por usuario), nao vem do banco.
+  GlobalConfig.aplicarTipoMenuUsuario(usuario);
 
   const tokenTipo2Resp = await tokenCall(baseUrl, {
     usuario,

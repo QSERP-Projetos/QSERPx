@@ -34,6 +34,7 @@ const STORAGE_KEYS = {
   uuid: 'uuidNavegador',
   codigoLicenca: 'qserpx_codigo_licenca',
   codigoLicencaTeste: 'qserpx_codigo_licenca_teste',
+  tipoMenuPorUsuario: 'qserpx_tipo_menu_por_usuario',
 } as const;
 
 const defaultSession: SessionData = {
@@ -437,6 +438,9 @@ export class GlobalConfig {
   static setTipoMenuSistema(value: unknown): void {
     this.session.tipoMenuSistema = normalizeTipoMenuSistema(value);
     void this.saveSession();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('qserpx:tipo-menu-changed'));
+    }
   }
 
   static getTipoMenuSistema(): 'padrao' | 'simplificado' {
@@ -445,6 +449,44 @@ export class GlobalConfig {
 
   static isMenuSimplificado(): boolean {
     return this.getTipoMenuSistema() === 'simplificado';
+  }
+
+  /**
+   * Preferencia de tipo de menu por usuario, persistida apenas no front-end (localStorage),
+   * igual ao Tipo de Apontamento. Nao existe no banco.
+   */
+  private static loadTipoMenuPorUsuario(): Record<string, 'padrao' | 'simplificado'> {
+    const raw = safeGet(STORAGE_KEYS.tipoMenuPorUsuario);
+    if (!raw) return {};
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  static getTipoMenuUsuario(codigoUsuario: string): 'padrao' | 'simplificado' {
+    const chave = String(codigoUsuario ?? '').trim().toUpperCase();
+    if (!chave) return 'padrao';
+    return normalizeTipoMenuSistema(this.loadTipoMenuPorUsuario()[chave]);
+  }
+
+  static setTipoMenuUsuario(codigoUsuario: string, value: unknown): void {
+    const chave = String(codigoUsuario ?? '').trim().toUpperCase();
+    if (!chave) return;
+    const mapa = this.loadTipoMenuPorUsuario();
+    mapa[chave] = normalizeTipoMenuSistema(value);
+    safeSet(STORAGE_KEYS.tipoMenuPorUsuario, JSON.stringify(mapa));
+
+    if (chave === String(this.session.usuario ?? '').trim().toUpperCase()) {
+      this.setTipoMenuSistema(mapa[chave]);
+    }
+  }
+
+  /** Aplica na sessao a preferencia de menu salva para o usuario (usado no login). */
+  static aplicarTipoMenuUsuario(codigoUsuario: string): void {
+    this.setTipoMenuSistema(this.getTipoMenuUsuario(codigoUsuario));
   }
 
   static setCodigoLicenca(value: number | null): void {
