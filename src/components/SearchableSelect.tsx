@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type React from 'react';
 import { createPortal } from 'react-dom';
 import { IoChevronDownOutline, IoChevronUpOutline } from 'react-icons/io5';
@@ -110,27 +110,40 @@ export function SearchableSelect({
     return () => window.clearTimeout(timer);
   }, [isOpen]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isOpen) return;
+
+    let rafId = 0;
 
     const updatePopoverPosition = () => {
       const trigger = rootRef.current;
       if (!trigger) return;
 
       const rect = trigger.getBoundingClientRect();
+      // Layout not settled yet (e.g. right after a zoom/reflow or a sibling popover closing); retry next frame.
+      if (rect.width === 0 && rect.height === 0) {
+        rafId = window.requestAnimationFrame(updatePopoverPosition);
+        return;
+      }
+
       const viewportHeight = window.innerHeight;
       const viewportWidth = window.innerWidth;
       const horizontalPadding = 12;
 
       const preferredMinWidth = minDropdownWidth ?? (enableSearch ? 340 : rect.width);
-      const width = Math.min(Math.max(rect.width, preferredMinWidth), viewportWidth - horizontalPadding * 2);
+      const width = Math.max(200, Math.min(Math.max(rect.width, preferredMinWidth), viewportWidth - horizontalPadding * 2));
       const left = Math.max(horizontalPadding, Math.min(rect.left, viewportWidth - width - horizontalPadding));
 
-      const spaceBelow = Math.max(160, viewportHeight - rect.bottom - 14);
-      const spaceAbove = Math.max(160, rect.top - 14);
+      // Real (unclamped) space is what decides the flip direction; a floor here would
+      // stop it from ever detecting "no room below" for fields with a lower minNeededSpace.
+      const rawSpaceBelow = viewportHeight - rect.bottom - 14;
+      const rawSpaceAbove = rect.top - 14;
       const minNeededSpace = enableSearch ? 220 : 140;
-      const shouldDropUp = dropUp || spaceBelow < minNeededSpace;
+      const shouldDropUp = dropUp || rawSpaceBelow < minNeededSpace;
 
+      // Once the direction is decided, floor the size used for maxHeight so the popover keeps a usable height.
+      const spaceBelow = Math.max(160, rawSpaceBelow);
+      const spaceAbove = Math.max(160, rawSpaceAbove);
       const maxHeight = Math.max(160, shouldDropUp ? spaceAbove : spaceBelow);
       const top = shouldDropUp ? rect.top - 6 : rect.bottom + 6;
 
@@ -138,10 +151,13 @@ export function SearchableSelect({
     };
 
     updatePopoverPosition();
+    // Recompute once more after paint to catch any layout that settles late (zoom changes, font metrics, etc.).
+    rafId = window.requestAnimationFrame(updatePopoverPosition);
     window.addEventListener('resize', updatePopoverPosition);
     window.addEventListener('scroll', updatePopoverPosition, true);
 
     return () => {
+      window.cancelAnimationFrame(rafId);
       window.removeEventListener('resize', updatePopoverPosition);
       window.removeEventListener('scroll', updatePopoverPosition, true);
     };
@@ -181,7 +197,12 @@ export function SearchableSelect({
 
   const wrapperClassName = className ? `searchable-select ${className}` : 'searchable-select';
   const controlClassName = `searchable-select__control${isOpen ? ' is-open' : ''}`;
-  const popoverClassName = `searchable-select__popover searchable-select__popover--portal${dropUp ? ' searchable-select__popover--drop-up' : ''}`;
+  // Once computed, the actual flip direction (popoverStyle.renderUp) must drive the CSS class,
+  // not just the dropUp prop — otherwise a popover that flips up due to lack of space (rather
+  // than an explicit dropUp) keeps the base "top: 100%" rule, which for a fixed-position portal
+  // resolves relative to the viewport and pushes it off-screen below.
+  const effectiveDropUp = popoverStyle?.renderUp ?? dropUp;
+  const popoverClassName = `searchable-select__popover searchable-select__popover--portal${effectiveDropUp ? ' searchable-select__popover--drop-up' : ''}`;
 
   const shouldRenderPortal = isOpen && typeof document !== 'undefined';
 
@@ -196,8 +217,8 @@ export function SearchableSelect({
             left: `${popoverStyle.left}px`,
             right: 'auto',
             width: `${popoverStyle.width}px`,
-            top: popoverStyle.renderUp ? undefined : `${popoverStyle.top}px`,
-            bottom: popoverStyle.renderUp ? `${Math.max(12, window.innerHeight - popoverStyle.top)}px` : undefined,
+            top: popoverStyle.renderUp ? 'auto' : `${popoverStyle.top}px`,
+            bottom: popoverStyle.renderUp ? `${Math.max(12, window.innerHeight - popoverStyle.top)}px` : 'auto',
           }
           : undefined
       }

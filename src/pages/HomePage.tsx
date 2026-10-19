@@ -184,11 +184,17 @@ export function HomePage() {
   const { showToast } = useToast();
   const { menus, loading: loadingMenus } = useDynamicMenu();
   const refreshInProgressRef = useRef(false);
-  const menuSimplificadoPreferencia = GlobalConfig.isMenuSimplificado();
+  const [menuSimplificadoPreferencia, setMenuSimplificadoPreferencia] = useState(() => GlobalConfig.isMenuSimplificado());
   const [isMobileViewport, setIsMobileViewport] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(max-width: 1024px)').matches;
   });
+
+  useEffect(() => {
+    const onTipoMenuChanged = () => setMenuSimplificadoPreferencia(GlobalConfig.isMenuSimplificado());
+    window.addEventListener('qserpx:tipo-menu-changed', onTipoMenuChanged);
+    return () => window.removeEventListener('qserpx:tipo-menu-changed', onTipoMenuChanged);
+  }, []);
 
   const [notificacoesSistema, setNotificacoesSistema] = useState<any[]>([]);
   const [notificacoesQs, setNotificacoesQs] = useState<any[]>([]);
@@ -214,7 +220,8 @@ export function HomePage() {
   const [expandedSimplifiedModules, setExpandedSimplifiedModules] = useState<Set<string>>(new Set());
   const [notificacaoQsSearch, setNotificacaoQsSearch] = useState('');
   const [notificacaoSistemaSearch, setNotificacaoSistemaSearch] = useState('');
-  const menuSimplificado = menuSimplificadoPreferencia && isMobileViewport;
+  // Preferencia de menu simplificado vale para qualquer tamanho de tela, nao apenas mobile.
+  const menuSimplificado = menuSimplificadoPreferencia;
 
   const getItemText = (item: any, fallback: string) => {
     const keys = [

@@ -441,8 +441,9 @@ export function ApontamentoMaoObraPage() {
           </button>
           <div>
             <h1>Apontamento de Mão de Obra</h1>
-            <p>Consulta, inclusão e conclusão de apontamentos de mão de obra.</p>
-            <p>Modo configurado: {apontamentoCronometro ? 'Cronômetro' : 'Normal'}</p>
+            <p>
+              Consulta, inclusão e conclusão de apontamentos de mão de obra. Modo configurado: {apontamentoCronometro ? 'Cronômetro' : 'Normal'}
+            </p>
           </div>
         </div>
       </section>

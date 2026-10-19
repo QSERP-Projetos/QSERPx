@@ -15,6 +15,7 @@ type SessionData = {
   nivelUsuario?: number;
   tipoApontProd: string;
   tipoApontMaoObra: string;
+  tipoParadaMaquina: string;
   permitirApontamentoSemOperacao: boolean;
   tipoMenuSistema: 'padrao' | 'simplificado';
 };
@@ -33,6 +34,7 @@ const STORAGE_KEYS = {
   uuid: 'uuidNavegador',
   codigoLicenca: 'qserpx_codigo_licenca',
   codigoLicencaTeste: 'qserpx_codigo_licenca_teste',
+  tipoMenuPorUsuario: 'qserpx_tipo_menu_por_usuario',
 } as const;
 
 const defaultSession: SessionData = {
@@ -52,6 +54,7 @@ const defaultSession: SessionData = {
   nivelUsuario: undefined,
   tipoApontProd: 'Apontamento Padrão',
   tipoApontMaoObra: 'Apontamento Padrão',
+  tipoParadaMaquina: 'Apontamento Padrão',
   permitirApontamentoSemOperacao: false,
   tipoMenuSistema: 'padrao',
 };
@@ -206,6 +209,7 @@ export class GlobalConfig {
         ...parsed,
         tipoApontProd: parsed.tipoApontProd || parsed.tipoApontProd || 'Apontamento Padrão',
         tipoApontMaoObra: parsed.tipoApontMaoObra || parsed.tipoApontMaoObra || 'Apontamento Padrão',
+        tipoParadaMaquina: parsed.tipoParadaMaquina || 'Apontamento Padrão',
         permitirApontamentoSemOperacao: Boolean(parsed.permitirApontamentoSemOperacao),
         tipoMenuSistema: normalizeTipoMenuSistema(parsed.tipoMenuSistema),
       };
@@ -219,8 +223,26 @@ export class GlobalConfig {
   }
 
   static async clearConfig(): Promise<void> {
-    this.session = { ...defaultSession };
-    safeRemove(STORAGE_KEYS.session);
+    // Preserva preferências de dispositivo/usuário (tipo de apontamento, menu etc.) ao fazer logout.
+    const {
+      uuidNavegador,
+      tipoApontProd,
+      tipoApontMaoObra,
+      tipoParadaMaquina,
+      permitirApontamentoSemOperacao,
+      tipoMenuSistema,
+    } = this.session;
+
+    this.session = {
+      ...defaultSession,
+      uuidNavegador,
+      tipoApontProd,
+      tipoApontMaoObra,
+      tipoParadaMaquina,
+      permitirApontamentoSemOperacao,
+      tipoMenuSistema,
+    };
+    await this.saveSession();
   }
 
   static async ensureUuidNavegador(): Promise<string> {
@@ -395,6 +417,15 @@ export class GlobalConfig {
     return this.session.tipoApontMaoObra;
   }
 
+  static setTipoParadaMaquina(value: string): void {
+    this.session.tipoParadaMaquina = value;
+    void this.saveSession();
+  }
+
+  static getTipoParadaMaquina(): string {
+    return this.session.tipoParadaMaquina;
+  }
+
   static setPermitirApontamentoSemOperacao(value: boolean): void {
     this.session.permitirApontamentoSemOperacao = Boolean(value);
     void this.saveSession();
@@ -407,6 +438,9 @@ export class GlobalConfig {
   static setTipoMenuSistema(value: unknown): void {
     this.session.tipoMenuSistema = normalizeTipoMenuSistema(value);
     void this.saveSession();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('qserpx:tipo-menu-changed'));
+    }
   }
 
   static getTipoMenuSistema(): 'padrao' | 'simplificado' {
@@ -415,6 +449,44 @@ export class GlobalConfig {
 
   static isMenuSimplificado(): boolean {
     return this.getTipoMenuSistema() === 'simplificado';
+  }
+
+  /**
+   * Preferencia de tipo de menu por usuario, persistida apenas no front-end (localStorage),
+   * igual ao Tipo de Apontamento. Nao existe no banco.
+   */
+  private static loadTipoMenuPorUsuario(): Record<string, 'padrao' | 'simplificado'> {
+    const raw = safeGet(STORAGE_KEYS.tipoMenuPorUsuario);
+    if (!raw) return {};
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  static getTipoMenuUsuario(codigoUsuario: string): 'padrao' | 'simplificado' {
+    const chave = String(codigoUsuario ?? '').trim().toUpperCase();
+    if (!chave) return 'padrao';
+    return normalizeTipoMenuSistema(this.loadTipoMenuPorUsuario()[chave]);
+  }
+
+  static setTipoMenuUsuario(codigoUsuario: string, value: unknown): void {
+    const chave = String(codigoUsuario ?? '').trim().toUpperCase();
+    if (!chave) return;
+    const mapa = this.loadTipoMenuPorUsuario();
+    mapa[chave] = normalizeTipoMenuSistema(value);
+    safeSet(STORAGE_KEYS.tipoMenuPorUsuario, JSON.stringify(mapa));
+
+    if (chave === String(this.session.usuario ?? '').trim().toUpperCase()) {
+      this.setTipoMenuSistema(mapa[chave]);
+    }
+  }
+
+  /** Aplica na sessao a preferencia de menu salva para o usuario (usado no login). */
+  static aplicarTipoMenuUsuario(codigoUsuario: string): void {
+    this.setTipoMenuSistema(this.getTipoMenuUsuario(codigoUsuario));
   }
 
   static setCodigoLicenca(value: number | null): void {

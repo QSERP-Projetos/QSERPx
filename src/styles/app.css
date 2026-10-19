@@ -6275,6 +6275,47 @@ select.text-field:focus {
   margin-top: 2px;
 }
 
+.apontamento-producao-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.apontamento-producao-row--cronometro {
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.apontamento-producao-status-col {
+  width: 36px;
+  text-align: center;
+}
+
+.apontamento-producao-status-icon {
+  vertical-align: middle;
+}
+
+.apontamento-producao-status-icon--pendente {
+  color: #eab308;
+}
+
+.apontamento-producao-status-icon--concluido {
+  color: #22c55e;
+}
+
+.apontamento-producao-page .module-card {
+  position: relative;
+}
+
+.apontamento-producao-status-icon--card {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
 .apontamento-producao-modal__actions .primary-button {
   min-width: 156px;
 }
@@ -6392,6 +6433,31 @@ select.text-field:focus {
   background: #22c55e;
   border-color: #22c55e;
   color: #ffffff;
+}
+
+.paradas-maquina-page .module-card {
+  position: relative;
+}
+
+.paradas-maquina-row--cronometro {
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.paradas-maquina-status-col {
+  width: 36px;
+  text-align: center;
+}
+
+.paradas-maquina-status-icon {
+  vertical-align: middle;
+}
+
+.paradas-maquina-status-icon--pendente {
+  color: #eab308;
+}
+
+.paradas-maquina-status-icon--concluido {
+  color: #22c55e;
 }
 
 .preparacao-maquina-modal .form-grid-3 {

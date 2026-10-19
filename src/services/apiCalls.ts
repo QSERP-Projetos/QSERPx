@@ -140,7 +140,6 @@ export const alterarParamUsuariosCall = async (
     eMailUsuario: string;
     eMailSenha: string;
     usuarioExterno: number;
-    tipoMenuQserpx: number;
   },
 ): Promise<ApiCallResponse> => {
   const url = `${normalizeBaseUrl(baseUrl)}/api/v1/usuarios/${codigoUsuario}`;
@@ -156,7 +155,6 @@ export const alterarParamUsuariosCall = async (
       E_mail_Usuario: payload.eMailUsuario,
       E_mail_Senha: payload.eMailSenha,
       Usuario_Externo: payload.usuarioExterno,
-      Tipo_Menu_Qserpx: payload.tipoMenuQserpx,
     },
   );
 };
@@ -1126,11 +1124,20 @@ export const alterarApontProdCronometroCall = async (
     codigoEmpresa?: number;
     numApontamento?: number;
     numOrdem?: string;
+    numOperacao?: number;
+    numMaquina?: string;
+    numRegistro?: string;
+    dataInicio?: string;
+    horaInicio?: string;
+    dataFim?: string;
+    horaFim?: string;
     codigoMotivo?: string;
     codigoBloqueio?: string;
     qtdProduzida?: string;
     qtdRejeitada?: string;
     usuario?: string;
+    loteApont?: string;
+    obsApontProd?: string;
   },
 ): Promise<ApiCallResponse> => {
   const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ApontamentosProducao`;
@@ -1143,11 +1150,20 @@ export const alterarApontProdCronometroCall = async (
       Codigo_Empresa: payload.codigoEmpresa,
       Num_Apontamento: payload.numApontamento ?? 0,
       Num_Ordem: payload.numOrdem ?? '',
+      Num_Operacao: payload.numOperacao,
+      Num_Maquina: payload.numMaquina ?? '',
+      Num_Registro: payload.numRegistro ?? '',
+      Data_Inicio: payload.dataInicio ?? '',
+      Hora_Inicio: payload.horaInicio ?? '',
+      Data_Fim: payload.dataFim ?? '',
+      Hora_Fim: payload.horaFim ?? '',
       Codigo_Motivo: payload.codigoMotivo ?? '',
       Codigo_Bloqueio: payload.codigoBloqueio ?? '',
       Qtd_Produzida: payload.qtdProduzida ?? '0',
       Qtd_Rejeitada: payload.qtdRejeitada ?? '0',
       Usuario: payload.usuario ?? '',
+      Lote_Apont: payload.loteApont ?? '',
+      Obs_Apont_Prod: payload.obsApontProd ?? '',
     },
   );
 };
@@ -1546,6 +1562,21 @@ export const listaMaquinasCall = async (
   jwtToken: string | undefined,
 ): Promise<ApiCallResponse> => {
   const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ListaMaquinas`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+// ============================================
+// API: Lista Maquinas e Equipamentos
+// ============================================
+export const listaMaquinasEquipamentosCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ListaMaquinasEquipamentos`;
   return apiManager.makeApiCall(
     url,
     ApiCallType.GET,
@@ -3010,6 +3041,7 @@ export default {
   listaCentroTrabalhoCall,
   buscaFuncionarioCall,
   listaMaquinasCall,
+  listaMaquinasEquipamentosCall,
   buscaOFCall,
   buscaOperCall,
   buscaMaterialCall,
