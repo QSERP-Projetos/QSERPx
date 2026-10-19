@@ -196,6 +196,34 @@ export const useDynamicMenu = () => {
           }
         }
 
+        // Garante que a opção Almoxarifado esteja presente no módulo Básico
+        const basicoIndex = menusComDocumentos.findIndex((item) => item.id === 'basico' || item.transactionCode === 'BAS');
+        const almoxarifadoSubitem = { title: 'Almoxarifado', transactionCode: 'BAS003' };
+
+        if (basicoIndex >= 0) {
+          const basicoMenu = menusComDocumentos[basicoIndex];
+          const hasAlmox = basicoMenu.subitems.some(
+            (s) =>
+              String(s.transactionCode || '').toUpperCase() === 'BAS003' ||
+              String(s.title || '').toLowerCase().includes('almoxarif')
+          );
+          if (!hasAlmox) {
+            basicoMenu.subitems.push(almoxarifadoSubitem);
+          }
+        } else {
+          menusComDocumentos.push({
+            id: 'basico',
+            title: 'Básico',
+            icon: 'list-outline',
+            transactionCode: 'BAS',
+            subitems: [
+              { title: 'Clientes', transactionCode: 'BAS001' },
+              { title: 'Serviços', transactionCode: 'BAS002' },
+              almoxarifadoSubitem,
+            ],
+          });
+        }
+
         setMenus(menusComDocumentos);
       } finally {
         if (mounted) setLoading(false);

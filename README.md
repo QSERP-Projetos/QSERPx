@@ -1,3 +1,11 @@
+# QSErpx - Web Frontend
+
+> **Documentação para Desenvolvedores:**
+> Para aprender a criar novas telas, registrar rotas, configurar menus e integrar chamadas de API (GET, POST, PUT, DELETE), consulte o guia:
+> 📖 [docs/Guia_Criacao_Telas_e_Modulos.md](file:///d:/Sistemas/QSErpx/docs/Guia_Criacao_Telas_e_Modulos.md)
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

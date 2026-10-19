@@ -22,6 +22,7 @@ export const ROUTES = {
   comprasPedidoLiberacao: '/compras/pedido-liberacao',
   basicoClientes: '/basico/clientes',
   basicoServicos: '/basico/servicos',
+  basicoAlmoxarifado: '/basico/almoxarifado',
   servicoNotaFiscal: '/servico/nota-fiscal',
   segurancaUsuarios: '/seguranca/usuarios',
   segurancaTipoApontamento: '/seguranca/tipo-apontamento',

@@ -32,6 +32,7 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
     VEN003: ROUTES.pedidoVenda,
     BAS001: ROUTES.basicoClientes,
     BAS002: ROUTES.basicoServicos,
+    BAS003: ROUTES.basicoAlmoxarifado,
     COM001: ROUTES.comprasPedidoLiberacao,
     COM002: ROUTES.comprasPedidoLiberacao,
     SEG001: ROUTES.segurancaUsuarios,
@@ -80,6 +81,7 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
       ? ROUTES.comprasPedidoLiberacao
       : undefined) ||
     (normalizedTitle.includes('cliente') ? ROUTES.basicoClientes : undefined) ||
+    (normalizedTitle.includes('almoxarif') ? ROUTES.basicoAlmoxarifado : undefined) ||
     (normalizedTitle.includes('nota') && normalizedTitle.includes('fiscal')
       ? ROUTES.servicoNotaFiscal
       : undefined) ||

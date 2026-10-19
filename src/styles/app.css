@@ -11390,3 +11390,71 @@ select.text-field:focus {
     padding-top: 14px;
   }
 }
+
+/* ==========================================================================
+   ALMOXARIFADO PAGE & SUBFORM
+   ========================================================================== */
+.almoxarifado-tag-endereco,
+.almoxarifado-tag-operadores {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--color-input-bg);
+  border: 1px solid var(--color-border);
+  font-size: 0.8rem;
+  color: var(--color-text);
+}
+
+.almoxarifado-subform {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface-alt);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.almoxarifado-subform__header h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-heading);
+}
+
+.almoxarifado-subform__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.almoxarifado-btn-vincular {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  white-space: nowrap;
+}
+
+.almoxarifado-subform__table-wrap {
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  max-height: 220px;
+  overflow: auto;
+}
+
+.almoxarifado-subform__table th {
+  padding: 8px 10px;
+  font-size: 0.72rem;
+}
+
+.almoxarifado-subform__table td {
+  padding: 8px 10px;
+  font-size: 0.85rem;
+}

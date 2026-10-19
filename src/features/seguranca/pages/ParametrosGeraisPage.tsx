@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IoArrowBack, IoCloseOutline, IoConstructOutline, IoHelpCircleOutline, IoCheckmarkCircle, IoCloseCircle } from 'react-icons/io5';
+import { IoArrowBack, IoCloseOutline, IoHelpCircleOutline, IoCheckmarkCircle, IoCloseCircle } from 'react-icons/io5';
 import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
 import { SearchableSelect, type SearchableSelectOption } from '../../../components/SearchableSelect';
@@ -21,6 +21,20 @@ type SerieNotaRow = {
 
 type ParametrosNfeResponse = {
   [key: string]: unknown;
+};
+
+type SerieNotaApiRow = {
+  codigo_Empresa?: number;
+  serie_NF?: string;
+  num_Ultima_NF?: number | string;
+  maquina_Serie?: string | null;
+  imprime_Nota?: number;
+  tipo_Nota?: number;
+};
+
+type ParametrosFaturamentoResponse = {
+  [key: string]: unknown;
+  series_NF?: SerieNotaApiRow[];
 };
 
 type ParametrosNfePutPayload = {
@@ -155,10 +169,10 @@ export function ParametrosGeraisPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('nfe');
   const [isEditing, setIsEditing] = useState(false);
   const [loadingParametros, setLoadingParametros] = useState(false);
+  const [loadingParametrosFat, setLoadingParametrosFat] = useState(false);
   const [modalCertificadoOpen, setModalCertificadoOpen] = useState(false);
   const [modalHelpCertOpen, setModalHelpCertOpen] = useState(false);
   const [deleteCertConfirmOpen, setDeleteCertConfirmOpen] = useState(false);
-  const [devModalOpen, setDevModalOpen] = useState(false);
   const [importConfirmOpen, setImportConfirmOpen] = useState(false);
   const [importSaving, setImportSaving] = useState(false);
   const [verifyingApiStatus, setVerifyingApiStatus] = useState(false);
@@ -352,6 +366,92 @@ export function ParametrosGeraisPage() {
     }
   }, [showToast]);
 
+  const carregarParametrosFaturamento = useCallback(async () => {
+    const baseUrl = GlobalConfig.getBaseUrl();
+    const token = GlobalConfig.getJwToken();
+    const codigoEmpresa = GlobalConfig.getCodEmpresa();
+
+    if (!baseUrl) {
+      showToast('URL da API não encontrada para carregar parâmetros de faturamento.', 'error');
+      return;
+    }
+
+    if (!codigoEmpresa) {
+      showToast('Empresa não encontrada na sessão atual.', 'error');
+      return;
+    }
+
+    setLoadingParametrosFat(true);
+    try {
+      const response = await apiManager.makeApiCall<ParametrosFaturamentoResponse>(
+        `${baseUrl.replace(/\/$/, '')}/api/v1/ParametrosFaturamento/${codigoEmpresa}`,
+        ApiCallType.GET,
+        token ? { Authorization: `Bearer ${token}` } : {},
+        {},
+      );
+
+      if (!response.succeeded) {
+        showToast(getApiErrorMessage(response, 'Não foi possível carregar os parâmetros de faturamento.'), 'error');
+        return;
+      }
+
+      const payload = (response.jsonBody ?? response.data) as ParametrosFaturamentoResponse;
+
+      // matches numeric option code (1-based index) to a select value, ex.: imprime_Nota / tipo_Nota
+      const matchIndexOption = (value: unknown, options: SearchableSelectOption[], fallback: string) => {
+        const idx = Number(value);
+        if (!Number.isFinite(idx) || idx < 1 || idx > options.length) return fallback;
+        return options[idx - 1].value;
+      };
+      // matches a free-text value against option value/label, ex.: maquina_Serie
+      const matchTextOption = (value: unknown, options: SearchableSelectOption[], fallback: string) => {
+        const text = String(value ?? '').trim().toLowerCase();
+        if (!text) return fallback;
+        const found = options.find((o) => o.value.toLowerCase() === text || o.label.toLowerCase() === text);
+        return found ? found.value : fallback;
+      };
+
+      setFatVerificarMediaVenda(toBoolFromNumeric(payload.verifica_Media_Venda));
+      setFatValorMinFaturamento(toText(payload.valor_Min_Fatur));
+      setFatValorMinDuplicata(toText(payload.valor_Min_Duplic));
+      setFatVerificarRateioEstoque(toBoolFromNumeric(payload.verifica_Lim_Estoq));
+      setFatTipoDocContasReceber(Number(payload.tipo_Documento_CR) === 1 ? 'boleto' : 'duplicata');
+      setFatPermitirAlterarComissao(toBoolFromNumeric(payload.permite_Alterar_Comissao));
+      setFatLayout(matchTextOption(payload.layout_NF, layoutOptions, ''));
+      setFatItens(toNumberText(payload.qtd_Itens_NF));
+      setFatBaseComissao(toNumberText(payload.calculo_Comissao, '2'));
+      setFatIss(toNumberText(payload.aliquota_ISS));
+      setFatGerarGnre(toBoolFromNumeric(payload.gera_GNRE));
+      setFatCsll(toNumberText(payload.aliquota_CSLL));
+      setFatFornecedorGnre(toText(payload.codigo_Fornec_GNRE, 'GNRE'));
+      setFatValorMaxFaturamento(toText(payload.valor_Max_Fatur));
+      setFatValorMaxDuplicata(toText(payload.valor_Max_Duplic));
+      setFatLotes(toNumberText(payload.exibir_Lotes_NF, '0'));
+      setFatIrrf(toNumberText(payload.aliquota_IRRF));
+      setFatParticipaSimples(toBoolFromNumeric(payload.super_Simples));
+      setFatAliqIcmsSn(toText(payload.aliq_Credito_ICMS_SN));
+      setFatDiretorioGnre(toText(payload.diretorio_GNRE));
+      setFatImpressaoEtiquetas(toNumberText(payload.nF_Imprimir_Etiqueta, '0'));
+      setFatValorMinBaseado(Number(payload.calc_Valor_Minimo) === 1 ? 'pedido' : 'nota_fiscal');
+
+      const seriesNF = Array.isArray(payload.series_NF) ? payload.series_NF : [];
+      setFatSerieNotas(
+        seriesNF.map((row, index) => ({
+          id: index + 1,
+          serie: toText(row.serie_NF),
+          ultNota: toText(row.num_Ultima_NF),
+          computador: matchTextOption(row.maquina_Serie, computadorOptions, 'ambas'),
+          emissao: matchIndexOption(row.imprime_Nota, emissaoOptions, 'eletronica_hor'),
+          modeloNota: matchIndexOption(row.tipo_Nota, modeloNotaOptions, 'nfse_hom'),
+        })),
+      );
+    } catch (error: any) {
+      showToast(error?.message || 'Erro ao carregar os parâmetros de faturamento.', 'error');
+    } finally {
+      setLoadingParametrosFat(false);
+    }
+  }, [showToast]);
+
   const verificarStatusApi = useCallback(async () => {
     const baseUrl = GlobalConfig.getBaseUrl();
     const token = GlobalConfig.getJwToken();
@@ -439,10 +539,15 @@ export function ParametrosGeraisPage() {
   };
 
   useEffect(() => {
-    if (activeTab !== 'nfe') return;
-    void carregarParametrosNfe();
-    void verificarStatusApi();
-  }, [activeTab, carregarParametrosNfe, verificarStatusApi]);
+    if (activeTab === 'nfe') {
+      void carregarParametrosNfe();
+      void verificarStatusApi();
+      return;
+    }
+    if (activeTab === 'faturamento') {
+      void carregarParametrosFaturamento();
+    }
+  }, [activeTab, carregarParametrosNfe, carregarParametrosFaturamento, verificarStatusApi]);
 
   const handleClose = () => {
     if (window.history.length > 1) {
@@ -575,6 +680,7 @@ export function ParametrosGeraisPage() {
       setIsEditing(false);
       setModalCertificadoOpen(false);
       if (activeTab === 'nfe') void carregarParametrosNfe();
+      if (activeTab === 'faturamento') void carregarParametrosFaturamento();
       return;
     }
 
@@ -734,9 +840,8 @@ export function ParametrosGeraisPage() {
             </button>
             <button
               type="button"
-              className={`contas-receber-tab${activeTab === 'faturamento' ? ' contas-receber-tab--active' : ''} contas-receber-tab--dev`}
-              onClick={() => setDevModalOpen(true)}
-              title="Em desenvolvimento"
+              className={`contas-receber-tab${activeTab === 'faturamento' ? ' contas-receber-tab--active' : ''}`}
+              onClick={() => handleTabChange('faturamento')}
             >
               Faturamento
             </button>
@@ -958,6 +1063,7 @@ export function ParametrosGeraisPage() {
           {activeTab === 'faturamento' && (
             <div className="params-gerais-tab-body">
               <div className="fat-form">
+                {loadingParametrosFat && <p className="nfe-params-loading">Carregando parâmetros de faturamento...</p>}
                 <div className="fat-form__columns">
 
                   {/* Coluna esquerda */}
@@ -1418,36 +1524,6 @@ export function ParametrosGeraisPage() {
         </section>
       </main>
 
-      {devModalOpen && (
-        <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Em desenvolvimento">
-          <article className="modal-card modal-card--confirm">
-            <header className="modal-card__header">
-              <h2>Em Desenvolvimento</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setDevModalOpen(false)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
-            </header>
-            <div className="modal-card__body modal-card__body--confirm">
-              <IoConstructOutline size={36} className="modal-confirm__icon" style={{ color: 'var(--color-warning, #d97706)' }} />
-              <p>Esse parâmetro está em desenvolvimento, aguarde novas atualizações!</p>
-            </div>
-            <footer className="nfs-nova-footer">
-              <button
-                type="button"
-                className="primary-button"
-                onClick={() => setDevModalOpen(false)}
-              >
-                OK
-              </button>
-            </footer>
-          </article>
-        </section>
-      )}
 
       {modalCertificadoOpen && (
         <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Certificado digital">
