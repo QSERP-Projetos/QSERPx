@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   IoAlertCircleOutline,
@@ -71,7 +71,7 @@ const pickFirstText = (item: Record<string, any>, keys: string[], fallback = '')
 };
 
 const getRegionLabel = (item: Record<string, any>) =>
-  pickFirstText(item, ['Nome_Regiao', 'nome_Regiao', 'nomeRegiao', 'Regiao', 'regiao'], 'Sem região');
+  pickFirstText(item, ['Nome_Regiao', 'nome_Regiao', 'nomeRegiao', 'Regiao', 'regiao'], 'Sem regiÃ£o');
 
 const getClientLabel = (item: Record<string, any>) =>
   pickFirstText(
@@ -296,6 +296,12 @@ const getVendasMonthDate = (item: Record<string, any>): Date | null => {
 };
 
 const getVendasItemDate = (item: Record<string, any>, options?: { allowMonthFallback?: boolean }): Date | null => {
+  // Primeiro tenta o campo injetado pela API chunked (_mesAno = "DD/MM/YYYY" inicio do mes).
+  if (item?._mesAno) {
+    const parsed = parseVendasDate(item._mesAno);
+    if (parsed) return parsed;
+  }
+
   const candidates = [
     item?.Data_Emissao,
     item?.data_Emissao,
@@ -432,16 +438,16 @@ export function DashboardVendasPage() {
     const parsedDe = parseDateStrict(draftDataDe);
     const parsedAte = parseDateStrict(draftDataAte);
 
-    if (!parsedDe) nextErrors.dataDe = 'Data de inválida.';
-    if (!parsedAte) nextErrors.dataAte = 'Data até inválida.';
+    if (!parsedDe) nextErrors.dataDe = 'Data de invÃ¡lida.';
+    if (!parsedAte) nextErrors.dataAte = 'Data atÃ© invÃ¡lida.';
 
     if (parsedDe && parsedAte && parsedDe.getTime() > parsedAte.getTime()) {
-      nextErrors.dataDe = 'Data de não pode ser maior que Data até.';
-      nextErrors.dataAte = 'Data até não pode ser menor que Data de.';
+      nextErrors.dataDe = 'Data de nÃ£o pode ser maior que Data atÃ©.';
+      nextErrors.dataAte = 'Data atÃ© nÃ£o pode ser menor que Data de.';
     }
 
     if (!codigoEmpresa.trim()) {
-      setErrorMessage('Empresa inválida para o dashboard. Faça login novamente.');
+      setErrorMessage('Empresa invÃ¡lida para o dashboard. FaÃ§a login novamente.');
       setErrors(nextErrors);
       return false;
     }
@@ -461,7 +467,7 @@ export function DashboardVendasPage() {
     const token = GlobalConfig.getJwToken();
 
     if (!baseUrl || !token) {
-      setErrorMessage('Sessão inválida para consultar o dashboard de vendas.');
+      setErrorMessage('SessÃ£o invÃ¡lida para consultar o dashboard de vendas.');
       return;
     }
 
@@ -595,7 +601,7 @@ export function DashboardVendasPage() {
       return acumuladoApiRaw
         .map((rawItem, index) => {
           const item = (rawItem ?? {}) as Record<string, any>;
-          const label = String(item?.periodo ?? item?.Periodo ?? item?.label ?? item?.Label ?? `Período ${index + 1}`).trim() || `Período ${index + 1}`;
+          const label = String(item?.periodo ?? item?.Periodo ?? item?.label ?? item?.Label ?? `PerÃ­odo ${index + 1}`).trim() || `PerÃ­odo ${index + 1}`;
           const startDate = parseVendasDate(item?.data_Inicial ?? item?.dataInicial ?? item?.Data_Inicial ?? item?.DataInicial);
           const endDate = parseVendasDate(item?.data_Final ?? item?.dataFinal ?? item?.Data_Final ?? item?.DataFinal);
           const fallbackMonthDate = parseVendasDate(`01/${label}`);
@@ -999,7 +1005,7 @@ export function DashboardVendasPage() {
   const summaryColumns = useMemo<DashboardTableColumn[]>(() => {
     return [
       { key: 'cliente', label: 'Cliente', format: 'text' },
-      { key: 'regiao', label: 'Região principal', format: 'text' },
+      { key: 'regiao', label: 'RegiÃ£o principal', format: 'text' },
       { key: 'faturado', label: 'Total faturado', format: 'currency' },
       { key: 'totalAtraso', label: 'Total em atraso', format: 'currency' },
       { key: 'totalForecast', label: 'Total forecast', format: 'currency' },
@@ -1040,7 +1046,7 @@ export function DashboardVendasPage() {
   const renderSummaryRowDetails = useCallback((row: DashboardRow) => {
     const materials = summaryMaterialsByClient.get(row.key) ?? [];
     if (!materials.length) {
-      return <p className="dashboard-summary-table__details-empty">Sem materiais faturados para este cliente no período.</p>;
+      return <p className="dashboard-summary-table__details-empty">Sem materiais faturados para este cliente no perÃ­odo.</p>;
     }
 
     return (
@@ -1095,7 +1101,7 @@ export function DashboardVendasPage() {
 
           <div>
             <h1>Dashboard - Vendas</h1>
-            <p>Faturamento por região, top clientes por tipo e consolidado por cliente faturado.</p>
+            <p>Faturamento por regiÃ£o, top clientes por tipo e consolidado por cliente faturado.</p>
           </div>
         </div>
       </section>
@@ -1128,7 +1134,7 @@ export function DashboardVendasPage() {
           </label>
 
           <label className="list-layout-field list-layout-field--date dashboard-field dashboard-vendas-date-field">
-            <span>Data até</span>
+            <span>Data atÃ©</span>
             <CustomDatePicker
               value={draftDataAte}
               onChange={setDraftDataAte}
@@ -1144,8 +1150,8 @@ export function DashboardVendasPage() {
           className={`icon-button module-action-button${advancedOpen ? ' module-action-button--primary' : ''}`}
           type="button"
           onClick={() => setAdvancedOpen(true)}
-          title="Filtros avançados"
-          aria-label="Filtros avançados"
+          title="Filtros avanÃ§ados"
+          aria-label="Filtros avanÃ§ados"
         >
           <IoFilterOutline size={18} />
         </button>
@@ -1171,15 +1177,15 @@ export function DashboardVendasPage() {
 
       <section className="card dashboard-vendas-results">
         <div className="dashboard-vendas-controls-inline dashboard-vendas-results__actions">
-          <label className="list-layout-field list-layout-field--sm dashboard-field dashboard-vendas-scope-filter" aria-label="Filtrar destinatário">
-            <span>Destinatário</span>
+          <label className="list-layout-field list-layout-field--sm dashboard-field dashboard-vendas-scope-filter" aria-label="Filtrar destinatÃ¡rio">
+            <span>DestinatÃ¡rio</span>
             <SearchableSelect
               value={destinatarioScope}
               onChange={(value) => setDestinatarioScope(value as 'todos' | 'clientes')}
               options={destinatarioOptions}
               enableSearch={false}
-              searchPlaceholder="Pesquisar destinatário"
-              ariaLabel="Filtrar destinatário"
+              searchPlaceholder="Pesquisar destinatÃ¡rio"
+              ariaLabel="Filtrar destinatÃ¡rio"
             />
           </label>
 
@@ -1187,7 +1193,7 @@ export function DashboardVendasPage() {
           </div>
         </div>
 
-        <p className="dashboard-period-range">{`Período: ${appliedDataDe} - ${appliedDataAte}`}</p>
+        <p className="dashboard-period-range">{`PerÃ­odo: ${appliedDataDe} - ${appliedDataAte}`}</p>
 
         {errorMessage ? <p className="status-box status-box--error">{errorMessage}</p> : null}
         {loading ? <p className="module-empty">Carregando dashboard de vendas...</p> : null}
@@ -1195,14 +1201,14 @@ export function DashboardVendasPage() {
         {!loading && !errorMessage && !hasFetched ? (
           <div className="dashboard-empty-state" role="status" aria-live="polite">
             <IoStatsChartOutline size={24} aria-hidden="true" />
-            <p>Selecione as datas e clique em atualizar para visualizar os gráficos</p>
+            <p>Selecione as datas e clique em atualizar para visualizar os grÃ¡ficos</p>
           </div>
         ) : null}
 
         {!loading && !errorMessage && hasFetched && !hasAnyData ? (
           <div className="dashboard-empty-state" role="status" aria-live="polite">
             <IoStatsChartOutline size={24} aria-hidden="true" />
-            <p>Nenhum dado encontrado para o período informado</p>
+            <p>Nenhum dado encontrado para o perÃ­odo informado</p>
           </div>
         ) : null}
 
@@ -1213,7 +1219,7 @@ export function DashboardVendasPage() {
             <article className="card dashboard-chart-card dashboard-vendas-acumulado-card">
               <header className="dashboard-section-header dashboard-section-header--collapsible">
                 <div>
-                  <h2>Faturamento acumulado de clientes por mês</h2>
+                  <h2>Faturamento acumulado de clientes por mÃªs</h2>
                   <p>{`Total faturado acumulado de clientes (${String(faturamentoAcumuladoTipo).toLowerCase()}) no intervalo selecionado.`}</p>
                 </div>
               </header>
@@ -1271,7 +1277,7 @@ export function DashboardVendasPage() {
                         const topClientsTooltip =
                           topClients.length > 0
                             ? topClients.map((client, index) => `${index + 1}. ${client.label} (${formatCurrencyBRL(Number(client.total ?? 0))})`).join(' | ')
-                            : 'Sem clientes no período';
+                            : 'Sem clientes no perÃ­odo';
 
                         return (
                           <g key={`fat-${point.key}`}>
@@ -1326,7 +1332,7 @@ export function DashboardVendasPage() {
                           ))
                         ) : (
                           <li>
-                            <span>Sem clientes para este período</span>
+                            <span>Sem clientes para este perÃ­odo</span>
                           </li>
                         )}
                       </ol>
@@ -1340,15 +1346,15 @@ export function DashboardVendasPage() {
               <article className="card dashboard-chart-card">
                 <header className="dashboard-section-header dashboard-section-header--collapsible">
                   <div>
-                    <h2>Faturamento por região</h2>
-                    <p>Passe o mouse na região para visualizar os 3 clientes mais vendidos.</p>
+                    <h2>Faturamento por regiÃ£o</h2>
+                    <p>Passe o mouse na regiÃ£o para visualizar os 3 clientes mais vendidos.</p>
                   </div>
                   <button
                     type="button"
                     className="home-dashboard-card__collapse"
                     onClick={() => setMainChartCollapsed((prev) => !prev)}
-                    aria-label={mainChartCollapsed ? 'Expandir gráfico por região' : 'Encolher gráfico por região'}
-                    title={mainChartCollapsed ? 'Expandir gráfico por região' : 'Encolher gráfico por região'}
+                    aria-label={mainChartCollapsed ? 'Expandir grÃ¡fico por regiÃ£o' : 'Encolher grÃ¡fico por regiÃ£o'}
+                    title={mainChartCollapsed ? 'Expandir grÃ¡fico por regiÃ£o' : 'Encolher grÃ¡fico por regiÃ£o'}
                   >
                     {mainChartCollapsed ? <IoChevronDownOutline size={18} /> : <IoChevronUpOutline size={18} />}
                   </button>
@@ -1356,11 +1362,11 @@ export function DashboardVendasPage() {
 
                 {!mainChartCollapsed ? (
                   regionSlices.length === 0 ? (
-                    <p className="module-empty">Sem dados de faturamento por região.</p>
+                    <p className="module-empty">Sem dados de faturamento por regiÃ£o.</p>
                   ) : (
                     <div className="dashboard-vendas-pie-stack">
                       <div className="dashboard-native-pie-wrap dashboard-vendas-region-pie-wrap">
-                        <svg viewBox="0 0 120 120" className="dashboard-native-pie" aria-label="Gráfico de pizza de faturamento por região">
+                        <svg viewBox="0 0 120 120" className="dashboard-native-pie" aria-label="GrÃ¡fico de pizza de faturamento por regiÃ£o">
                           {(() => {
                             let offset = 0;
                             const circleRadius = 42;
@@ -1422,7 +1428,7 @@ export function DashboardVendasPage() {
                                   ))
                                 ) : (
                                   <li>
-                                    <span>Sem clientes para esta região</span>
+                                    <span>Sem clientes para esta regiÃ£o</span>
                                   </li>
                                 )}
                               </ol>
@@ -1439,7 +1445,7 @@ export function DashboardVendasPage() {
                           </header>
 
                           <div className="dashboard-native-pie-wrap dashboard-vendas-region-pie-wrap">
-                            <svg viewBox="0 0 120 120" className="dashboard-native-pie" aria-label="Gráfico de pizza de faturamento por vendedor">
+                            <svg viewBox="0 0 120 120" className="dashboard-native-pie" aria-label="GrÃ¡fico de pizza de faturamento por vendedor">
                               {(() => {
                                 let offset = 0;
                                 const circleRadius = 42;
@@ -1535,7 +1541,7 @@ export function DashboardVendasPage() {
 
                 {!topChartCollapsed ? (
                   topClientsByBillingType.length === 0 ? (
-                    <p className="module-empty">Sem clientes faturados no período.</p>
+                    <p className="module-empty">Sem clientes faturados no perÃ­odo.</p>
                   ) : (
                     <div className="dashboard-native-bars is-horizontal dashboard-vendas-top-client-bars">
                       {(() => {
@@ -1600,7 +1606,7 @@ export function DashboardVendasPage() {
               rows={summaryRows}
               columns={summaryColumns}
               searchEnabled
-              searchPlaceholder="Pesquisar cliente, região ou material"
+              searchPlaceholder="Pesquisar cliente, regiÃ£o ou material"
               initialSortColumnKey="faturado"
               initialSortDirection="desc"
               rowSearchText={getSummaryRowSearchText}
@@ -1625,7 +1631,7 @@ export function DashboardVendasPage() {
         {payload.MoedasSemCotacao.length > 0 ? (
           <p className="status-box status-box--error dashboard-alert-row dashboard-alert-row--bottom">
             <IoAlertCircleOutline size={18} />
-            Existem moedas sem cotação no período. Verifique antes de tomar decisões baseadas nos totais.
+            Existem moedas sem cotaÃ§Ã£o no perÃ­odo. Verifique antes de tomar decisÃµes baseadas nos totais.
           </p>
         ) : null}
       </section>
