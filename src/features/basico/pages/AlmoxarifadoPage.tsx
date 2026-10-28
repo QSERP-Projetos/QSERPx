@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   IoAddOutline,
@@ -15,6 +15,8 @@ import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
 import { ListSearchField } from '../../../components/ListSearchField';
 import { SearchableSelect } from '../../../components/SearchableSelect';
+import { listarAlmoxarifadosCall, listUsuariosCall } from '../../../services/apiCalls';
+import { GlobalConfig } from '../../../services/globalConfig';
 
 // ============================================================================
 // Tipos de dados mapeados do esquema relacional (MS Access / API):
@@ -29,55 +31,16 @@ export interface UsuarioAlmoxarifado {
 
 export interface Almoxarifado {
   codigoAlmox: number;
-  enderecoAlmox: string;
+  enderecoAlmox: string | null;
   descricaoAlmox: string;
-  usuariosAutorizados: UsuarioAlmoxarifado[];
+  qtdUsuariosAlmox?: number;
+  almoxarifadoUsuarioDto: UsuarioAlmoxarifado[] | null;
 }
 
-// Dados iniciais baseados nos cadastros reais do sistema Q4/MAPA
-const ALMOXARIFADOS_INICIAIS: Almoxarifado[] = [
-  {
-    codigoAlmox: 1,
-    enderecoAlmox: 'GALPAO-01-A',
-    descricaoAlmox: 'Almoxarifado Central - Matéria-Prima',
-    usuariosAutorizados: [
-      { codigoUsuario: 'OPER01', nomeUsuario: 'Carlos Eduardo Silva' },
-      { codigoUsuario: 'FISC02', nomeUsuario: 'Mariana Costa Ribeiro' },
-    ],
-  },
-  {
-    codigoAlmox: 2,
-    enderecoAlmox: 'PRAT-04-B',
-    descricaoAlmox: 'Almoxarifado de Componentes Eletrônicos',
-    usuariosAutorizados: [
-      { codigoUsuario: 'OPER03', nomeUsuario: 'Roberto Souza Ramos' },
-    ],
-  },
-  {
-    codigoAlmox: 3,
-    enderecoAlmox: 'DOCA-EXP-02',
-    descricaoAlmox: 'Almoxarifado de Produtos Acabados - Expedição',
-    usuariosAutorizados: [
-      { codigoUsuario: 'EXPED01', nomeUsuario: 'Fernanda Lima Santos' },
-    ],
-  },
-  {
-    codigoAlmox: 4,
-    enderecoAlmox: 'QUADRA-C-TERC',
-    descricaoAlmox: 'Estoque de Materiais em Terceiros (Industrialização)',
-    usuariosAutorizados: [],
-  },
-];
-
-// Lista de usuários globais para seleção/vínculo no subformulário
-const USUARIOS_SISTEMA = [
-  { codigo: 'OPER01', nome: 'Carlos Eduardo Silva' },
-  { codigo: 'FISC02', nome: 'Mariana Costa Ribeiro' },
-  { codigo: 'OPER03', nome: 'Roberto Souza Ramos' },
-  { codigo: 'EXPED01', nome: 'Fernanda Lima Santos' },
-  { codigo: 'ALMOX05', nome: 'João Pedro Oliveira' },
-  { codigo: 'QUAL01', nome: 'Beatriz Vasconcelos' },
-];
+export interface Usuario{
+  codigo_Usuario: string;
+  nome_Usuario: string;
+}
 
 type SortField = 'codigo' | 'descricao' | 'endereco';
 type SortDirection = 'asc' | 'desc';
@@ -87,7 +50,7 @@ export function AlmoxarifadoPage() {
   const { showToast } = useToast();
 
   const [loading, setLoading] = useState(false);
-  const [almoxarifados, setAlmoxarifados] = useState<Almoxarifado[]>(ALMOXARIFADOS_INICIAIS);
+  const [almoxarifados, setAlmoxarifados] = useState<Almoxarifado[]>([]);
   const [search, setSearch] = useState('');
 
   // Ordenação
@@ -106,6 +69,7 @@ export function AlmoxarifadoPage() {
   const [descricaoAlmox, setDescricaoAlmox] = useState('');
   const [usuariosAutorizados, setUsuariosAutorizados] = useState<UsuarioAlmoxarifado[]>([]);
   const [usuarioSelecionado, setUsuarioSelecionado] = useState('');
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
 
   // ============================================================================
   // Handlers para carregar/recarregar dados (Pronto para conectar GET API)
@@ -113,15 +77,83 @@ export function AlmoxarifadoPage() {
   const carregarAlmoxarifados = useCallback(async () => {
     setLoading(true);
     try {
-      // TODO: Conectar à API de listagem (GET /api/almoxarifado)
-      // Exemplo:
-      // const resp = await listarAlmoxarifadosCall(baseUrl, token);
-      // setAlmoxarifados(resp.data);
+      const baseUrl = GlobalConfig.getBaseUrl();
+      const token = GlobalConfig.getJwToken();
+
+      if (!baseUrl || !token) {
+        showToast('Informações de sessão não encontradas.', 'error');
+        return;
+      }
+
+      const resp = await listarAlmoxarifadosCall(baseUrl, token, {menu: true});
+
+      if (!resp.succeeded) {
+          setAlmoxarifados([]);
+          showToast('Não foi possível carregar os almoxarifados.', 'error');
+          return;
+        }
+
+      setAlmoxarifados(resp.data);
+
       showToast('Dados de almoxarifados atualizados.', 'info');
     } catch (err: any) {
       showToast(err?.message || 'Erro ao carregar almoxarifados.', 'error');
     } finally {
       setLoading(false);
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    void carregarAlmoxarifados();
+  }, [carregarAlmoxarifados]);
+
+  // Handle para carregar usuários autorizados de um almoxarifado específico e usuários do sistema
+  const carregarDetalhesAlmoxarifado = useCallback(async (codigoAlmox: number) => {
+    try {
+      const baseUrl = GlobalConfig.getBaseUrl();
+      const token = GlobalConfig.getJwToken();
+
+      if (!baseUrl || !token) {
+        showToast('Informações de sessão não encontradas.', 'error');
+        return;
+      }
+
+      const detalhesAlmox = await listarAlmoxarifadosCall(baseUrl, token, { menu: false, codigoAlmox });
+
+      if(!detalhesAlmox.succeeded)
+      {
+        showToast('Não foi possível carregar os detalhes do almoxarifado.', 'error');
+        return;
+      }
+
+      setUsuariosAutorizados(detalhesAlmox.data[0]?.almoxarifadoUsuarioDto ?? []);
+
+    } catch (err: any) {
+      showToast(err?.message || 'Erro ao carregar detalhes do almoxarifado.', 'error');
+    }
+  }, [showToast]);
+
+  const carregarUsuariosSistema = useCallback(async () => {
+    try{
+      const baseUrl = GlobalConfig.getBaseUrl();
+      const token = GlobalConfig.getJwToken();
+
+      if (!baseUrl || !token) {
+        return;
+      }
+
+      const resp = await listUsuariosCall(baseUrl, token);
+
+      if (!resp.succeeded) {
+        setUsuarios([]);
+        showToast('Não foi possível carregar os usuários.', 'error');
+        return;
+      }
+
+      setUsuarios(resp.data);
+
+    }catch(err: any){
+      showToast(err?.message || 'Erro ao carregar usuários do sistema.', 'error');
     }
   }, [showToast]);
 
@@ -149,9 +181,9 @@ export function AlmoxarifadoPage() {
       lista = lista.filter(
         (item) =>
           item.codigoAlmox.toString().includes(termo) ||
-          item.enderecoAlmox.toLowerCase().includes(termo) ||
+          (item.enderecoAlmox ?? '').toLowerCase().includes(termo) ||
           item.descricaoAlmox.toLowerCase().includes(termo) ||
-          item.usuariosAutorizados.some(
+          (item.almoxarifadoUsuarioDto ?? []).some(
             (u) =>
               u.codigoUsuario.toLowerCase().includes(termo) ||
               u.nomeUsuario.toLowerCase().includes(termo)
@@ -166,7 +198,7 @@ export function AlmoxarifadoPage() {
       } else if (sortField === 'descricao') {
         comparison = a.descricaoAlmox.localeCompare(b.descricaoAlmox);
       } else if (sortField === 'endereco') {
-        comparison = a.enderecoAlmox.localeCompare(b.enderecoAlmox);
+        comparison = (a.enderecoAlmox ?? '').localeCompare(b.enderecoAlmox ?? '');
       }
       return sortDirection === 'asc' ? comparison : -comparison;
     });
@@ -193,12 +225,15 @@ export function AlmoxarifadoPage() {
   const handleAbrirEditar = (item: Almoxarifado) => {
     setRegistroEdicao(item);
     setCodigoAlmox(item.codigoAlmox);
-    setEnderecoAlmox(item.enderecoAlmox);
+    setEnderecoAlmox(item.enderecoAlmox ?? '');
     setDescricaoAlmox(item.descricaoAlmox);
-    setUsuariosAutorizados([...item.usuariosAutorizados]);
+    // setUsuariosAutorizados([...(item.almoxarifadoUsuarioDto ?? [])]);
     setUsuarioSelecionado('');
     setIsNovoRegistro(false);
     setIsModalOpen(true);
+
+    void carregarDetalhesAlmoxarifado(item.codigoAlmox);
+    void carregarUsuariosSistema();
   };
 
   // Fechar Modal
@@ -220,7 +255,7 @@ export function AlmoxarifadoPage() {
       codigoAlmox: Number(codigoAlmox),
       enderecoAlmox: enderecoAlmox.trim(),
       descricaoAlmox: descricaoAlmox.trim(),
-      usuariosAutorizados,
+      almoxarifadoUsuarioDto: usuariosAutorizados,
     };
 
     try {
@@ -271,17 +306,17 @@ export function AlmoxarifadoPage() {
   // Adicionar usuário ao subformulário (Almoxarifado_Usuario)
   const handleAdicionarUsuario = () => {
     if (!usuarioSelecionado) return;
-    const usrObj = USUARIOS_SISTEMA.find((u) => u.codigo === usuarioSelecionado);
+    const usrObj = usuarios.find((u) => u.codigo_Usuario === usuarioSelecionado);
     if (!usrObj) return;
 
-    if (usuariosAutorizados.some((u) => u.codigoUsuario === usrObj.codigo)) {
+    if (usuariosAutorizados.some((u) => u.codigoUsuario === usrObj.codigo_Usuario)) {
       showToast('Usuário já está vinculado a este almoxarifado.', 'info');
       return;
     }
 
     setUsuariosAutorizados((prev) => [
       ...prev,
-      { codigoUsuario: usrObj.codigo, nomeUsuario: usrObj.nome },
+      { codigoUsuario: usrObj.codigo_Usuario, nomeUsuario: usrObj.nome_Usuario },
     ]);
     setUsuarioSelecionado('');
   };
@@ -295,11 +330,11 @@ export function AlmoxarifadoPage() {
 
   const usuarioOptions = useMemo(
     () =>
-      USUARIOS_SISTEMA.map((u) => ({
-        value: u.codigo,
-        label: `${u.codigo} - ${u.nome}`,
+      usuarios.map((u) => ({
+        value: u.codigo_Usuario,
+        label: `${u.codigo_Usuario} - ${u.nome_Usuario}`,
       })),
-    []
+    [usuarios]
   );
 
   return (
@@ -430,7 +465,7 @@ export function AlmoxarifadoPage() {
                       <td>
                         <span className="almoxarifado-tag-operadores">
                           <IoPeopleOutline size={14} />
-                          {item.usuariosAutorizados.length} operador(es)
+                          {item.qtdUsuariosAlmox || 0} operador(es)
                         </span>
                       </td>
                       <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
@@ -482,7 +517,7 @@ export function AlmoxarifadoPage() {
                   </div>
                   <div className="clientes-card__row">
                     <span>USUÁRIOS AUTORIZADOS</span>
-                    <strong>{item.usuariosAutorizados.length} operador(es)</strong>
+                    <strong>{item.qtdUsuariosAlmox || 0} operador(es)</strong>
                   </div>
                 </article>
               ))}

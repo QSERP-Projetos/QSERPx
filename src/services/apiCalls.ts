@@ -2971,6 +2971,31 @@ export const contasReceberOcorrenciasCall = async (
   );
 };
 
+export const listarAlmoxarifadosCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: {
+    menu: boolean,
+    codigoAlmox?: number | null
+  }
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/Almoxarifados`;
+
+  const queryParams = {
+    menu: params.menu,
+    ...(params.codigoAlmox != null
+      ? { codigoAlmox: params.codigoAlmox }
+      : {}),
+  };
+
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    queryParams
+  );
+}
+
 /*
 EXEMPLO DE COMO ADICIONAR NOVA API:
 
