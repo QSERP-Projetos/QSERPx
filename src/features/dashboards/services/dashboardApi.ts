@@ -1,4 +1,4 @@
-import apiManager, { ApiCallType } from '../../../services/apiManager';
+﻿import apiManager, { ApiCallType } from '../../../services/apiManager';
 import type {
   DashboardPCPResponse,
   DashboardPCPProducaoPorMaquina,
@@ -186,31 +186,56 @@ export const getDashboardVendas = async ({
   dataAte,
 }: DashboardParams): Promise<DashboardVendasResponse> => {
   const url = `${normalizeBaseUrl(baseUrl)}/api/v1/Dashboards/Vendas`;
-  const response = await apiManager.makeApiCall(
-    url,
-    ApiCallType.GET,
-    token ? { Authorization: `Bearer ${token}` } : {},
-    {
-      Codigo_Empresa: codigoEmpresa,
-      Data_De: dataDe,
-      Data_Ate: dataAte,
-    },
-    null,
-    { timeoutMs: DASHBOARD_TIMEOUT_MS },
-  );
+  const chunks = buildMonthlyChunks(dataDe, dataAte);
 
-  if (!response.succeeded) {
-    throw new Error(response.bodyText || 'Erro ao consultar dashboard de vendas.');
+  const allFaturamento: Array<Record<string, any>> = [];
+  const allAtraso: Array<Record<string, any>> = [];
+  const allForecast: Array<Record<string, any>> = [];
+  const moedasChunks: Array<Array<Record<string, any>>> = [];
+  let faturamentoAcumulado: Record<string, any> | null = null;
+
+  for (const chunk of chunks) {
+    const response = await apiManager.makeApiCall(
+      url,
+      ApiCallType.GET,
+      token ? { Authorization: `Bearer ${token}` } : {},
+      {
+        Codigo_Empresa: codigoEmpresa,
+        Data_De: chunk.dataDe,
+        Data_Ate: chunk.dataAte,
+      },
+      null,
+      { timeoutMs: DASHBOARD_TIMEOUT_MS },
+    );
+
+    if (!response.succeeded) {
+      throw new Error(response.bodyText || 'Erro ao consultar dashboard de vendas.');
+    }
+
+    const body = (response.jsonBody ?? response.data ?? {}) as Record<string, unknown>;
+    moedasChunks.push(parseMoedasSemCotacao(body));
+
+    if (!faturamentoAcumulado) {
+      faturamentoAcumulado = (pickFirst(body, ['FaturamentoAcumulado', 'faturamentoAcumulado']) ?? null) as Record<string, any> | null;
+    }
+
+    // Injeta _mesAno em cada item de faturamento para que o grafico de
+    // acumulado mensal saiba a qual mes o item pertence (a API retorna
+    // totais por cliente, sem campo de data).
+    const chunkFaturamento = ensureArray(pickFirst(body, ['Faturamento', 'faturamento'])) as Array<Record<string, any>>;
+    for (const item of chunkFaturamento) {
+      allFaturamento.push({ ...item, _mesAno: chunk.dataDe });
+    }
+
+    allAtraso.push(...(ensureArray(pickFirst(body, ['Atraso', 'atraso'])) as Array<Record<string, any>>));
+    allForecast.push(...(ensureArray(pickFirst(body, ['Forecast', 'forecast'])) as Array<Record<string, any>>));
   }
 
-  const body = (response.jsonBody ?? response.data ?? {}) as Record<string, unknown>;
-  const faturamentoAcumulado = (pickFirst(body, ['FaturamentoAcumulado', 'faturamentoAcumulado']) ?? null) as Record<string, any> | null;
-
   return {
-    MoedasSemCotacao: parseMoedasSemCotacao(body),
-    Faturamento: ensureArray(pickFirst(body, ['Faturamento', 'faturamento'])),
-    Atraso: ensureArray(pickFirst(body, ['Atraso', 'atraso'])),
-    Forecast: ensureArray(pickFirst(body, ['Forecast', 'forecast'])),
+    MoedasSemCotacao: mergeMoedasSemCotacao(moedasChunks),
+    Faturamento: allFaturamento,
+    Atraso: allAtraso,
+    Forecast: allForecast,
     FaturamentoAcumulado: faturamentoAcumulado,
   };
 };
