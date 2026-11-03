@@ -15,7 +15,7 @@ import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
 import { ListSearchField } from '../../../components/ListSearchField';
 import { SearchableSelect } from '../../../components/SearchableSelect';
-import { listarAlmoxarifadosCall, listUsuariosCall } from '../../../services/apiCalls';
+import { incluirAlmoxarifadoCall, listarAlmoxarifadosCall, listUsuariosCall } from '../../../services/apiCalls';
 import { GlobalConfig } from '../../../services/globalConfig';
 
 // ============================================================================
@@ -219,6 +219,12 @@ export function AlmoxarifadoPage() {
     setRegistroEdicao(null);
     setIsNovoRegistro(true);
     setIsModalOpen(true);
+
+    if(usuarios.length === 0){
+      void carregarUsuariosSistema();
+    }else{
+      setUsuarios(usuarios);
+    }
   };
 
   // Abrir Modal para Edição
@@ -246,31 +252,50 @@ export function AlmoxarifadoPage() {
   const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!descricaoAlmox.trim()) {
-      showToast('A Descrição do Almoxarifado é obrigatória.', 'info');
+    if(!enderecoAlmox.trim()){
+      showToast('Endereço deve ser preenchido!', 'info');
       return;
     }
 
-    const itemSalvo: Almoxarifado = {
-      codigoAlmox: Number(codigoAlmox),
-      enderecoAlmox: enderecoAlmox.trim(),
-      descricaoAlmox: descricaoAlmox.trim(),
-      almoxarifadoUsuarioDto: usuariosAutorizados,
-    };
+    if (!descricaoAlmox.trim()) {
+      showToast('Descrição deve ser preenchida!', 'info');
+      return;
+    }
+
+      const baseUrl = GlobalConfig.getBaseUrl();
+      const token = GlobalConfig.getJwToken();
+
+      if (!baseUrl || !token) {
+        showToast('Informações de sessão não encontradas.', 'error');
+        return;
+      }
 
     try {
       if (isNovoRegistro) {
-        // TODO: Conectar à API de inclusão (POST /api/almoxarifado)
-        // const resp = await incluirAlmoxarifadoCall(baseUrl, token, itemSalvo);
+
+        const itemSalvo: Almoxarifado = {
+          codigoAlmox: 0, // Será definido pelo banco de dados na inclusão (POST)
+          enderecoAlmox: enderecoAlmox.trim().replace(/\./g, ''),
+          descricaoAlmox: descricaoAlmox.trim(),
+          almoxarifadoUsuarioDto: usuariosAutorizados,
+        };
+
+        const resp = await incluirAlmoxarifadoCall(baseUrl, token, itemSalvo);
         setAlmoxarifados((prev) => [...prev, itemSalvo]);
-        showToast(`Almoxarifado #${itemSalvo.codigoAlmox} cadastrado com sucesso!`, 'success');
+
+        if (resp.succeeded) {
+          showToast(`Almoxarifado #${itemSalvo.codigoAlmox} cadastrado com sucesso!`, 'success');
+        }else{
+          showToast('Falha ao cadastrar almoxarifado.', 'error');
+        }
+
       } else {
         // TODO: Conectar à API de alteração (PUT /api/almoxarifado)
         // const resp = await atualizarAlmoxarifadoCall(baseUrl, token, itemSalvo);
-        setAlmoxarifados((prev) =>
-          prev.map((a) => (a.codigoAlmox === itemSalvo.codigoAlmox ? itemSalvo : a))
-        );
-        showToast(`Almoxarifado #${itemSalvo.codigoAlmox} atualizado com sucesso!`, 'success');
+        // setAlmoxarifados((prev) =>
+        //   prev.map((a) => (a.codigoAlmox === itemSalvo.codigoAlmox ? itemSalvo : a))
+        // );
+        // showToast(`Almoxarifado #${itemSalvo.codigoAlmox} atualizado com sucesso!`, 'success');
       }
 
       setIsModalOpen(false);
@@ -459,7 +484,7 @@ export function AlmoxarifadoPage() {
                       <td>
                         <span className="almoxarifado-tag-endereco">
                           <IoLocationOutline size={14} />
-                          {item.enderecoAlmox || 'SEM ENDEREÇO'}
+                          {item.enderecoAlmox ? item.enderecoAlmox.length > 1 ? `${item.enderecoAlmox[0]}.${item.enderecoAlmox.slice(1)}` : item.enderecoAlmox : 'SEM ENDEREÇO'}
                         </span>
                       </td>
                       <td>
@@ -554,9 +579,21 @@ export function AlmoxarifadoPage() {
                   <span>Endereço / Galpão</span>
                   <input
                     type="text"
-                    value={enderecoAlmox}
-                    onChange={(e) => setEnderecoAlmox(e.target.value)}
-                    placeholder="Ex: GALPAO-01-A"
+                    maxLength={4}
+                    value={
+                      enderecoAlmox && enderecoAlmox.length > 1
+                        ? `${enderecoAlmox[0]}.${enderecoAlmox.slice(1)}`
+                        : enderecoAlmox || ''
+                    }
+                    onChange={(e) => {
+                      let valorLimpo = e.target.value.replace(/\./g, '');
+                      
+                      if (valorLimpo.length > 4) {
+                        valorLimpo = valorLimpo.slice(0, 4);
+                      }
+
+                      setEnderecoAlmox(valorLimpo);
+                    }}
                   />
                 </label>
 
@@ -567,7 +604,6 @@ export function AlmoxarifadoPage() {
                     required
                     value={descricaoAlmox}
                     onChange={(e) => setDescricaoAlmox(e.target.value)}
-                    placeholder="Ex: Almoxarifado Central - Matéria-Prima"
                   />
                 </label>
               </div>
@@ -577,7 +613,7 @@ export function AlmoxarifadoPage() {
                 <div className="almoxarifado-subform__header">
                   <h3>
                     <IoPeopleOutline size={16} />
-                    Usuários Autorizados (Almoxarifado_Usuario)
+                    Usuários Autorizados
                   </h3>
                 </div>
 

@@ -1,3 +1,4 @@
+import { UsuarioAlmoxarifado } from '../features/basico/pages/AlmoxarifadoPage';
 import apiManager, { ApiCallType, ApiCallResponse } from './apiManager';
 
 const normalizeBaseUrl = (url: string) => url?.replace(/\/$/, '') || '';
@@ -2979,7 +2980,7 @@ export const listarAlmoxarifadosCall = async (
     codigoAlmox?: number | null
   }
 ): Promise<ApiCallResponse> => {
-  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/Almoxarifados`;
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/almoxarifados`;
 
   const queryParams = {
     menu: params.menu,
@@ -2993,6 +2994,26 @@ export const listarAlmoxarifadosCall = async (
     ApiCallType.GET,
     jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
     queryParams
+  );
+}
+
+export const incluirAlmoxarifadoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  params: {
+    codigoAlmox: number,
+    enderecoAlmox: string | null,
+    descricaoAlmox: string,
+    almoxarifadoUsuarioDto: UsuarioAlmoxarifado[] | null
+  }
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/criar-almoxarifado`;
+
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    params
   );
 }
 
