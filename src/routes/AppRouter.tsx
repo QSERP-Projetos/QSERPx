@@ -13,13 +13,16 @@ import { ApontamentoProducaoPage } from '../features/pcp/pages/ApontamentoProduc
 import { ParadasMaquinaPage } from '../features/pcp/pages/ParadasMaquinaPage';
 import { OrdensFabricacaoPage } from '../features/pcp/pages/OrdensFabricacaoPage';
 import { PreparacaoMaquinaPage } from '../features/pcp/pages/PreparacaoMaquinaPage';
+import { OrdensSeparacaoPage } from '../features/pcp/pages/OrdensSeparacaoPage';
 import { OrdensServicoPage } from '../features/servico/pages/OrdensServicoPage';
 import { ApontamentoMaoObraPage } from '../features/servico/pages/ApontamentoMaoObraPage';
 import { NotaFiscalServicoPage } from '../features/servico/pages/NotaFiscalServicoPage';
+import { NotaFiscalAjustePage } from '../features/fiscal/pages/NotaFiscalAjustePage';
 import { PedidoCompraLiberacaoPage } from '../features/compras/pages/PedidoCompraLiberacaoPage';
 import { ClientesPage } from '../features/basico/pages/ClientesPage';
 import { ServicosPage } from '../features/basico/pages/ServicosPage';
 import { AlmoxarifadoPage } from '../features/basico/pages/AlmoxarifadoPage';
+import { TributacaoMaterialPage } from '../features/basico/pages/TributacaoMaterialPage';
 import { SessoesPage } from '../features/seguranca/pages/SessoesPage';
 import { TipoApontamentoPage } from '../features/seguranca/pages/TipoApontamentoPage';
 import { UsuariosPage } from '../features/seguranca/pages/UsuariosPage';
@@ -108,13 +111,16 @@ export function AppRouter() {
           <Route path={ROUTES.pcpParadasMaquina} element={<ParadasMaquinaPage />} />
           <Route path={ROUTES.pcpOrdensFabricacao} element={<OrdensFabricacaoPage />} />
           <Route path={ROUTES.pcpPreparacaoMaquina} element={<PreparacaoMaquinaPage />} />
+          <Route path={ROUTES.pcpOrdensSeparacao} element={<OrdensSeparacaoPage />} />
           <Route path={ROUTES.servicoOrdens} element={<OrdensServicoPage />} />
           <Route path={ROUTES.servicoApontamentoMaoObra} element={<ApontamentoMaoObraPage />} />
           <Route path={ROUTES.servicoNotaFiscal} element={<NotaFiscalServicoPage />} />
+          <Route path={ROUTES.fiscalNotaAjuste} element={<NotaFiscalAjustePage />} />
           <Route path={ROUTES.comprasPedidoLiberacao} element={<PedidoCompraLiberacaoPage />} />
           <Route path={ROUTES.basicoClientes} element={<ClientesPage />} />
           <Route path={ROUTES.basicoServicos} element={<ServicosPage />} />
           <Route path={ROUTES.basicoAlmoxarifado} element={<AlmoxarifadoPage />} />
+          <Route path={ROUTES.basicoTributacaoMaterial} element={<TributacaoMaterialPage />} />
           <Route path={ROUTES.segurancaUsuarios} element={<UsuariosPage />} />
           <Route path={ROUTES.segurancaTipoApontamento} element={<TipoApontamentoPage />} />
           <Route path={ROUTES.segurancaSessoes} element={<SessoesPage />} />

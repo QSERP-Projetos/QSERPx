@@ -99,7 +99,7 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
     VEN003: ROUTES.pedidoVenda,
     BAS001: ROUTES.basicoClientes,
     BAS002: ROUTES.basicoServicos,
-    BAS003: ROUTES.basicoAlmoxarifado,
+    BAS003: ROUTES.basicoTributacaoMaterial,
     COM001: ROUTES.comprasPedidoLiberacao,
     COM002: ROUTES.comprasPedidoLiberacao,
     SEG001: ROUTES.segurancaUsuarios,
@@ -110,9 +110,11 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
     PCP002: ROUTES.pcpOrdensFabricacao,
     PCP003: ROUTES.pcpParadasMaquina,
     PCP004: ROUTES.pcpPreparacaoMaquina,
+    PCP008: ROUTES.pcpOrdensSeparacao,
     SER001: ROUTES.servicoApontamentoMaoObra,
     SER002: ROUTES.servicoOrdens,
     SER003: ROUTES.servicoNotaFiscal,
+    DOC001: ROUTES.fiscalNotaAjuste,
     MAN001: ROUTES.manutencaoOrdens,
   };
 
@@ -143,8 +145,14 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
       : undefined) ||
     (normalizedTitle.includes('cliente') ? ROUTES.basicoClientes : undefined) ||
     (normalizedTitle.includes('almoxarif') ? ROUTES.basicoAlmoxarifado : undefined) ||
+    ((normalizedTitle.includes('tributacao') || normalizedTitle.includes('tributa')) && normalizedTitle.includes('material')
+      ? ROUTES.basicoTributacaoMaterial
+      : undefined) ||
     (normalizedTitle.includes('servico') && !normalizedTitle.includes('ordem') && !normalizedTitle.includes('apont') && !normalizedTitle.includes('mao')
       ? ROUTES.basicoServicos
+      : undefined) ||
+    (normalizedTitle.includes('nota') && normalizedTitle.includes('ajuste')
+      ? ROUTES.fiscalNotaAjuste
       : undefined) ||
     (normalizedTitle.includes('nota') && normalizedTitle.includes('fiscal')
       ? ROUTES.servicoNotaFiscal
@@ -154,6 +162,7 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
       ? ROUTES.segurancaTipoApontamento
       : undefined) ||
     (normalizedTitle.includes('sess') ? ROUTES.segurancaSessoes : undefined) ||
+    (normalizedTitle.includes('separa') ? ROUTES.pcpOrdensSeparacao : undefined) ||
     (normalizedTitle.includes('ordem') && normalizedTitle.includes('fabricacao') ? ROUTES.pcpOrdensFabricacao : undefined) ||
     (normalizedTitle.includes('apont') && normalizedTitle.includes('produc')
       ? ROUTES.pcpApontamentoProducao

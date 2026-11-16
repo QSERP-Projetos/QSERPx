@@ -442,12 +442,12 @@ export function DashboardVendasPage() {
     if (!parsedAte) nextErrors.dataAte = 'Data atÃ© invÃ¡lida.';
 
     if (parsedDe && parsedAte && parsedDe.getTime() > parsedAte.getTime()) {
-      nextErrors.dataDe = 'Data de nÃ£o pode ser maior que Data atÃ©.';
-      nextErrors.dataAte = 'Data atÃ© nÃ£o pode ser menor que Data de.';
+      nextErrors.dataDe = 'Data de não pode ser maior que Data até.';
+      nextErrors.dataAte = 'Data até não pode ser menor que Data de.';
     }
 
     if (!codigoEmpresa.trim()) {
-      setErrorMessage('Empresa invÃ¡lida para o dashboard. FaÃ§a login novamente.');
+      setErrorMessage('Empresa inválida para o dashboard. Faça login novamente.');
       setErrors(nextErrors);
       return false;
     }
@@ -467,7 +467,7 @@ export function DashboardVendasPage() {
     const token = GlobalConfig.getJwToken();
 
     if (!baseUrl || !token) {
-      setErrorMessage('SessÃ£o invÃ¡lida para consultar o dashboard de vendas.');
+      setErrorMessage('Sessão inválida para consultar o dashboard de vendas.');
       return;
     }
 
@@ -1101,7 +1101,7 @@ export function DashboardVendasPage() {
 
           <div>
             <h1>Dashboard - Vendas</h1>
-            <p>Faturamento por regiÃ£o, top clientes por tipo e consolidado por cliente faturado.</p>
+            <p>Faturamento por região, top clientes por tipo e consolidado por cliente faturado.</p>
           </div>
         </div>
       </section>
@@ -1178,7 +1178,7 @@ export function DashboardVendasPage() {
       <section className="card dashboard-vendas-results">
         <div className="dashboard-vendas-controls-inline dashboard-vendas-results__actions">
           <label className="list-layout-field list-layout-field--sm dashboard-field dashboard-vendas-scope-filter" aria-label="Filtrar destinatÃ¡rio">
-            <span>DestinatÃ¡rio</span>
+            <span>Destinatário</span>
             <SearchableSelect
               value={destinatarioScope}
               onChange={(value) => setDestinatarioScope(value as 'todos' | 'clientes')}
@@ -1219,7 +1219,7 @@ export function DashboardVendasPage() {
             <article className="card dashboard-chart-card dashboard-vendas-acumulado-card">
               <header className="dashboard-section-header dashboard-section-header--collapsible">
                 <div>
-                  <h2>Faturamento acumulado de clientes por mÃªs</h2>
+                  <h2>Faturamento acumulado de clientes por mês</h2>
                   <p>{`Total faturado acumulado de clientes (${String(faturamentoAcumuladoTipo).toLowerCase()}) no intervalo selecionado.`}</p>
                 </div>
               </header>
@@ -1346,15 +1346,15 @@ export function DashboardVendasPage() {
               <article className="card dashboard-chart-card">
                 <header className="dashboard-section-header dashboard-section-header--collapsible">
                   <div>
-                    <h2>Faturamento por regiÃ£o</h2>
-                    <p>Passe o mouse na regiÃ£o para visualizar os 3 clientes mais vendidos.</p>
+                    <h2>Faturamento por região</h2>
+                    <p>Passe o mouse na região para visualizar os 3 clientes mais vendidos.</p>
                   </div>
                   <button
                     type="button"
                     className="home-dashboard-card__collapse"
                     onClick={() => setMainChartCollapsed((prev) => !prev)}
-                    aria-label={mainChartCollapsed ? 'Expandir grÃ¡fico por regiÃ£o' : 'Encolher grÃ¡fico por regiÃ£o'}
-                    title={mainChartCollapsed ? 'Expandir grÃ¡fico por regiÃ£o' : 'Encolher grÃ¡fico por regiÃ£o'}
+                    aria-label={mainChartCollapsed ? 'Expandir gráfico por região' : 'Encolher gráfico por região'}
+                    title={mainChartCollapsed ? 'Expandir gráfico por região' : 'Encolher gráfico por região'}
                   >
                     {mainChartCollapsed ? <IoChevronDownOutline size={18} /> : <IoChevronUpOutline size={18} />}
                   </button>

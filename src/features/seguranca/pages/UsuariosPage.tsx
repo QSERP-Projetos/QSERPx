@@ -51,6 +51,7 @@ const MODULOS: SelectOption[] = [
   { label: 'Configurações', value: 'CFG' },
   { label: 'Contabilidade', value: 'CON' },
   { label: 'Custo', value: 'CUS' },
+  { label: 'Documentos Fiscais', value: 'DOC' },
   { label: 'Engenharia', value: 'ENG' },
   { label: 'Financeiro', value: 'FIN' },
   { label: 'Fiscal', value: 'FIS' },

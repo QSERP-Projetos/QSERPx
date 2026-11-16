@@ -2436,8 +2436,16 @@ export const obterTributacoesCall = async (
   baseUrl: string,
   jwtToken: string | undefined,
   tipo: string,
+  codigoTributacao?: string,
+  origem?: string,
 ): Promise<ApiCallResponse> => {
-  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ObterTributacoes/${tipo}`;
+  let url = `${normalizeBaseUrl(baseUrl)}/api/v1/ObterTributacoes/${tipo}`;
+  if (codigoTributacao || origem) {
+    url += `/${encodeURIComponent(codigoTributacao || '_')}/${encodeURIComponent(origem || '')}`;
+  }
+  if (origem) {
+    url += `?origem=${encodeURIComponent(origem)}`;
+  }
   return apiManager.makeApiCall(
     url,
     ApiCallType.GET,
@@ -3094,4 +3102,592 @@ export default {
   consultaPedidoCall,
   consultaNotaClienteCall,
   adicionaContasReceberCall,
+};
+// ============================================
+// API: Materiais Tributacao
+// ============================================
+export const obterMateriaisTributacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  codigoMaterial: string,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/MateriaisTributacao/${encodeURIComponent(codigoMaterial)}`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+export const listarMateriaisTributacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  filtro?: string,
+  take?: number,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/MateriaisTributacao`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    { filtro: filtro || '', take: take || 100 },
+  );
+};
+
+export const adicionarMateriaisTributacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  body: any,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/MateriaisTributacao`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    body,
+  );
+};
+
+export const atualizarMateriaisTributacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  body: any,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/MateriaisTributacao`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.PUT,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    body,
+  );
+};
+
+export const duplicarMateriaisTributacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  materialOrigem: string,
+  materialDestino: string,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/MateriaisTributacao/Duplicar`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    { MaterialOrigem: materialOrigem, MaterialDestino: materialDestino },
+  );
+};
+
+export const obterConversoesUnidTribCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  codigoMaterial: string,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/MateriaisTributacao/Conversoes/${encodeURIComponent(codigoMaterial)}`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
+};
+
+export const salvarConversoesUnidTribCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  codigoMaterial: string,
+  conversoes: any[],
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/MateriaisTributacao/Conversoes/${encodeURIComponent(codigoMaterial)}`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    conversoes,
+  );
+};
+
+
+
+/* ORDEM DE SEPARACAO -----------------------------------------------------------------------------------------*/
+
+export const obterOrdensSeparacaoBasicCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  codigoEmpresa: number,
+  numSeparacao?: number,
+  codigoCliente?: number,
+  codigoCfo?: string,
+  usuario?: string,
+  aba?: string,
+  dataInicio?: string,
+  dataFim?: string,
+  numNotaFiscal?: string,
+  busca?: string,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/basic`;
+  const params: Record<string, any> = { codigoEmpresa };
+  if (numSeparacao) params.numSeparacao = numSeparacao;
+  if (codigoCliente) params.codigoCliente = codigoCliente;
+  if (codigoCfo) params.codigoCfo = codigoCfo;
+  if (usuario) params.usuario = usuario;
+  if (aba) params.aba = aba;
+  if (dataInicio) params.dataInicio = dataInicio;
+  if (dataFim) params.dataFim = dataFim;
+  if (numNotaFiscal) params.numNotaFiscal = numNotaFiscal;
+  if (busca) params.busca = busca;
+  return apiManager.makeApiCall(url, ApiCallType.GET, jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {}, params);
+};
+
+export const obterOrdemSeparacaoDetalheCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  codigoEmpresa: number,
+  numSeparacao: number,
+  usuario?: string,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/detalhes`;
+  const params: Record<string, any> = { codigoEmpresa, numSeparacao };
+  if (usuario) params.usuario = usuario;
+  return apiManager.makeApiCall(url, ApiCallType.GET, jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {}, params);
+};
+
+export const obterPedidosPendentesSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  codigoEmpresa: number,
+  codigoCliente: number,
+  dataSeparacao?: string,
+  filtro?: string,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/pedidos-pendentes`;
+  const params: Record<string, any> = { codigoEmpresa, codigoCliente };
+  if (dataSeparacao) params.dataSeparacao = dataSeparacao;
+  if (filtro) params.filtro = filtro;
+  return apiManager.makeApiCall(url, ApiCallType.GET, jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {}, params);
+};
+
+export const criarOrdemSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  dto: any,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao`;
+  return apiManager.makeApiCall(url, ApiCallType.POST, jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {}, {}, dto);
+};
+
+export const atualizarOrdemSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  codigoEmpresa: number,
+  dto: any,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}?codigoEmpresa=${codigoEmpresa}`;
+  return apiManager.makeApiCall(url, ApiCallType.PUT, jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {}, {}, dto);
+};
+
+export const adicionarPedidosSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  req: { codigoEmpresa: number; itens: any[]; confirmarParcial?: boolean; usuario?: string },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/adicionar-pedidos`;
+  return apiManager.makeApiCall(url, ApiCallType.POST, jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {}, {}, req);
+};
+
+export const adicionarItemManualSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  codigoEmpresa: number,
+  dto: any,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/adicionar-item?codigoEmpresa=${codigoEmpresa}`;
+  return apiManager.makeApiCall(url, ApiCallType.POST, jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {}, {}, dto);
+};
+
+export const excluirItemSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  numItem: number,
+  codigoEmpresa: number,
+  numDetalhe?: number,
+  confirmarKit?: boolean,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/item/${numItem}`;
+  const params: Record<string, any> = { codigoEmpresa };
+  if (numDetalhe !== undefined) params.numDetalhe = numDetalhe;
+  if (confirmarKit) params.confirmarKit = true;
+  return apiManager.makeApiCall(url, ApiCallType.DELETE, jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {}, params);
+};
+
+export const atualizarItemSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  numItem: number,
+  req: {
+    codigoEmpresa: number;
+    numLote?: string | null;
+    codigoLocal?: number | null;
+    qtdSeparar?: number | null;
+    pesoMaterial?: number | null;
+    pesoEmbReal?: number | null;
+    qtdPorEmb?: number | null;
+    qtdVolumes?: number | null;
+    confirmarLoteOutroCliente?: boolean;
+    confirmarParcial?: boolean;
+    usuario?: string;
+  },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/item/${numItem}`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.PUT,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    req,
+  );
+};
+
+export const liberarItensOrdemSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  req: { codigoEmpresa: number; usuario?: string; numItens?: number[] },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/liberar`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    req,
+  );
+};
+
+export const cancelarOrdemSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  codigoEmpresa: number,
+  options?: { situacao?: number; ignorarProgEnc?: boolean; usuario?: string },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/cancelar`;
+  const params: Record<string, any> = { codigoEmpresa };
+  if (options?.situacao !== undefined) params.situacao = options.situacao;
+  if (options?.ignorarProgEnc) params.ignorarProgEnc = true;
+  if (options?.usuario) params.usuario = options.usuario;
+  return apiManager.makeApiCall(url, ApiCallType.POST, jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {}, params);
+};
+
+export const obterProximoNumeroSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  codigoEmpresa: number,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/proximo-numero?codigoEmpresa=${codigoEmpresa}`;
+  return apiManager.makeApiCall(url, ApiCallType.GET, jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {});
+};
+
+export const obterCombosSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  tipo: 'clientes' | 'transportadoras' | 'cfops' | 'materiais' | 'veiculos' | 'locais',
+  busca?: string,
+  codigoEmpresa?: number,
+  codigoCliente?: number,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/combos/${tipo}`;
+  const params: Record<string, any> = {};
+  if (busca) params.busca = busca;
+  if (codigoEmpresa) params.codigoEmpresa = codigoEmpresa;
+  if (codigoCliente) params.codigoCliente = codigoCliente;
+  return apiManager.makeApiCall(url, ApiCallType.GET, jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {}, params);
+};
+
+export const obterLotesDisponiveisSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  codigoEmpresa: number,
+  codigoMaterial: string,
+  numSeparacao?: number,
+  apenasSeparados?: boolean,
+  codigoCliente?: number,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/lotes/${encodeURIComponent(codigoMaterial)}`;
+  const params: Record<string, any> = { codigoEmpresa };
+  if (numSeparacao) params.numSeparacao = numSeparacao;
+  if (apenasSeparados !== undefined) params.apenasSeparados = apenasSeparados;
+  if (codigoCliente) params.codigoCliente = codigoCliente;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    params,
+  );
+};
+
+export const atualizarItemLoteSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  numItem: number,
+  codigoEmpresa: number,
+  numLote: string | null,
+  codigoLocal?: number | null,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/item/${numItem}/lote`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.PUT,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    { codigoEmpresa, numLote, codigoLocal },
+  );
+};
+
+export const obterDetalhesItemSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  numItem: number,
+  codigoEmpresa: number,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/item/${numItem}/detalhes`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    { codigoEmpresa },
+  );
+};
+
+export const listarSeriaisDisponiveisItemCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  numItem: number,
+  codigoEmpresa: number,
+  codigoMaterial: string,
+  codigoLote?: string | null,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/item/${numItem}/seriais`;
+  const params: Record<string, any> = { codigoEmpresa, codigoMaterial };
+  if (codigoLote) params.codigoLote = codigoLote;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    params,
+  );
+};
+
+export const incluirSeriaisItemCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  numItem: number,
+  req: { codigoEmpresa: number; codigoMaterial: string; codigoLote?: string | null; numSeriais: string[] },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/item/${numItem}/seriais`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    req,
+  );
+};
+
+export const obterInfoMaterialSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  codigoEmpresa: number,
+  codigoCliente: number,
+  codigoMaterial: string,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/material-info/${encodeURIComponent(codigoMaterial)}`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    { codigoEmpresa, codigoCliente },
+  );
+};
+
+export const validarEmbalagemSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  codigoEmpresa: number,
+  codigoCliente: number,
+  numSeparacao: number,
+  serialEmbalagem: string,
+  tipoEmbalagem: number,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/validar-embalagem`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    { codigoEmpresa, codigoCliente, numSeparacao, serialEmbalagem, tipoEmbalagem },
+  );
+};
+
+export const incluirEmbalagemSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  req: { codigoEmpresa: number; serialEmbalagem: string; tipoEmbalagem: number },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/incluir-embalagem`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    req,
+  );
+};
+
+export const confirmarOrdemSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  req: {
+    codigoEmpresa: number;
+    geraSolicEmbalagem: boolean;
+    confirmarCapacidadeVeiculo?: boolean;
+    confirmarValorMaximo?: boolean;
+    usuario?: string;
+  },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/confirmar`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    req,
+  );
+};
+
+export const validarQrCodeSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  req: { codigoEmpresa: number; qrCodeTexto: string; etiquetasLidas: string[] },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/qrcode/validar`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    req,
+  );
+};
+
+export const confirmarQrCodeSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  codigoEmpresa: number,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/qrcode/confirmar`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    { codigoEmpresa },
+  );
+};
+
+export const resetarQrCodeSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  codigoEmpresa: number,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/qrcode/reset`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.POST,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    { codigoEmpresa },
+  );
+};
+
+export const obterTransportadorasPedidosSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  codigoEmpresa: number,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/transportadoras-pedidos`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    { codigoEmpresa },
+  );
+};
+
+export const alterarTransportadoraSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  req: {
+    codigoEmpresa: number;
+    codigoTransportadora?: number | null;
+    respRedespacho?: number | null;
+    usuario?: string;
+  },
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/transportadora`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.PUT,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    req,
+  );
+};
+
+export const atualizarObservacaoClienteSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  codigoCliente: number,
+  observacaoSeparacao: string,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/clientes/${codigoCliente}/observacao`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.PUT,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+    {},
+    { observacaoSeparacao },
+  );
+};
+
+export const obterRelatorioOrdemSeparacaoCall = async (
+  baseUrl: string,
+  jwtToken: string | undefined,
+  numSeparacao: number,
+  codigoEmpresa: number,
+  tipo: number = 1,
+): Promise<ApiCallResponse> => {
+  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/ordem-separacao/${numSeparacao}/relatorio?codigoEmpresa=${codigoEmpresa}&tipo=${tipo}`;
+  return apiManager.makeApiCall(
+    url,
+    ApiCallType.GET,
+    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
+  );
 };

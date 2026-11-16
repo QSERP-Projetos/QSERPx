@@ -13,6 +13,7 @@ const menuConfigs = [
   { id: 'engenharia', title: 'Engenharia', icon: 'construct-outline', code: 'ENG' },
   { id: 'financeiro', title: 'Financeiro', icon: 'wallet-outline', code: 'FIN' },
   { id: 'fiscal', title: 'Fiscal', icon: 'document-text-outline', code: 'FIS' },
+  { id: 'documentos-fiscais', title: 'Documentos Fiscais', icon: 'document-text-outline', code: 'DOC' },
   { id: 'manutencao', title: 'Manutenção', icon: 'build-outline', code: 'MAN' },
   { id: 'pcp', title: 'PCP', icon: 'business-outline', code: 'PCP' },
   { id: 'qualidade', title: 'Qualidade', icon: 'checkmark-done-outline', code: 'QLD' },
@@ -179,33 +180,51 @@ export const useDynamicMenu = () => {
               menusComDocumentos.splice(servicoIndex, 1);
             }
 
-            const documentosMenu: MenuItem = {
-              id: 'documentos-fiscais',
-              title: 'Documentos Fiscais',
-              icon: 'document-text-outline',
-              transactionCode: 'DOC',
-              subitems: fiscais,
-            };
+            const existingDocIndex = menusComDocumentos.findIndex(
+              (item) => item.id === 'documentos-fiscais' || item.transactionCode === 'DOC',
+            );
 
-            const fiscalIndex = menusComDocumentos.findIndex((item) => item.id === 'fiscal' || item.transactionCode === 'FIS');
-            if (fiscalIndex >= 0) {
-              menusComDocumentos.splice(fiscalIndex + 1, 0, documentosMenu);
+            if (existingDocIndex >= 0) {
+              const existingDoc = menusComDocumentos[existingDocIndex];
+              const mergedSubitems = [...existingDoc.subitems];
+              for (const fiscalItem of fiscais) {
+                const alreadyExists = mergedSubitems.some(
+                  (sub) =>
+                    String(sub.transactionCode || '').toUpperCase() ===
+                    String(fiscalItem.transactionCode || '').toUpperCase(),
+                );
+                if (!alreadyExists) {
+                  mergedSubitems.push(fiscalItem);
+                }
+              }
+              menusComDocumentos[existingDocIndex] = { ...existingDoc, subitems: mergedSubitems };
             } else {
-              menusComDocumentos.push(documentosMenu);
+              const documentosMenu: MenuItem = {
+                id: 'documentos-fiscais',
+                title: 'Documentos Fiscais',
+                icon: 'document-text-outline',
+                transactionCode: 'DOC',
+                subitems: fiscais,
+              };
+
+              const fiscalIndex = menusComDocumentos.findIndex((item) => item.id === 'fiscal' || item.transactionCode === 'FIS');
+              if (fiscalIndex >= 0) {
+                menusComDocumentos.splice(fiscalIndex + 1, 0, documentosMenu);
+              } else {
+                menusComDocumentos.push(documentosMenu);
+              }
             }
           }
         }
 
-        // Garante que a opção Almoxarifado esteja presente no módulo Básico
+        // Garante que a opção Almoxarifado esteja presente no módulo Básico sem colidir com BAS003 (Tributação do Material)
         const basicoIndex = menusComDocumentos.findIndex((item) => item.id === 'basico' || item.transactionCode === 'BAS');
-        const almoxarifadoSubitem = { title: 'Almoxarifado', transactionCode: 'BAS003' };
+        const almoxarifadoSubitem = { title: 'Almoxarifado', transactionCode: 'ALM' };
 
         if (basicoIndex >= 0) {
           const basicoMenu = menusComDocumentos[basicoIndex];
           const hasAlmox = basicoMenu.subitems.some(
-            (s) =>
-              String(s.transactionCode || '').toUpperCase() === 'BAS003' ||
-              String(s.title || '').toLowerCase().includes('almoxarif')
+            (s) => String(s.title || '').toLowerCase().includes('almoxarif')
           );
           if (!hasAlmox) {
             basicoMenu.subitems.push(almoxarifadoSubitem);
