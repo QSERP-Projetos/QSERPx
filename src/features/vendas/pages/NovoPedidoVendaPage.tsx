@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { IoAddOutline, IoChevronDownOutline, IoChevronForwardOutline, IoCloseCircleOutline, IoCloseOutline, IoDocumentTextOutline, IoDownloadOutline, IoPricetagsOutline, IoSaveOutline, IoSearchOutline, IoTrashOutline } from 'react-icons/io5';
+import { IoAddOutline, IoChevronDownOutline, IoChevronForwardOutline, IoCloseCircleOutline, IoDocumentTextOutline, IoDownloadOutline, IoPricetagsOutline, IoSaveOutline, IoSearchOutline, IoTrashOutline } from 'react-icons/io5';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -22,6 +22,8 @@ import {
   incluirPedidoVenda,
   validarItensPlanilhaExcel,
 } from '../../../services/pedidoVendaApi';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { REQUIRED_FIELDS_MESSAGE, useRequiredFields } from '../../../hooks/useRequiredFields';
 
 type ItemForm = {
   Codigo_Produto: string;
@@ -507,6 +509,8 @@ export function PedidoVendaFormPanel({
   onSaved,
 }: PedidoVendaFormPanelProps) {
   const { showToast } = useToast();
+  const obrig = useRequiredFields();
+  const obrigImportacao = useRequiredFields();
   const isEdit = Boolean(numPedido);
   const isViewOnly = Boolean(readOnly);
   const sufixoTitulo = isRepresentantes ? ' representantes' : '';
@@ -715,8 +719,9 @@ export function PedidoVendaFormPanel({
 
     setPedidoClienteImportacao((prev) => prev || pedidoClientePadrao);
     setDataEntregaImportacao((prev) => prev || dataEntregaPadrao);
+    obrigImportacao.reset();
     setDadosImportacaoOpen(true);
-  }, [codigoCliente, itens, showToast]);
+  }, [codigoCliente, itens, showToast, obrigImportacao]);
 
   const handleClickBaixarPlanilha = useCallback(() => {
     window.open(PLANILHA_MODELO_URL, '_blank', 'noopener,noreferrer');
@@ -726,8 +731,8 @@ export function PedidoVendaFormPanel({
   const canEditDescontoCliente = false;
 
   const handleConfirmarDadosImportacao = useCallback(() => {
-    if (!pedidoClienteImportacao.trim() || !dataEntregaImportacao.trim()) {
-      showToast('Informe Pedido cliente e Data de entrega para continuar a importação.', 'error');
+    if (!obrigImportacao.validate([pedidoClienteImportacao, dataEntregaImportacao])) {
+      showToast(REQUIRED_FIELDS_MESSAGE, 'error');
       return;
     }
 
@@ -740,7 +745,7 @@ export function PedidoVendaFormPanel({
     }
 
     fileInputPlanilhaRef.current?.click();
-  }, [dataEntregaImportacao, itens, pedidoClienteImportacao, showToast]);
+  }, [dataEntregaImportacao, itens, pedidoClienteImportacao, showToast, obrigImportacao]);
 
   const handlePlanilhaFileSelected = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
@@ -2900,8 +2905,8 @@ export function PedidoVendaFormPanel({
 
     const sourceItens = itensOverride ?? itens;
 
-    if (!codigoCliente || !condicaoPagto || !codigoVendedor) {
-      showToast('Cliente, condição e vendedor são obrigatórios.', 'error');
+    if (!obrig.validate([codigoCliente, condicaoPagto, codigoVendedor])) {
+      showToast(REQUIRED_FIELDS_MESSAGE, 'error');
       return false;
     }
 
@@ -3206,9 +3211,7 @@ export function PedidoVendaFormPanel({
                 <IoSaveOutline size={18} />
               </button>
             ) : null}
-            <button type="button" className="icon-button" aria-label="Fechar" onClick={requestCloseForm}>
-              <IoCloseOutline size={18} />
-            </button>
+            <ModalHeaderActions onClose={requestCloseForm} />
           </div>
         </header>
 
@@ -3270,6 +3273,7 @@ export function PedidoVendaFormPanel({
                     <label>
                       <span>Cliente *</span>
                       <SearchableSelect
+                        className={obrig.wrapperClass(codigoCliente)}
                         value={codigoCliente}
                         onChange={(nextValue) => handleChangeCliente(nextValue)}
                         options={clienteOptions}
@@ -3283,10 +3287,12 @@ export function PedidoVendaFormPanel({
                         )}
                         disabled={isViewOnly || isEdit}
                       />
+                      {obrig.error(codigoCliente)}
                     </label>
                     <label>
                       <span>Condição pgto *</span>
                       <SearchableSelect
+                        className={obrig.wrapperClass(condicaoPagto)}
                         value={condicaoPagto}
                         onChange={setCondicaoPagto}
                         options={condicaoOptions}
@@ -3294,10 +3300,12 @@ export function PedidoVendaFormPanel({
                         ariaLabel="Condição de pagamento"
                         disabled={isViewOnly || isRepresentantes}
                       />
+                      {obrig.error(condicaoPagto)}
                     </label>
                     <label>
                       <span>Vendedor *</span>
                       <SearchableSelect
+                        className={obrig.wrapperClass(codigoVendedor)}
                         value={codigoVendedor}
                         onChange={setCodigoVendedor}
                         options={vendedorOptions}
@@ -3305,6 +3313,7 @@ export function PedidoVendaFormPanel({
                         ariaLabel="Vendedor"
                         disabled={isViewOnly || isRepresentantes}
                       />
+                      {obrig.error(codigoVendedor)}
                     </label>
                     <label>
                       <span>Desconto do cliente (%)</span>
@@ -3566,7 +3575,7 @@ export function PedidoVendaFormPanel({
 
                             <div className="pedido-venda-item-ficha-actions pedido-venda-item-ficha-actions--inline">
                               <button
-                                className="icon-button module-action-button danger"
+                                className="icon-button--danger icon-button module-action-button danger"
                                 type="button"
                                 onClick={() => handleRemoveItem(index)}
                                 title="Excluir item"
@@ -3753,7 +3762,7 @@ export function PedidoVendaFormPanel({
                             {!isViewOnly ? (
                               <div className="module-card__actions pedido-venda-item-mobile-actions">
                                 <button
-                                  className="icon-button module-action-button danger"
+                                  className="icon-button--danger icon-button module-action-button danger"
                                   type="button"
                                   onClick={(event) => {
                                     event.stopPropagation();
@@ -3811,7 +3820,7 @@ export function PedidoVendaFormPanel({
                     </div>
 
                     <div className="form-actions pedido-venda-total-footer__actions">
-                      <button className="secondary-button" type="button" onClick={requestCloseForm}>
+                      <button className="secondary-button modal-card__close" type="button" onClick={requestCloseForm}>
                         Cancelar
                       </button>
 
@@ -3855,7 +3864,7 @@ export function PedidoVendaFormPanel({
               <button className="secondary-button" type="button" onClick={handleImprimirPedidoPDF}>
                 Imprimir PDF
               </button>
-              <button className="secondary-button" type="button" onClick={requestCloseForm}>
+              <button className="secondary-button modal-card__close" type="button" onClick={requestCloseForm}>
                 Fechar
               </button>
             </div>
@@ -3868,17 +3877,10 @@ export function PedidoVendaFormPanel({
           <article className="modal-card modal-card--wide pedido-venda-planilha-modal">
             <header className="modal-card__header">
               <h2>Importação de planilha</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   if (importandoPlanilha) return;
                   setPlanilhaPreviewOpen(false);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <section className="module-form">
@@ -3991,7 +3993,7 @@ export function PedidoVendaFormPanel({
                               </td>
                               <td>
                                 <button
-                                  className="icon-button module-action-button danger"
+                                  className="icon-button--danger icon-button module-action-button danger"
                                   type="button"
                                   onClick={() => handleRemoverItemPlanilhaPreview(index)}
                                   title="Excluir item"
@@ -4035,7 +4037,7 @@ export function PedidoVendaFormPanel({
 
                   <div className="form-actions pedido-venda-planilha-actions">
                     <button
-                      className="secondary-button"
+                      className="secondary-button modal-card__close"
                       type="button"
                       onClick={() => setPlanilhaPreviewOpen(false)}
                       disabled={importandoPlanilha}
@@ -4063,13 +4065,16 @@ export function PedidoVendaFormPanel({
           <article className="modal-card pedido-venda-status-image-modal">
             <header className="modal-card__header">
               <h2>{imagemStatusTitulo || 'Visualização de imagem'}</h2>
-              <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setImagemStatusOpen(false)}>
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setImagemStatusOpen(false)} expandable={false} />
             </header>
             <section className="module-form pedido-venda-status-image-body">
               {imagemStatusSrc ? <img src={imagemStatusSrc} alt={imagemStatusTitulo || 'Visualização de imagem'} /> : <p className="module-empty">Imagem não disponível.</p>}
             </section>
+            <footer className="modal-card__footer">
+              <button type="button" className="secondary-button modal-card__close" onClick={() => setImagemStatusOpen(false)}>
+                Fechar
+              </button>
+            </footer>
           </article>
         </section>
       ) : null}
@@ -4079,29 +4084,34 @@ export function PedidoVendaFormPanel({
           <article className="modal-card pedido-venda-importar-dados-modal">
             <header className="modal-card__header">
               <h2>Importar planilha</h2>
+              <ModalHeaderActions onClose={() => setDadosImportacaoOpen(false)} />
             </header>
             <section className="module-form">
               <div className="form-grid-3">
                 <label>
                   <span>Pedido cliente *</span>
                   <input
+                    className={obrigImportacao.inputClass(pedidoClienteImportacao)}
                     value={pedidoClienteImportacao}
                     onChange={(event) => setPedidoClienteImportacao(event.target.value)}
                     placeholder="Informe o pedido do cliente"
                   />
+                  {obrigImportacao.error(pedidoClienteImportacao)}
                 </label>
 
                 <label>
                   <span>Data de entrega *</span>
                   <CustomDatePicker
+                    className={obrigImportacao.wrapperClass(dataEntregaImportacao)}
                     value={dataEntregaImportacao}
                     onChange={setDataEntregaImportacao}
                   />
+                  {obrigImportacao.error(dataEntregaImportacao)}
                 </label>
               </div>
 
               <div className="form-actions pedido-venda-confirm-actions">
-                <button className="secondary-button" type="button" onClick={() => setDadosImportacaoOpen(false)}>
+                <button className="secondary-button modal-card__close" type="button" onClick={() => setDadosImportacaoOpen(false)}>
                   Não
                 </button>
                 <button className="primary-button" type="button" onClick={handleConfirmarDadosImportacao}>
@@ -4118,11 +4128,12 @@ export function PedidoVendaFormPanel({
           <article className="modal-card pedido-venda-confirm-modal">
             <header className="modal-card__header">
               <h2>Importar planilha</h2>
+              <ModalHeaderActions onClose={() => setConfirmarImportacaoOpen(false)} expandable={false} />
             </header>
             <section className="module-form">
               <p>Se houver itens incluídos neste pedido, eles serão perdidos. Deseja continuar?</p>
               <div className="form-actions pedido-venda-confirm-actions">
-                <button className="secondary-button" type="button" onClick={() => setConfirmarImportacaoOpen(false)}>
+                <button className="secondary-button modal-card__close" type="button" onClick={() => setConfirmarImportacaoOpen(false)}>
                   Não
                 </button>
                 <button
@@ -4146,11 +4157,12 @@ export function PedidoVendaFormPanel({
           <article className="modal-card pedido-venda-confirm-modal">
             <header className="modal-card__header">
               <h2>Confirmar fechamento</h2>
+              <ModalHeaderActions onClose={() => setConfirmarFechamentoOpen(false)} expandable={false} />
             </header>
             <section className="module-form">
               <p>As alterações não salvas serão perdidas. Deseja realmente fechar?</p>
               <div className="form-actions pedido-venda-confirm-actions">
-                <button className="secondary-button" type="button" onClick={() => setConfirmarFechamentoOpen(false)}>
+                <button className="secondary-button modal-card__close" type="button" onClick={() => setConfirmarFechamentoOpen(false)}>
                   Não
                 </button>
                 <button
@@ -4179,9 +4191,7 @@ export function PedidoVendaFormPanel({
           <article className="modal-card modal-card--wide pedido-venda-tabela-preco-modal">
             <header className="modal-card__header">
               <h2>{modoTabelaPreco === 'geral' ? 'Tabela de preços do pedido' : 'Tabela de preços'}</h2>
-              <button type="button" className="icon-button" aria-label="Fechar" onClick={handleFecharTabelaPrecoModal}>
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={handleFecharTabelaPrecoModal} />
             </header>
 
             <div className="pedido-venda-tabela-preco-search-row">
@@ -4233,6 +4243,9 @@ export function PedidoVendaFormPanel({
             </div>
 
             <div className="form-actions pedido-venda-tabela-preco-actions">
+              <button type="button" className="secondary-button modal-card__close" onClick={handleFecharTabelaPrecoModal}>
+                Fechar
+              </button>
               <button
                 className="secondary-button"
                 type="button"
@@ -4381,18 +4394,11 @@ export function PedidoVendaFormPanel({
           <article className="modal-card pedido-venda-item-mobile-modal">
             <header className="modal-card__header">
               <h2>{mobileItemEditIndex === null ? 'Adicionar item' : 'Editar item'}</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   setMobileItemModalOpen(false);
                   setMobileItemEditIndex(null);
                   setMobileItemDraft(emptyItem());
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <div className="form-grid-3 pedido-venda-item-mobile-form">
@@ -4516,7 +4522,7 @@ export function PedidoVendaFormPanel({
 
             <div className="form-actions">
               <button
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 type="button"
                 onClick={() => {
                   setMobileItemModalOpen(false);

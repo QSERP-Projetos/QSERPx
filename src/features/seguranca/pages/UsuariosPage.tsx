@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  IoAddCircleOutline,
   IoArrowBack,
-  IoCloseOutline,
   IoListOutline,
   IoRefreshOutline,
   IoSettingsOutline,
-  IoTrashOutline,
 } from 'react-icons/io5';
 import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
@@ -28,6 +25,8 @@ import {
   obterUsuariosTransacoesSistemaCall,
 } from '../../../services/apiCalls';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
 
 type SelectOption = {
   label: string;
@@ -51,6 +50,7 @@ const MODULOS: SelectOption[] = [
   { label: 'Configurações', value: 'CFG' },
   { label: 'Contabilidade', value: 'CON' },
   { label: 'Custo', value: 'CUS' },
+  { label: 'Dashboards', value: 'DSB' },
   { label: 'Documentos Fiscais', value: 'DOC' },
   { label: 'Engenharia', value: 'ENG' },
   { label: 'Financeiro', value: 'FIN' },
@@ -106,7 +106,6 @@ export function UsuariosPage() {
   const [usuarioSelecionado, setUsuarioSelecionado] = useState<any | null>(null);
   const [parametrosOpen, setParametrosOpen] = useState(false);
   const [transacoesOpen, setTransacoesOpen] = useState(false);
-  const [acoesOpen, setAcoesOpen] = useState(false);
   const [sortField, setSortField] = useState<SortField>('codigo');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
@@ -125,6 +124,9 @@ export function UsuariosPage() {
   const [moduloFilter, setModuloFilter] = useState('');
 
   const [transacaoSelecionada, setTransacaoSelecionada] = useState<any | null>(null);
+  const [transacaoDetalheCodigo, setTransacaoDetalheCodigo] = useState('');
+  const [transacaoPendente, setTransacaoPendente] = useState<string | null>(null);
+  const [acaoPendente, setAcaoPendente] = useState<string | null>(null);
   const [acoesSistema, setAcoesSistema] = useState<any[]>([]);
   const [acoesUsuario, setAcoesUsuario] = useState<any[]>([]);
 
@@ -240,11 +242,6 @@ export function UsuariosPage() {
     setSortDirection('asc');
   };
 
-  const getSortIndicator = (field: SortField) => {
-    if (sortField !== field) return '▲▼';
-    return sortDirection === 'asc' ? '▲' : '▼';
-  };
-
   const abrirParametros = (usuario: any) => {
     const codigo = asText(usuario?.codigo_Usuario ?? usuario?.codigo_usuario);
     const nome = asText(usuario?.nome_Usuario ?? usuario?.nome_usuario);
@@ -348,28 +345,12 @@ export function UsuariosPage() {
     setTransacoesSearch('');
     setModuloFilter('');
     setTransacaoSelecionada(null);
+    setTransacaoDetalheCodigo('');
     setAcoesSistema([]);
     setAcoesUsuario([]);
     setTransacoesOpen(true);
     await carregarTransacoes(codigo);
   };
-
-  const transacoesNomeMap = useMemo(() => {
-    const map = new Map<string, string>();
-    const moduloMap = new Map<string, string>();
-
-    transacoes.forEach((item) => {
-      const codigo = asText(item?.codigo_Transacao ?? item?.codigo_transacao).toUpperCase();
-      const nome = asText(item?.nome_Formulario ?? item?.nome_formulario);
-      const modulo = asText(item?.modulo_Transacao ?? item?.modulo_transacao).toUpperCase();
-      if (codigo) {
-        map.set(codigo, nome);
-        moduloMap.set(codigo, modulo);
-      }
-    });
-
-    return { name: map, module: moduloMap };
-  }, [transacoes]);
 
   const usuarioTransacoesSet = useMemo(() => {
     const set = new Set<string>();
@@ -388,31 +369,6 @@ export function UsuariosPage() {
     });
     return set;
   }, [acoesUsuario]);
-
-  const transacoesSistemaFiltradas = useMemo(() => {
-    const term = transacoesSearch.trim().toLowerCase();
-    return transacoes.filter((item) => {
-      const codigo = asText(item?.codigo_Transacao ?? item?.codigo_transacao).toUpperCase();
-      const nome = asText(item?.nome_Formulario ?? item?.nome_formulario).toLowerCase();
-      const modulo = asText(item?.modulo_Transacao ?? item?.modulo_transacao).toUpperCase();
-      const matchSearch = !term || codigo.toLowerCase().includes(term) || nome.includes(term);
-      const matchModule = !moduloFilter || modulo === moduloFilter;
-      const notLinked = !usuarioTransacoesSet.has(codigo);
-      return matchSearch && matchModule && notLinked;
-    });
-  }, [moduloFilter, transacoes, transacoesSearch, usuarioTransacoesSet]);
-
-  const transacoesUsuarioFiltradas = useMemo(() => {
-    const term = transacoesSearch.trim().toLowerCase();
-    return transacoesUsuario.filter((item) => {
-      const codigo = asText(item?.codigo_Transacao ?? item?.codigo_transacao).toUpperCase();
-      const nome = asText(transacoesNomeMap.name.get(codigo) || codigo).toLowerCase();
-      const modulo = asText(transacoesNomeMap.module.get(codigo)).toUpperCase();
-      const matchSearch = !term || codigo.toLowerCase().includes(term) || nome.includes(term);
-      const matchModule = !moduloFilter || modulo === moduloFilter;
-      return matchSearch && matchModule;
-    });
-  }, [moduloFilter, transacoesNomeMap, transacoesSearch, transacoesUsuario]);
 
   const vincularTransacao = async (transacao: any) => {
     const codigoTransacao = asText(transacao?.codigo_Transacao ?? transacao?.codigo_transacao).toUpperCase();
@@ -503,27 +459,6 @@ export function UsuariosPage() {
     [registrarAcoesUsuario, showToast],
   );
 
-  const abrirAcoes = async (transacao: any) => {
-    const idTransacao = asText(transacao?.id_Transacao ?? transacao?.id_transacao);
-    const idUsuarioTransacao = Number(
-      transacao?.id_Usuario_Transacao ?? transacao?.id_usuario_transacao ?? 0,
-    );
-
-    if (!idTransacao || !usuarioSelecionadoCodigo || !idUsuarioTransacao) {
-      showToast('Dados da transação inválidos para gestão de ações.', 'error');
-      return;
-    }
-
-    setTransacaoSelecionada(transacao);
-    const result = await carregarAcoesTransacao(idTransacao, usuarioSelecionadoCodigo, idUsuarioTransacao);
-    if (result.sistema.length === 0) {
-      showToast('Essa transação não possui ações cadastradas.', 'info');
-      return;
-    }
-
-    setAcoesOpen(true);
-  };
-
   const vincularAcao = async (acao: any) => {
     if (!transacaoSelecionada || !usuarioSelecionadoCodigo) {
       showToast('Transação selecionada inválida.', 'error');
@@ -604,6 +539,172 @@ export function UsuariosPage() {
     }
   };
 
+  const getCodigoTransacao = (item: any) => asText(item?.codigo_Transacao ?? item?.codigo_transacao).toUpperCase();
+  const getModuloTransacao = (item: any) => asText(item?.modulo_Transacao ?? item?.modulo_transacao).toUpperCase();
+
+  const usuarioTransacaoPorCodigo = useMemo(() => {
+    const map = new Map<string, any>();
+    transacoesUsuario.forEach((item) => {
+      const codigo = asText(item?.codigo_Transacao ?? item?.codigo_transacao).toUpperCase();
+      if (codigo) map.set(codigo, item);
+    });
+    return map;
+  }, [transacoesUsuario]);
+
+  const modulosTransacoes = useMemo(() => {
+    const term = transacoesSearch.trim().toLowerCase();
+    const counts = new Map<string, { total: number; liberadas: number }>();
+    let total = 0;
+    let liberadas = 0;
+    transacoes.forEach((item) => {
+      const codigo = asText(item?.codigo_Transacao ?? item?.codigo_transacao).toUpperCase();
+      const nome = asText(item?.nome_Formulario ?? item?.nome_formulario).toLowerCase();
+      if (term && !codigo.toLowerCase().includes(term) && !nome.includes(term)) return;
+      const modulo = asText(item?.modulo_Transacao ?? item?.modulo_transacao).toUpperCase() || '-';
+      const atual = counts.get(modulo) || { total: 0, liberadas: 0 };
+      atual.total += 1;
+      total += 1;
+      if (usuarioTransacoesSet.has(codigo)) {
+        atual.liberadas += 1;
+        liberadas += 1;
+      }
+      counts.set(modulo, atual);
+    });
+
+    const labelPorValor = new Map(MODULOS.map((item) => [item.value, item.label]));
+    const lista = Array.from(counts.entries())
+      .map(([value, info]) => ({ value, label: labelPorValor.get(value) || value, ...info }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+
+    return { lista, total, liberadas };
+  }, [transacoes, transacoesSearch, usuarioTransacoesSet]);
+
+  const transacoesDoFiltro = useMemo(() => {
+    const term = transacoesSearch.trim().toLowerCase();
+    return transacoes
+      .filter((item) => {
+        const codigo = asText(item?.codigo_Transacao ?? item?.codigo_transacao).toUpperCase();
+        const nome = asText(item?.nome_Formulario ?? item?.nome_formulario).toLowerCase();
+        const modulo = asText(item?.modulo_Transacao ?? item?.modulo_transacao).toUpperCase();
+        const matchSearch = !term || codigo.toLowerCase().includes(term) || nome.includes(term);
+        const matchModule = !moduloFilter || modulo === moduloFilter;
+        return matchSearch && matchModule;
+      })
+      .sort((a, b) =>
+        asText(a?.nome_Formulario ?? a?.nome_formulario).localeCompare(asText(b?.nome_Formulario ?? b?.nome_formulario), 'pt-BR'),
+      );
+  }, [moduloFilter, transacoes, transacoesSearch]);
+
+  const transacaoDetalhe = useMemo(
+    () => transacoes.find((item) => asText(item?.codigo_Transacao ?? item?.codigo_transacao).toUpperCase() === transacaoDetalheCodigo) || null,
+    [transacaoDetalheCodigo, transacoes],
+  );
+  const transacaoDetalheUsuario = transacaoDetalheCodigo ? usuarioTransacaoPorCodigo.get(transacaoDetalheCodigo) || null : null;
+  const transacaoDetalheUsuarioId = Number(
+    transacaoDetalheUsuario?.id_Usuario_Transacao ?? transacaoDetalheUsuario?.id_usuario_transacao ?? 0,
+  );
+
+  // Carrega as ações da transação selecionada (somente quando ela está liberada para o usuário)
+  useEffect(() => {
+    if (!transacoesOpen || !transacaoDetalheCodigo || !usuarioSelecionadoCodigo) return;
+    if (!transacaoDetalheUsuario || !transacaoDetalheUsuarioId) {
+      setTransacaoSelecionada(null);
+      setAcoesSistema([]);
+      setAcoesUsuario([]);
+      return;
+    }
+    const idTransacao = asText(transacaoDetalheUsuario?.id_Transacao ?? transacaoDetalheUsuario?.id_transacao);
+    if (!idTransacao) return;
+    setTransacaoSelecionada(transacaoDetalheUsuario);
+    void carregarAcoesTransacao(idTransacao, usuarioSelecionadoCodigo, transacaoDetalheUsuarioId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transacoesOpen, transacaoDetalheCodigo, transacaoDetalheUsuarioId, usuarioSelecionadoCodigo]);
+
+  const acaoUsuarioPorId = useMemo(() => {
+    const map = new Map<string, any>();
+    acoesUsuario.forEach((item) => {
+      const id = asText(item?.id_Transacao_Acao ?? item?.id_transacao_acao);
+      if (id) map.set(id, item);
+    });
+    return map;
+  }, [acoesUsuario]);
+
+  const alternarTransacao = async (item: any) => {
+    const codigo = getCodigoTransacao(item);
+    if (!codigo || transacaoPendente) return;
+    setTransacaoPendente(codigo);
+    try {
+      const vinculado = usuarioTransacaoPorCodigo.get(codigo);
+      if (vinculado) {
+        await desvincularTransacao(vinculado);
+      } else {
+        await vincularTransacao(item);
+      }
+    } finally {
+      setTransacaoPendente(null);
+    }
+  };
+
+  const liberarTodasDoFiltro = async () => {
+    if (transacaoPendente || !usuarioSelecionadoCodigo) return;
+    const pendentes = transacoesDoFiltro.filter((item) => !usuarioTransacoesSet.has(getCodigoTransacao(item)));
+    if (pendentes.length === 0) {
+      showToast('Todas as transações deste filtro já estão liberadas.', 'info');
+      return;
+    }
+    setTransacaoPendente('*');
+    try {
+      const { baseUrl, token } = await registrarAcoesUsuario();
+      let falhas = 0;
+      for (const item of pendentes) {
+        const codigoTransacao = getCodigoTransacao(item);
+        const nomeTransacao = asText(item?.nome_Formulario ?? item?.nome_formulario);
+        const idTransacao = Number(item?.id_Transacao ?? item?.id_transacao ?? 0);
+        if (!codigoTransacao || !idTransacao) continue;
+        if (nomeTransacao === 'Usuários' && usuarioSelecionadoNivel < 9) continue;
+        const resp = await adicionarUsuariosTransacoesSistemaCall(baseUrl, token, {
+          idTransacao,
+          codigoUsuario: usuarioSelecionadoCodigo.toUpperCase(),
+          codigoTransacao,
+          transacaoFavorita: 0,
+        });
+        if (!resp.succeeded) falhas += 1;
+      }
+      if (falhas > 0) {
+        showToast(`${falhas} transação(ões) não puderam ser liberadas.`, 'error');
+      }
+      await carregarTransacoes(usuarioSelecionadoCodigo);
+    } catch (error: any) {
+      showToast(error?.message || 'Erro ao liberar transações.', 'error');
+    } finally {
+      setTransacaoPendente(null);
+    }
+  };
+
+  const alternarAcao = async (acao: any) => {
+    const id = asText(acao?.id_Transacao_Acao ?? acao?.id_transacao_acao);
+    if (!id || acaoPendente) return;
+    setAcaoPendente(id);
+    try {
+      const vinculada = acaoUsuarioPorId.get(id);
+      if (vinculada) {
+        await desvincularAcao(vinculada);
+      } else {
+        await vincularAcao(acao);
+      }
+    } finally {
+      setAcaoPendente(null);
+    }
+  };
+
+  const fecharTransacoes = () => {
+    setTransacoesOpen(false);
+    setTransacaoSelecionada(null);
+    setTransacaoDetalheCodigo('');
+    setAcoesSistema([]);
+    setAcoesUsuario([]);
+  };
+
   return (
     <main className="clientes-page list-layout-page usuarios-page">
       <section className="clientes-page__header">
@@ -654,34 +755,19 @@ export function UsuariosPage() {
             <p className="module-empty">Nenhum usuário encontrado.</p>
           ) : (
             <>
-              <div className="table-scroll module-table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('codigo')}>
-                          Código <span>{getSortIndicator('codigo')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('usuario')}>
-                          Usuário <span>{getSortIndicator('usuario')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('email')}>
-                          E-mail <span>{getSortIndicator('email')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('nivel')}>
-                          Nível <span>{getSortIndicator('nivel')}</span>
-                        </button>
-                      </th>
-                      <th className="module-table__actions-col">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <div className="data-cards-region">
+                  <DataListSortBar
+                    options={[
+                      { field: 'codigo', label: 'Código' },
+                      { field: 'usuario', label: 'Usuário' },
+                      { field: 'email', label: 'E-mail' },
+                      { field: 'nivel', label: 'Nível' },
+                    ]}
+                    active={sortField}
+                    direction={sortDirection}
+                    onSort={handleSort}
+                  />
+                  <DataList ariaLabel="Usuários">
                     {usuariosOrdenados.map((item, index) => {
                       const codigo = asText(item?.codigo_Usuario ?? item?.codigo_usuario);
                       const nome = asText(item?.nome_Usuario ?? item?.nome_usuario);
@@ -689,15 +775,17 @@ export function UsuariosPage() {
                       const nivel = asText(item?.nivel_Usuario ?? item?.nivel_usuario);
 
                       return (
-                        <tr key={`${codigo || 'usuario'}-${index}`}>
-                          <td>{codigo || '-'}</td>
-                          <td>{nome || '-'}</td>
-                          <td>{email || '-'}</td>
-                          <td>{getNivelLabel(nivel)}</td>
-                          <td>
-                            <div className="table-actions">
+                        <DataListItem
+                          key={`${codigo || 'usuario'}-${index}`}
+                          code={codigo || '-'}
+                          title={nome || '-'}
+                          subtitle={email || undefined}
+                          details={[{ label: 'Nível', value: getNivelLabel(nivel) }]}
+                          actions={
+                            <>
                               <button
                                 type="button"
+                                className="icon-button"
                                 title="Parâmetros do usuário"
                                 aria-label="Parâmetros do usuário"
                                 onClick={() => abrirParametros(item)}
@@ -706,69 +794,20 @@ export function UsuariosPage() {
                               </button>
                               <button
                                 type="button"
+                                className="icon-button"
                                 title="Transações do usuário"
                                 aria-label="Transações do usuário"
                                 onClick={() => void abrirTransacoes(item)}
                               >
                                 <IoListOutline size={16} />
                               </button>
-                            </div>
-                          </td>
-                        </tr>
+                            </>
+                          }
+                        />
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="module-cards">
-                {usuariosOrdenados.map((item, index) => {
-                  const codigo = asText(item?.codigo_Usuario ?? item?.codigo_usuario);
-                  const nome = asText(item?.nome_Usuario ?? item?.nome_usuario);
-                  const email = asText(item?.e_mail_Usuario ?? item?.e_mail_usuario);
-                  const nivel = asText(item?.nivel_Usuario ?? item?.nivel_usuario);
-
-                  return (
-                    <article className="module-card" key={`card-${codigo || 'usuario'}-${index}`}>
-                      <div className="module-card__row">
-                        <span>Código</span>
-                        <strong>{codigo || '-'}</strong>
-                      </div>
-                      <div className="module-card__row">
-                        <span>Usuário</span>
-                        <strong>{nome || '-'}</strong>
-                      </div>
-                      <div className="module-card__row">
-                        <span>E-mail</span>
-                        <strong>{email || '-'}</strong>
-                      </div>
-                      <div className="module-card__row">
-                        <span>Nível</span>
-                        <strong>{getNivelLabel(nivel)}</strong>
-                      </div>
-
-                      <div className="module-card__actions">
-                        <button
-                          type="button"
-                          title="Parâmetros do usuário"
-                          aria-label="Parâmetros do usuário"
-                          onClick={() => abrirParametros(item)}
-                        >
-                          <IoSettingsOutline size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          title="Transações do usuário"
-                          aria-label="Transações do usuário"
-                          onClick={() => void abrirTransacoes(item)}
-                        >
-                          <IoListOutline size={16} />
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+                  </DataList>
+                </div>
             </>
           )}
         </section>
@@ -779,17 +818,10 @@ export function UsuariosPage() {
           <article className="modal-card modal-card--wide usuarios-parametros-modal">
             <header className="modal-card__header">
               <h2>Parâmetros do usuário</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   if (savingParametros) return;
                   setParametrosOpen(false);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <section className="module-form">
@@ -865,7 +897,7 @@ export function UsuariosPage() {
 
               <div className="form-actions">
                 <button
-                  className="secondary-button"
+                  className="secondary-button modal-card__close"
                   type="button"
                   onClick={() => setParametrosOpen(false)}
                   disabled={savingParametros}
@@ -887,23 +919,16 @@ export function UsuariosPage() {
       )}
 
       {transacoesOpen && (
-        <section className="modal-backdrop" role="dialog" aria-modal="true">
-          <article className="modal-card modal-card--wide usuarios-permissoes-modal">
+        <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Transações do usuário">
+          <article className="modal-card modal-card--wide usuarios-transacoes-modal">
             <header className="modal-card__header">
-              <h2>Transações do usuário {usuarioSelecionadoCodigo || '-'}</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
-                  setTransacoesOpen(false);
-                  setTransacaoSelecionada(null);
-                  setAcoesSistema([]);
-                  setAcoesUsuario([]);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <div>
+                <h2>Transações do usuário {usuarioSelecionadoCodigo || '-'}</h2>
+                <p className="usuarios-transacoes__subtitle">
+                  Escolha o módulo, ligue as transações e ajuste as ações ao lado.
+                </p>
+              </div>
+              <ModalHeaderActions onClose={fecharTransacoes} />
             </header>
 
             <div className="permission-toolbar">
@@ -929,36 +954,92 @@ export function UsuariosPage() {
               </label>
             </div>
 
-            <div className="permission-grid">
-              <section className="permission-column">
-                <h3>Sistema</h3>
-                <div className="permission-box">
+            <div className="usuarios-transacoes">
+              <nav className="usuarios-transacoes__panel usuarios-transacoes__modulos" aria-label="Módulos">
+                <span className="usuarios-transacoes__label">Módulos</span>
+                <button
+                  type="button"
+                  className={`usuarios-transacoes__modulo${!moduloFilter ? ' is-active' : ''}`}
+                  aria-current={!moduloFilter ? 'true' : undefined}
+                  onClick={() => setModuloFilter('')}
+                >
+                  <span>Todos</span>
+                  <span className="usuarios-transacoes__count">
+                    {modulosTransacoes.liberadas}/{modulosTransacoes.total}
+                  </span>
+                </button>
+                {modulosTransacoes.lista.map((modulo) => (
+                  <button
+                    key={modulo.value}
+                    type="button"
+                    className={`usuarios-transacoes__modulo${moduloFilter === modulo.value ? ' is-active' : ''}`}
+                    aria-current={moduloFilter === modulo.value ? 'true' : undefined}
+                    onClick={() => setModuloFilter(modulo.value)}
+                  >
+                    <span>{modulo.label}</span>
+                    <span className="usuarios-transacoes__count">
+                      {modulo.liberadas}/{modulo.total}
+                    </span>
+                  </button>
+                ))}
+              </nav>
+
+              <section className="usuarios-transacoes__panel usuarios-transacoes__lista" aria-label="Transações">
+                <div className="usuarios-transacoes__lista-header">
+                  <span className="usuarios-transacoes__label">
+                    {(MODULOS.find((item) => item.value === moduloFilter)?.label || 'Todos').toUpperCase()} ·{' '}
+                    {transacoesDoFiltro.filter((item) => usuarioTransacoesSet.has(getCodigoTransacao(item))).length} de{' '}
+                    {transacoesDoFiltro.length} liberadas
+                  </span>
+                  <button
+                    type="button"
+                    className="usuarios-transacoes__link"
+                    onClick={() => void liberarTodasDoFiltro()}
+                    disabled={Boolean(transacaoPendente) || transacoesDoFiltro.length === 0}
+                  >
+                    Liberar todas
+                  </button>
+                </div>
+
+                <div className="usuarios-transacoes__scroll">
                   {loadingTransacoes ? (
                     <p className="module-empty">Carregando transações...</p>
-                  ) : transacoesSistemaFiltradas.length === 0 ? (
+                  ) : transacoesDoFiltro.length === 0 ? (
                     <p className="module-empty">Nenhuma transação encontrada.</p>
                   ) : (
-                    transacoesSistemaFiltradas.map((item, index) => {
-                      const codigo = asText(item?.codigo_Transacao ?? item?.codigo_transacao).toUpperCase();
+                    transacoesDoFiltro.map((item, index) => {
+                      const codigo = getCodigoTransacao(item);
                       const nome = asText(item?.nome_Formulario ?? item?.nome_formulario) || codigo;
-                      const modulo = asText(item?.modulo_Transacao ?? item?.modulo_transacao).toUpperCase();
+                      const liberada = usuarioTransacoesSet.has(codigo);
+                      const selecionada = transacaoDetalheCodigo === codigo;
+                      const pendente = transacaoPendente === codigo || transacaoPendente === '*';
 
                       return (
-                        <div className="permission-row" key={`${codigo || 'sistema'}-${index}`}>
-                          <div className="permission-row__meta">
-                            <strong title={nome}>{nome}</strong>
-                            <small>{[codigo, modulo].filter(Boolean).join(' • ') || '-'}</small>
-                          </div>
-                          <div className="permission-row__actions">
-                            <button
-                              type="button"
-                              title="Vincular transação"
-                              aria-label="Vincular transação"
-                              onClick={() => void vincularTransacao(item)}
-                            >
-                              <IoAddCircleOutline size={16} />
-                            </button>
-                          </div>
+                        <div
+                          key={`${codigo || 'transacao'}-${index}`}
+                          className={`usuarios-transacoes__item${selecionada ? ' is-selected' : ''}`}
+                        >
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={liberada}
+                            aria-label={`${liberada ? 'Remover' : 'Liberar'} ${nome}`}
+                            title={liberada ? 'Remover acesso' : 'Liberar acesso'}
+                            className={`qs-switch${liberada ? ' is-on' : ''}`}
+                            disabled={pendente}
+                            onClick={() => void alternarTransacao(item)}
+                          >
+                            <span className="qs-switch__knob" />
+                          </button>
+                          <button
+                            type="button"
+                            className="usuarios-transacoes__item-main"
+                            onClick={() => setTransacaoDetalheCodigo(codigo)}
+                            aria-pressed={selecionada}
+                          >
+                            <strong>{nome}</strong>
+                            <small>{[codigo, getModuloTransacao(item)].filter(Boolean).join(' · ')}</small>
+                          </button>
                         </div>
                       );
                     })
@@ -966,145 +1047,62 @@ export function UsuariosPage() {
                 </div>
               </section>
 
-              <section className="permission-column">
-                <h3>Usuário</h3>
-                <div className="permission-box">
-                  {loadingTransacoes ? (
-                    <p className="module-empty">Carregando transações...</p>
-                  ) : transacoesUsuarioFiltradas.length === 0 ? (
-                    <p className="module-empty">Nenhuma transação vinculada.</p>
-                  ) : (
-                    transacoesUsuarioFiltradas.map((item, index) => {
-                      const codigo = asText(item?.codigo_Transacao ?? item?.codigo_transacao).toUpperCase();
-                      const nome = asText(transacoesNomeMap.name.get(codigo) || codigo);
+              <aside className="usuarios-transacoes__panel usuarios-transacoes__detalhe" aria-label="Detalhe da transação">
+                <span className="usuarios-transacoes__label">Detalhe</span>
+                {!transacaoDetalhe ? (
+                  <p className="usuarios-transacoes__hint">Selecione uma transação para ver e ajustar as ações permitidas.</p>
+                ) : (
+                  <>
+                    <div className="usuarios-transacoes__detalhe-titulo">
+                      <strong>{asText(transacaoDetalhe?.nome_Formulario ?? transacaoDetalhe?.nome_formulario) || transacaoDetalheCodigo}</strong>
+                      <small>{[transacaoDetalheCodigo, getModuloTransacao(transacaoDetalhe)].filter(Boolean).join(' · ')}</small>
+                    </div>
 
-                      return (
-                        <div className="permission-row" key={`${codigo || 'usuario'}-${index}`}>
-                          <div className="permission-row__meta">
-                            <strong title={nome}>{nome}</strong>
-                            <small>{codigo || '-'}</small>
-                          </div>
-                          <div className="permission-row__actions">
-                            <button
-                              type="button"
-                              title="Gerenciar ações"
-                              aria-label="Gerenciar ações"
-                              onClick={() => void abrirAcoes(item)}
-                            >
-                              <IoSettingsOutline size={16} />
-                            </button>
-                            <button
-                              className="danger"
-                              type="button"
-                              title="Desvincular transação"
-                              aria-label="Desvincular transação"
-                              onClick={() => void desvincularTransacao(item)}
-                            >
-                              <IoTrashOutline size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </section>
-            </div>
-          </article>
-        </section>
-      )}
-
-      {acoesOpen && transacaoSelecionada && (
-        <section className="modal-backdrop" role="dialog" aria-modal="true">
-          <article className="modal-card modal-card--wide usuarios-permissoes-modal">
-            <header className="modal-card__header">
-              <h2>Ações da transação {asText(transacaoSelecionada?.codigo_Transacao ?? transacaoSelecionada?.codigo_transacao)}</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setAcoesOpen(false)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
-            </header>
-
-            <div className="permission-grid">
-              <section className="permission-column">
-                <h3>Sistema</h3>
-                <div className="permission-box">
-                  {loadingAcoes ? (
-                    <p className="module-empty">Carregando ações...</p>
-                  ) : acoesSistema.filter((item) => !usuarioAcoesSet.has(asText(item?.id_Transacao_Acao ?? item?.id_transacao_acao))).length === 0 ? (
-                    <p className="module-empty">Nenhuma ação disponível.</p>
-                  ) : (
-                    acoesSistema
-                      .filter((item) => !usuarioAcoesSet.has(asText(item?.id_Transacao_Acao ?? item?.id_transacao_acao)))
-                      .map((item, index) => {
-                        const idAcao = asText(item?.id_Transacao_Acao ?? item?.id_transacao_acao);
-                        const descricao = asText(item?.descricao_Acao ?? item?.descricao_acao) || idAcao;
-
-                        return (
-                          <div className="permission-row" key={`${idAcao || 'acao'}-${index}`}>
-                            <div className="permission-row__meta">
-                              <strong title={descricao}>{descricao}</strong>
-                              <small>{idAcao || '-'}</small>
-                            </div>
-                            <div className="permission-row__actions">
+                    <span className="usuarios-transacoes__label">Ações permitidas</span>
+                    {!transacaoDetalheUsuario ? (
+                      <p className="usuarios-transacoes__hint">Libere a transação para configurar as ações.</p>
+                    ) : loadingAcoes ? (
+                      <p className="usuarios-transacoes__hint">Carregando ações...</p>
+                    ) : acoesSistema.length === 0 ? (
+                      <p className="usuarios-transacoes__hint">Esta transação não possui ações cadastradas.</p>
+                    ) : (
+                      <div className="usuarios-transacoes__acoes">
+                        {acoesSistema.map((acao, index) => {
+                          const idAcao = asText(acao?.id_Transacao_Acao ?? acao?.id_transacao_acao);
+                          const descricao = asText(acao?.descricao_Acao ?? acao?.descricao_acao) || idAcao;
+                          const ativa = usuarioAcoesSet.has(idAcao);
+                          return (
+                            <div key={`${idAcao || 'acao'}-${index}`} className="usuarios-transacoes__acao">
+                              <span>{descricao}</span>
                               <button
                                 type="button"
-                                title="Vincular ação"
-                                aria-label="Vincular ação"
-                                onClick={() => void vincularAcao(item)}
+                                role="switch"
+                                aria-checked={ativa}
+                                aria-label={`${ativa ? 'Remover' : 'Permitir'} ${descricao}`}
+                                className={`qs-switch${ativa ? ' is-on' : ''}`}
+                                disabled={acaoPendente === idAcao}
+                                onClick={() => void alternarAcao(acao)}
                               >
-                                <IoAddCircleOutline size={16} />
+                                <span className="qs-switch__knob" />
                               </button>
                             </div>
-                          </div>
-                        );
-                      })
-                  )}
-                </div>
-              </section>
-
-              <section className="permission-column">
-                <h3>Usuário</h3>
-                <div className="permission-box">
-                  {loadingAcoes ? (
-                    <p className="module-empty">Carregando ações...</p>
-                  ) : acoesUsuario.length === 0 ? (
-                    <p className="module-empty">Nenhuma ação vinculada.</p>
-                  ) : (
-                    acoesUsuario.map((item, index) => {
-                      const descricao = asText(item?.descricao_Acao ?? item?.descricao_acao);
-                      const idAcaoUsuario = asText(
-                        item?.id_Usuario_Transacao_Acao ?? item?.id_usuario_transacao_acao,
-                      );
-
-                      return (
-                        <div className="permission-row" key={`${idAcaoUsuario || 'acao-usuario'}-${index}`}>
-                          <div className="permission-row__meta">
-                            <strong title={descricao}>{descricao || idAcaoUsuario || '-'}</strong>
-                            <small>{idAcaoUsuario || '-'}</small>
-                          </div>
-                          <div className="permission-row__actions">
-                            <button
-                              className="danger"
-                              type="button"
-                              title="Desvincular ação"
-                              aria-label="Desvincular ação"
-                              onClick={() => void desvincularAcao(item)}
-                            >
-                              <IoTrashOutline size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </section>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+              </aside>
             </div>
+
+            <footer className="modal-card__footer">
+              <span className="usuarios-transacoes__resumo">
+                {modulosTransacoes.liberadas} de {modulosTransacoes.total} transações liberadas
+              </span>
+              <button type="button" className="secondary-button modal-card__close" onClick={fecharTransacoes}>
+                Fechar
+              </button>
+            </footer>
           </article>
         </section>
       )}

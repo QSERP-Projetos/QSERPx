@@ -4,7 +4,6 @@ import {
   IoAddOutline,
   IoArrowBack,
   IoCloseCircleOutline,
-  IoCloseOutline,
   IoCreateOutline,
   IoRefreshOutline,
   IoSearchOutline,
@@ -15,6 +14,9 @@ import { useToast } from '../../../contexts/ToastContext';
 import { GlobalConfig } from '../../../services/globalConfig';
 import { listaServicosCall, nbsCall, obterTributacoesCall, adicionarServicoCall, atualizarServicoCall, deletarServicoCall } from '../../../services/apiCalls';
 import { SearchableSelect } from '../../../components/SearchableSelect';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem } from '../../../components/DataList';
+import { REQUIRED_FIELDS_MESSAGE, useRequiredFields } from '../../../hooks/useRequiredFields';
 
 type Servico = {
   codigo_Servico?: number | null;
@@ -62,6 +64,7 @@ const asText = (value: any) => String(value ?? '');
 export function ServicosPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const obrig = useRequiredFields();
 
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -176,8 +179,8 @@ export function ServicosPage() {
       showToast('Informações de sessão não encontradas.', 'error');
       return;
     }
-    if (!form.descr_Resumida?.trim()) {
-      showToast('O campo Descrição é obrigatório.', 'info');
+    if (!obrig.validate([form.descr_Resumida])) {
+      showToast(REQUIRED_FIELDS_MESSAGE, 'error');
       return;
     }
     const isEdicao = !!form.codigo_Servico;
@@ -225,7 +228,7 @@ export function ServicosPage() {
     } finally {
       setSalvando(false);
     }
-  }, [form, showToast, carregarServicos]);
+  }, [form, showToast, carregarServicos, obrig]);
 
   useEffect(() => {
     void carregarServicos();
@@ -253,6 +256,7 @@ export function ServicosPage() {
   };
 
   const abrirConsulta = async (item: Servico) => {
+    obrig.reset();
     setSelectedServico(item);
     setModoEdicao(false);
     setConsultaOpen(true);
@@ -340,6 +344,7 @@ export function ServicosPage() {
   }, [deleteConfirm, showToast, carregarServicos]);
 
   const abrirNovo = () => {
+    obrig.reset();
     setForm({});
     setSelectedServico(null);
     setModoEdicao(true);
@@ -422,65 +427,46 @@ export function ServicosPage() {
         ) : servicosFiltrados.length === 0 ? (
           <p className="module-empty">Nenhum serviço encontrado.</p>
         ) : (
-          <div className="table-scroll servicos-table-wrap">
-            <table className="servicos-table">
-              <thead>
-                <tr>
-                  <th>Descrição</th>
-                  <th>Destino</th>
-                  <th>Status</th>
-                  <th className="servicos-table__col-acoes">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {servicosFiltrados.map((item, index) => {
-                  const codigo = asText(item?.codigo_Servico);
-                  const descricao = asText(item?.descr_Resumida);
-                  const destino = asText(item?.destino_Servico);
+          <DataList ariaLabel="Serviços">
+            {servicosFiltrados.map((item, index) => {
+              const codigo = asText(item?.codigo_Servico);
+              const descricao = asText(item?.descr_Resumida);
+              const destino = asText(item?.destino_Servico);
 
-                  return (
-                    <tr
-                      key={`${codigo || 'servico'}-${index}`}
-                      className="servicos-table__row--clickable"
-                      onClick={() => abrirConsulta(item)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirConsulta(item); } }}
-                      tabIndex={0}
-                    >
-                      <td>{descricao || '-'}</td>
-                      <td>{destino || '-'}</td>
-                      <td>
-                        <span className={getStatusClass(item?.servico_ativo)}>
-                          {getStatusLabel(item?.servico_ativo)}
-                        </span>
-                      </td>
-                      <td className="servicos-table__col-acoes">
-                        <div className="servicos-table__acoes">
-                          <button
-                            type="button"
-                            className="icon-button servicos-table__btn-acao"
-                            aria-label="Editar serviço"
-                            title="Editar"
-                            onClick={(e) => { e.stopPropagation(); abrirConsulta(item); }}
-                          >
-                            <IoCreateOutline size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            className="icon-button servicos-table__btn-acao servicos-table__btn-acao--danger"
-                            aria-label="Excluir serviço"
-                            title="Excluir"
-                            onClick={(e) => deletarServico(item, e)}
-                          >
-                            <IoTrashOutline size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+              return (
+                <DataListItem
+                  key={`${codigo || 'servico'}-${index}`}
+                  code={codigo ? `#${codigo}` : '-'}
+                  title={descricao || '-'}
+                  details={[{ label: 'Destino', value: destino || '-' }]}
+                  status={<span className={getStatusClass(item?.servico_ativo)}>{getStatusLabel(item?.servico_ativo)}</span>}
+                  onOpen={() => abrirConsulta(item)}
+                  actions={
+                    <>
+                      <button
+                        type="button"
+                        className="icon-button"
+                        aria-label="Editar serviço"
+                        title="Editar"
+                        onClick={() => abrirConsulta(item)}
+                      >
+                        <IoCreateOutline size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-button icon-button--danger"
+                        aria-label="Excluir serviço"
+                        title="Excluir"
+                        onClick={(e) => deletarServico(item, e)}
+                      >
+                        <IoTrashOutline size={16} />
+                      </button>
+                    </>
+                  }
+                />
+              );
+            })}
+          </DataList>
         )}
       </section>
 
@@ -493,9 +479,7 @@ export function ServicosPage() {
             <article className="modal-card modal-card--servicos">
               <header className="modal-card__header">
                 <h2>{modoEdicao ? (form.codigo_Servico ? 'Editar Serviço' : 'Novo Serviço') : 'Consulta de Serviço'}</h2>
-                <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setConsultaOpen(false)}>
-                  <IoCloseOutline size={18} />
-                </button>
+                <ModalHeaderActions onClose={() => setConsultaOpen(false)} />
               </header>
 
               <div className="servicos-consulta-body">
@@ -544,8 +528,14 @@ export function ServicosPage() {
 
                 {/* Descrição */}
                 <label className="servicos-consulta-label">
-                  <span>Descrição</span>
-                  <input readOnly={ro} value={asText(s.descr_Resumida)} onChange={set('descr_Resumida')} />
+                  <span>Descrição *</span>
+                  <input
+                    readOnly={ro}
+                    className={obrig.inputClass(s.descr_Resumida)}
+                    value={asText(s.descr_Resumida)}
+                    onChange={set('descr_Resumida')}
+                  />
+                  {obrig.error(s.descr_Resumida)}
                 </label>
 
                 {/* Detalhada */}
@@ -826,7 +816,7 @@ export function ServicosPage() {
                 <footer className="servicos-consulta-footer">
                   <button
                     type="button"
-                    className="secondary-button"
+                    className="secondary-button modal-card__close"
                     onClick={() => setConsultaOpen(false)}
                   >
                     Cancelar
@@ -844,7 +834,7 @@ export function ServicosPage() {
                 <footer className="servicos-consulta-footer">
                   <button
                     type="button"
-                    className="secondary-button"
+                    className="secondary-button modal-card__close"
                     onClick={() => setConsultaOpen(false)}
                   >
                     Fechar
@@ -869,12 +859,13 @@ export function ServicosPage() {
           <article className="modal-card">
             <header className="modal-card__header">
               <h2>Confirmar exclusão</h2>
+              <ModalHeaderActions onClose={() => setDeleteConfirm(null)} expandable={false} />
             </header>
             <section className="module-form">
               <p>Deseja excluir o serviço <strong>{deleteConfirm.descr_Resumida}</strong>?</p>
               <div className="form-actions">
                 <button
-                  className="secondary-button"
+                  className="secondary-button modal-card__close"
                   type="button"
                   onClick={() => setDeleteConfirm(null)}
                 >
@@ -899,14 +890,7 @@ export function ServicosPage() {
           <article className="modal-card modal-card--help-trib" onClick={(e) => e.stopPropagation()}>
             <div className="modal-card__header">
               <span className="modal-card__title">Help de Tributação — {helpTrib.titulo}</span>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => setHelpTrib((prev) => ({ ...prev, open: false }))}
-                aria-label="Fechar"
-              >
-                <IoCloseOutline size={20} />
-              </button>
+              <ModalHeaderActions onClose={() => setHelpTrib((prev) => ({ ...prev, open: false }))} />
             </div>
             {helpTrib.loading ? (
               <div className="help-trib-loading">Carregando...</div>
@@ -945,7 +929,7 @@ export function ServicosPage() {
             <footer className="help-trib-footer">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setHelpTrib((prev) => ({ ...prev, open: false }))}
               >
                 Fechar

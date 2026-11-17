@@ -4,7 +4,6 @@ import {
   IoArrowBack,
   IoCalculatorOutline,
   IoCloseCircleOutline,
-  IoCloseOutline,
   IoCopyOutline,
   IoCreateOutline,
   IoRefreshOutline,
@@ -26,6 +25,9 @@ import {
 } from '../../../services/apiCalls';
 import { SearchableSelect, type SearchableSelectOption } from '../../../components/SearchableSelect';
 import { ListSearchField } from '../../../components/ListSearchField';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem } from '../../../components/DataList';
+import { REQUIRED_FIELDS_MESSAGE, useRequiredFields } from '../../../hooks/useRequiredFields';
 
 export interface MaterialListaItem {
   codigo_Material: string;
@@ -111,6 +113,7 @@ interface HelpTribItem {
 export function TributacaoMaterialPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const obrigConversao = useRequiredFields();
   const permissaoStatus = useTransactionAccess('BAS003', 'Tributação do Material');
 
   const [loadingList, setLoadingList] = useState(false);
@@ -468,12 +471,8 @@ export function TributacaoMaterialPage() {
   };
 
   const handleAdicionarConversaoLinha = () => {
-    if (!novaUM.trim()) {
-      showToast('Informe a Unidade de Medida (ex: CX, UN, KG).', 'info');
-      return;
-    }
-    if (!novoFator || novoFator <= 0) {
-      showToast('Informe um fator de conversão válido maior que zero.', 'info');
+    if (!obrigConversao.validate([novaUM, novoFator > 0 ? novoFator : ''])) {
+      showToast(REQUIRED_FIELDS_MESSAGE, 'error');
       return;
     }
 
@@ -489,6 +488,7 @@ export function TributacaoMaterialPage() {
     ]);
     setNovaUM('');
     setNovoFator(1);
+    obrigConversao.reset();
   };
 
   const handleRemoverConversaoLinha = (um: string) => {
@@ -626,59 +626,39 @@ export function TributacaoMaterialPage() {
         ) : materiais.length === 0 ? (
           <p className="module-empty">Nenhum material encontrado.</p>
         ) : (
-          <div className="table-scroll clientes-table-wrap">
-            <table className="clientes-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '130px' }}>CÓDIGO</th>
-                  <th>DESCRIÇÃO</th>
-                  <th style={{ width: '130px' }}>CLASS. FISCAL</th>
-                  <th style={{ width: '90px' }}>ORIGEM</th>
-                  <th style={{ width: '90px' }}>CST ICMS</th>
-                  <th style={{ width: '90px' }}>CST IPI</th>
-                  <th style={{ width: '100px' }}>ALÍQ. IPI</th>
-                  <th style={{ width: '130px' }}>STATUS FISCAL</th>
-                  <th style={{ width: '80px', textAlign: 'center' }}>AÇÕES</th>
-                </tr>
-              </thead>
-              <tbody>
-                {materiais.map((item) => (
-                  <tr
-                    key={item.codigo_Material}
+          <DataList ariaLabel="Tributação dos materiais">
+            {materiais.map((item) => (
+              <DataListItem
+                key={item.codigo_Material}
+                code={item.codigo_Material}
+                title={item.descricao_Portug}
+                details={[
+                  { label: 'Class. fiscal', value: item.codigo_CF || '-' },
+                  { label: 'Origem', value: item.origem_Mercadoria ?? '-' },
+                  { label: 'CST ICMS', value: item.tributacao_ICMS ?? '-' },
+                  { label: 'CST IPI', value: item.tributacao_IPI ?? '-' },
+                  { label: 'Alíq. IPI', value: item.aliquota_IPI != null ? `${item.aliquota_IPI}%` : '-' },
+                ]}
+                status={
+                  <span className={`status-badge ${item.possuiTributacao ? 'status-badge--active' : 'status-badge--inactive'}`}>
+                    {item.possuiTributacao ? 'Configurada' : 'Pendente'}
+                  </span>
+                }
+                onOpen={() => abrirModalEdicao(item.codigo_Material, item.descricao_Portug)}
+                actions={
+                  <button
+                    type="button"
+                    className="icon-button"
+                    title="Editar tributação"
+                    aria-label="Editar"
                     onClick={() => abrirModalEdicao(item.codigo_Material, item.descricao_Portug)}
-                    style={{ cursor: 'pointer' }}
                   >
-                    <td>
-                      <strong>{item.codigo_Material}</strong>
-                    </td>
-                    <td>{item.descricao_Portug}</td>
-                    <td>{item.codigo_CF || '-'}</td>
-                    <td>{item.origem_Mercadoria ?? '-'}</td>
-                    <td>{item.tributacao_ICMS ?? '-'}</td>
-                    <td>{item.tributacao_IPI ?? '-'}</td>
-                    <td>{item.aliquota_IPI != null ? `${item.aliquota_IPI}%` : '-'}</td>
-                    <td>
-                      <span className={`status-badge ${item.possuiTributacao ? 'status-badge--active' : 'status-badge--inactive'}`}>
-                        {item.possuiTributacao ? 'Configurada' : 'Pendente'}
-                      </span>
-                    </td>
-                    <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
-                      <div className="table-actions" style={{ justifyContent: 'center' }}>
-                        <button
-                          type="button"
-                          title="Editar tributação"
-                          aria-label="Editar"
-                          onClick={() => abrirModalEdicao(item.codigo_Material, item.descricao_Portug)}
-                        >
-                          <IoCreateOutline size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    <IoCreateOutline size={16} />
+                  </button>
+                }
+              />
+            ))}
+          </DataList>
         )}
       </section>
 
@@ -703,19 +683,11 @@ export function TributacaoMaterialPage() {
                     setDuplicaOpen(true);
                   }}
                   title="Duplicar regras para outro material"
-                  style={{ height: '40px', minWidth: 'auto', width: 'auto', padding: '0 14px' }}
                 >
                   <IoCopyOutline size={16} />
                   <span>Duplicar</span>
                 </button>
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label="Fechar"
-                  onClick={() => setModalOpen(false)}
-                >
-                  <IoCloseOutline size={18} />
-                </button>
+                <ModalHeaderActions onClose={() => setModalOpen(false)} />
               </div>
             </header>
 
@@ -1180,8 +1152,7 @@ export function TributacaoMaterialPage() {
                         type="button"
                         className="secondary-button"
                         onClick={() => setConversaoOpen(true)}
-                        title="Abrir Conversão de Unidade Tributária"
-                        style={{ height: '44px', whiteSpace: 'nowrap', borderRadius: '10px' }}
+                        title="Abrir Conversão de Unidade Tributária" style={{ whiteSpace: 'nowrap' }}
                       >
                         <IoCalculatorOutline size={16} />
                         <span>Fator de conversão</span>
@@ -1296,7 +1267,6 @@ export function TributacaoMaterialPage() {
                       className="primary-button"
                       onClick={handleAdicionarUf}
                       disabled={!ufParaAdicionar}
-                      style={{ height: '40px', width: 'auto', minWidth: 'auto', padding: '0 16px' }}
                     >
                       + Adicionar Estado
                     </button>
@@ -1500,8 +1470,8 @@ export function TributacaoMaterialPage() {
                               <td style={{ textAlign: 'center' }}>
                                 <button
                                   type="button"
-                                  className="icon-button"
-                                  style={{ color: '#ef4444' }}
+                                  className="icon-button--danger icon-button"
+                                  style={{ color: 'var(--status-danger)' }}
                                   onClick={() => handleRemoverUf(u.codigo_Estado)}
                                   title={`Remover configuração de ${u.codigo_Estado}`}
                                 >
@@ -1522,7 +1492,7 @@ export function TributacaoMaterialPage() {
             <div className="form-actions clientes-modal-actions">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setModalOpen(false)}
                 disabled={salvando}
               >
@@ -1550,14 +1520,7 @@ export function TributacaoMaterialPage() {
                 <h2>Conversão de Unidade Tributária</h2>
                 <p>Material: {form.codigo_Material} - {form.descricao_Material}</p>
               </div>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setConversaoOpen(false)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setConversaoOpen(false)} />
             </header>
 
             <div style={{ padding: '16px' }}>
@@ -1566,12 +1529,14 @@ export function TributacaoMaterialPage() {
                   <span>UNIDADE A CONVERTER</span>
                   <input
                     type="text"
+                    className={obrigConversao.inputClass(novaUM)}
                     value={novaUM}
                     onChange={(e) => setNovaUM(e.target.value.toUpperCase())}
                     placeholder="Ex: CX, KG, RL"
                     maxLength={10}
                     style={{ textTransform: 'uppercase' }}
                   />
+                  {obrigConversao.error(novaUM)}
                 </label>
                 <label>
                   <span>FATOR DE CONVERSÃO</span>
@@ -1579,16 +1544,17 @@ export function TributacaoMaterialPage() {
                     type="number"
                     step="0.0001"
                     min="0.0001"
+                    className={obrigConversao.inputClass(novoFator > 0 ? novoFator : '')}
                     value={novoFator}
                     onChange={(e) => setNovoFator(parseFloat(e.target.value) || 0)}
                     placeholder="1"
                   />
+                  {obrigConversao.error(novoFator > 0 ? novoFator : '', 'Informe um valor maior que zero')}
                 </label>
                 <button
                   type="button"
                   className="primary-button"
                   onClick={handleAdicionarConversaoLinha}
-                  style={{ height: '44px', width: 'auto', minWidth: 'auto', padding: '0 16px' }}
                 >
                   Adicionar
                 </button>
@@ -1613,8 +1579,8 @@ export function TributacaoMaterialPage() {
                         <td style={{ textAlign: 'center' }}>
                           <button
                             type="button"
-                            className="icon-button"
-                            style={{ color: '#ef4444' }}
+                            className="icon-button--danger icon-button"
+                            style={{ color: 'var(--status-danger)' }}
                             onClick={() => handleRemoverConversaoLinha(c.uM_Converter)}
                             title="Remover conversão"
                           >
@@ -1631,7 +1597,7 @@ export function TributacaoMaterialPage() {
             <div className="form-actions clientes-modal-actions">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setConversaoOpen(false)}
                 disabled={salvandoConversao}
               >
@@ -1656,14 +1622,7 @@ export function TributacaoMaterialPage() {
           <article className="modal-card" style={{ width: 'min(500px, 95vw)' }} onClick={(e) => e.stopPropagation()}>
             <header className="modal-card__header">
               <h2>Duplicar Tributação</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setDuplicaOpen(false)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setDuplicaOpen(false)} />
             </header>
 
             <div style={{ padding: '16px' }}>
@@ -1693,7 +1652,7 @@ export function TributacaoMaterialPage() {
             <div className="form-actions clientes-modal-actions">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setDuplicaOpen(false)}
                 disabled={duplicando}
               >
@@ -1718,14 +1677,7 @@ export function TributacaoMaterialPage() {
           <article className="modal-card tributacao-help-modal" onClick={(e) => e.stopPropagation()}>
             <header className="modal-card__header">
               <h2>{helpTrib.titulo}</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setHelpTrib((p) => ({ ...p, open: false }))}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setHelpTrib((p) => ({ ...p, open: false }))} />
             </header>
 
             {/* Input de filtro 100% no padrão CSS QSERPx */}
@@ -1789,7 +1741,7 @@ export function TributacaoMaterialPage() {
             <div className="form-actions clientes-modal-actions" style={{ padding: '12px 16px' }}>
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setHelpTrib((p) => ({ ...p, open: false }))}
               >
                 Fechar

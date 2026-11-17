@@ -3,9 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   IoAddOutline,
   IoArrowBack,
-  IoCloseOutline,
   IoCreateOutline,
-  IoLocationOutline,
   IoPeopleOutline,
   IoPersonAddOutline,
   IoRefreshOutline,
@@ -15,6 +13,9 @@ import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
 import { ListSearchField } from '../../../components/ListSearchField';
 import { SearchableSelect } from '../../../components/SearchableSelect';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
+import { REQUIRED_FIELDS_MESSAGE, useRequiredFields } from '../../../hooks/useRequiredFields';
 
 // ============================================================================
 // Tipos de dados mapeados do esquema relacional (MS Access / API):
@@ -85,6 +86,7 @@ type SortDirection = 'asc' | 'desc';
 export function AlmoxarifadoPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const obrig = useRequiredFields();
 
   const [loading, setLoading] = useState(false);
   const [almoxarifados, setAlmoxarifados] = useState<Almoxarifado[]>(ALMOXARIFADOS_INICIAIS);
@@ -135,11 +137,6 @@ export function AlmoxarifadoPage() {
     setSortDirection('asc');
   };
 
-  const getSortIndicator = (field: SortField) => {
-    if (sortField !== field) return '↕';
-    return sortDirection === 'asc' ? '↑' : '↓';
-  };
-
   // Filtro de pesquisa
   const almoxarifadosFiltrados = useMemo(() => {
     const termo = search.trim().toLowerCase();
@@ -186,6 +183,7 @@ export function AlmoxarifadoPage() {
     setUsuarioSelecionado('');
     setRegistroEdicao(null);
     setIsNovoRegistro(true);
+    obrig.reset();
     setIsModalOpen(true);
   };
 
@@ -198,6 +196,7 @@ export function AlmoxarifadoPage() {
     setUsuariosAutorizados([...item.usuariosAutorizados]);
     setUsuarioSelecionado('');
     setIsNovoRegistro(false);
+    obrig.reset();
     setIsModalOpen(true);
   };
 
@@ -211,8 +210,8 @@ export function AlmoxarifadoPage() {
   const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!descricaoAlmox.trim()) {
-      showToast('A Descrição do Almoxarifado é obrigatória.', 'info');
+    if (!obrig.validate([descricaoAlmox])) {
+      showToast(REQUIRED_FIELDS_MESSAGE, 'error');
       return;
     }
 
@@ -369,123 +368,47 @@ export function AlmoxarifadoPage() {
           <p className="module-empty">Nenhum almoxarifado encontrado.</p>
         ) : (
           <>
-            <div className="table-scroll clientes-table-wrap">
-              <table className="clientes-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '110px' }}>
-                      <button
-                        type="button"
-                        className="clientes-table__sort"
-                        onClick={() => handleSort('codigo')}
-                      >
-                        CÓDIGO <span>{getSortIndicator('codigo')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button
-                        type="button"
-                        className="clientes-table__sort"
-                        onClick={() => handleSort('descricao')}
-                      >
-                        DESCRIÇÃO DO ALMOXARIFADO <span>{getSortIndicator('descricao')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button
-                        type="button"
-                        className="clientes-table__sort"
-                        onClick={() => handleSort('endereco')}
-                      >
-                        ENDEREÇO / GALPÃO <span>{getSortIndicator('endereco')}</span>
-                      </button>
-                    </th>
-                    <th style={{ width: '200px' }}>USUÁRIOS AUTORIZADOS</th>
-                    <th style={{ width: '100px', textAlign: 'center' }}>AÇÕES</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {almoxarifadosFiltrados.map((item) => (
-                    <tr
-                      key={item.codigoAlmox}
-                      onClick={() => handleAbrirEditar(item)}
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleAbrirEditar(item);
-                        }
-                      }}
-                    >
-                      <td>
-                        <strong>#{item.codigoAlmox}</strong>
-                      </td>
-                      <td>{item.descricaoAlmox}</td>
-                      <td>
-                        <span className="almoxarifado-tag-endereco">
-                          <IoLocationOutline size={14} />
-                          {item.enderecoAlmox || 'SEM ENDEREÇO'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="almoxarifado-tag-operadores">
-                          <IoPeopleOutline size={14} />
-                          {item.usuariosAutorizados.length} operador(es)
-                        </span>
-                      </td>
-                      <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
-                        <div className="table-actions" style={{ justifyContent: 'center' }}>
-                          <button
-                            type="button"
-                            title="Editar"
-                            aria-label="Editar"
-                            onClick={() => handleAbrirEditar(item)}
-                          >
-                            <IoCreateOutline size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            title="Excluir"
-                            aria-label="Excluir"
-                            onClick={() => handleConfirmarExcluir(item)}
-                          >
-                            <IoTrashOutline size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* CARDS RESPONSIVOS PARA MOBILE */}
-            <div className="clientes-cards">
-              {almoxarifadosFiltrados.map((item) => (
-                <article
-                  key={`card-${item.codigoAlmox}`}
-                  className="clientes-card"
-                  onClick={() => handleAbrirEditar(item)}
-                  tabIndex={0}
-                >
-                  <div className="clientes-card__row">
-                    <span>CÓDIGO</span>
-                    <strong>#{item.codigoAlmox}</strong>
-                  </div>
-                  <div className="clientes-card__row">
-                    <span>DESCRIÇÃO</span>
-                    <strong>{item.descricaoAlmox}</strong>
-                  </div>
-                  <div className="clientes-card__row">
-                    <span>ENDEREÇO</span>
-                    <strong>{item.enderecoAlmox || '-'}</strong>
-                  </div>
-                  <div className="clientes-card__row">
-                    <span>USUÁRIOS AUTORIZADOS</span>
-                    <strong>{item.usuariosAutorizados.length} operador(es)</strong>
-                  </div>
-                </article>
-              ))}
+            <div className="data-cards-region">
+              <DataListSortBar
+                options={[
+                  { field: 'codigo', label: 'Código' },
+                  { field: 'descricao', label: 'Descrição' },
+                  { field: 'endereco', label: 'Endereço' },
+                ]}
+                active={sortField}
+                direction={sortDirection}
+                onSort={handleSort}
+              />
+              <DataList ariaLabel="Almoxarifados">
+                {almoxarifadosFiltrados.map((item) => (
+                  <DataListItem
+                    key={item.codigoAlmox}
+                    code={`#${item.codigoAlmox}`}
+                    title={item.descricaoAlmox}
+                    details={[
+                      { label: 'Endereço', value: item.enderecoAlmox || 'Sem endereço' },
+                      { label: 'Usuários', value: `${item.usuariosAutorizados.length} operador(es)` },
+                    ]}
+                    onOpen={() => handleAbrirEditar(item)}
+                    actions={
+                      <>
+                        <button type="button" className="icon-button" title="Editar" aria-label="Editar" onClick={() => handleAbrirEditar(item)}>
+                          <IoCreateOutline size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-button icon-button--danger"
+                          title="Excluir"
+                          aria-label="Excluir"
+                          onClick={() => handleConfirmarExcluir(item)}
+                        >
+                          <IoTrashOutline size={16} />
+                        </button>
+                      </>
+                    }
+                  />
+                ))}
+              </DataList>
             </div>
           </>
         )}
@@ -497,17 +420,10 @@ export function AlmoxarifadoPage() {
           <article className="modal-card modal-card--wide almoxarifado-modal">
             <header className="modal-card__header">
               <h2>{isNovoRegistro ? 'Novo Almoxarifado' : `Almoxarifado #${codigoAlmox}`}</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={handleFecharModal}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={handleFecharModal} />
             </header>
 
-            <form onSubmit={handleSalvar} className="module-form">
+            <form onSubmit={handleSalvar} className="module-form" noValidate>
               {/* DADOS PRINCIPAIS */}
               <div className="form-grid-3">
                 <label>
@@ -529,11 +445,12 @@ export function AlmoxarifadoPage() {
                   <span>Descrição do Almoxarifado *</span>
                   <input
                     type="text"
-                    required
+                    className={obrig.inputClass(descricaoAlmox)}
                     value={descricaoAlmox}
                     onChange={(e) => setDescricaoAlmox(e.target.value)}
                     placeholder="Ex: Almoxarifado Central - Matéria-Prima"
                   />
+                  {obrig.error(descricaoAlmox)}
                 </label>
               </div>
 
@@ -604,10 +521,9 @@ export function AlmoxarifadoPage() {
                             <td style={{ textAlign: 'center' }}>
                               <button
                                 type="button"
-                                className="icon-button"
+                                className="icon-button--danger icon-button"
                                 title="Desvincular Usuário"
                                 onClick={() => handleRemoverUsuario(u.codigoUsuario)}
-                                style={{ color: 'var(--color-danger)' }}
                               >
                                 <IoTrashOutline size={16} />
                               </button>
@@ -625,9 +541,8 @@ export function AlmoxarifadoPage() {
                 {!isNovoRegistro && (
                   <button
                     type="button"
-                    className="secondary-button"
-                    onClick={() => handleConfirmarExcluir(registroEdicao!)}
-                    style={{ color: 'var(--color-danger)', marginRight: 'auto' }}
+                    className="icon-button--danger secondary-button secondary-button--danger"
+                    onClick={() => handleConfirmarExcluir(registroEdicao!)} style={{ marginRight: 'auto' }}
                   >
                     <IoTrashOutline size={15} style={{ marginRight: '6px' }} />
                     Excluir
@@ -636,7 +551,7 @@ export function AlmoxarifadoPage() {
 
                 <button
                   type="button"
-                  className="secondary-button"
+                  className="secondary-button modal-card__close"
                   onClick={handleFecharModal}
                 >
                   Cancelar
@@ -657,14 +572,7 @@ export function AlmoxarifadoPage() {
           <article className="modal-card">
             <header className="modal-card__header">
               <h2>Confirmar exclusão</h2>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => setDeleteConfirm(null)}
-                aria-label="Fechar"
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setDeleteConfirm(null)} expandable={false} />
             </header>
             <section className="module-form">
               <p>
@@ -674,20 +582,15 @@ export function AlmoxarifadoPage() {
               <div className="form-actions">
                 <button
                   type="button"
-                  className="secondary-button"
+                  className="secondary-button modal-card__close"
                   onClick={() => setDeleteConfirm(null)}
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
-                  className="primary-button"
+                  className="primary-button primary-button--danger"
                   onClick={() => void handleExcluir()}
-                  style={{
-                    backgroundColor: 'var(--color-danger)',
-                    borderColor: 'var(--color-danger)',
-                    color: '#ffffff',
-                  }}
                 >
                   Excluir
                 </button>

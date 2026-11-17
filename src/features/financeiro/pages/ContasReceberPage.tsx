@@ -4,10 +4,11 @@ import {
   IoArrowBack,
   IoAddOutline,
   IoCloseCircleOutline,
-  IoCloseOutline,
   IoFilterOutline,
   IoRefreshOutline,
   IoCheckmarkCircleOutline,
+  IoCheckmarkOutline,
+  IoChevronForward,
 } from 'react-icons/io5';
 import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
@@ -19,6 +20,10 @@ import { ListSearchField } from '../../../components/ListSearchField';
 import { CustomDatePicker } from '../../../components/CustomDatePicker';
 import { filterListByTerm } from '../../../utils/filterListByTerm';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
+import { useRequiredFields } from '../../../hooks/useRequiredFields';
+import { StatusBadge } from '../../../components/StatusBadge';
 
 type ContaReceber = {
   codigo_Empresa?: number | null;
@@ -679,9 +684,10 @@ const ConsultaAlterarContasReceberModal = memo(function ConsultaAlterarContasRec
       <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label={mode === 'consulta' ? 'Consulta Contas a Receber' : 'Alterar Contas a Receber'}>
         <article className="modal-card modal-card--lancamento">
           <header className="modal-card__header lancamento-modal-header">
-            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--color-heading)' }}>
+            <h2>
               {mode === 'consulta' ? 'Consulta' : 'Alterar'} Contas a Receber
             </h2>
+            <ModalHeaderActions onClose={onClose} disabled={alterarSaving} />
           </header>
 
           <div className="lancamento-modal-body">
@@ -750,7 +756,6 @@ const ConsultaAlterarContasReceberModal = memo(function ConsultaAlterarContasRec
                       <button
                         type="button"
                         className="secondary-button"
-                        style={{ width: 'auto', minWidth: 80, height: 34, fontSize: '0.78rem', padding: '0 12px' }}
                         onClick={() => void handleCalcularAlt()}
                       >
                         Calcular
@@ -843,7 +848,6 @@ const ConsultaAlterarContasReceberModal = memo(function ConsultaAlterarContasRec
                     <button
                       type="button"
                       className="secondary-button"
-                      style={{ width: 'auto', minWidth: 90, height: 34, fontSize: '0.78rem', padding: '0 12px' }}
                       onClick={() => void handleAbrirOcorrencias()}
                     >
                       Ocorrências
@@ -851,7 +855,6 @@ const ConsultaAlterarContasReceberModal = memo(function ConsultaAlterarContasRec
                     <button
                       type="button"
                       className="secondary-button"
-                      style={{ width: 'auto', minWidth: 90, height: 34, fontSize: '0.78rem', padding: '0 12px' }}
                       onClick={() => void handleAbrirAbatimentosConsulta()}
                     >
                       Abatimentos
@@ -865,11 +868,11 @@ const ConsultaAlterarContasReceberModal = memo(function ConsultaAlterarContasRec
           <footer className="lancamento-modal-footer">
             <div style={{ flex: 1 }} />
             <div className="lancamento-modal-actions">
-              <button type="button" className="secondary-button" style={{ width: 'auto', minWidth: 80 }} onClick={onClose} disabled={alterarSaving}>
+              <button type="button" className="secondary-button modal-card__close" onClick={onClose} disabled={alterarSaving}>
                 {mode === 'consulta' ? 'Fechar' : 'Cancelar'}
               </button>
               {mode === 'alterar' && (
-                <button type="button" className="primary-button" style={{ width: 'auto', minWidth: 80 }} onClick={() => setAlterarConfirmOpen(true)} disabled={alterarSaving}>
+                <button type="button" className="primary-button" onClick={() => setAlterarConfirmOpen(true)} disabled={alterarSaving}>
                   {alterarSaving ? 'Salvando...' : 'OK'}
                 </button>
               )}
@@ -884,13 +887,14 @@ const ConsultaAlterarContasReceberModal = memo(function ConsultaAlterarContasRec
           <article className="modal-card" style={{ width: 'min(420px, 92vw)', gap: 20 }}>
             <header className="modal-card__header">
               <h2>Confirmar Alteração</h2>
+              <ModalHeaderActions onClose={() => setAlterarConfirmOpen(false)} expandable={false} />
             </header>
             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)' }}>
               Confirma a alteração do lançamento <strong>{fNumero}</strong>?
             </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button type="button" className="secondary-button" style={{ width: 'auto', minWidth: 80 }} onClick={() => setAlterarConfirmOpen(false)}>Cancelar</button>
-              <button type="button" className="primary-button" style={{ width: 'auto', minWidth: 80 }} onClick={() => void handleConfirmAlterar()}>Confirmar</button>
+            <div className="modal-card__footer">
+              <button type="button" className="secondary-button modal-card__close" onClick={() => setAlterarConfirmOpen(false)}>Cancelar</button>
+              <button type="button" className="primary-button" onClick={() => void handleConfirmAlterar()}>Confirmar</button>
             </div>
           </article>
         </section>
@@ -902,6 +906,7 @@ const ConsultaAlterarContasReceberModal = memo(function ConsultaAlterarContasRec
           <article className="modal-card modal-card--abatimento">
             <header className="modal-card__header">
               <h2>Ocorrências</h2>
+              <ModalHeaderActions onClose={() => setOcorrenciasOpen(false)} />
             </header>
             <div className="abatimento-table-wrap">
               {ocorrenciasLoading ? (
@@ -933,8 +938,8 @@ const ConsultaAlterarContasReceberModal = memo(function ConsultaAlterarContasRec
                 </table>
               )}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="button" className="secondary-button abatimento-footer__fechar" onClick={() => setOcorrenciasOpen(false)}>
+            <div className="modal-card__footer">
+              <button type="button" className="secondary-button modal-card__close abatimento-footer__fechar" onClick={() => setOcorrenciasOpen(false)}>
                 Fechar
               </button>
             </div>
@@ -948,6 +953,7 @@ const ConsultaAlterarContasReceberModal = memo(function ConsultaAlterarContasRec
           <article className="modal-card modal-card--abatimento">
             <header className="modal-card__header">
               <h2>Abatimentos</h2>
+              <ModalHeaderActions onClose={() => setAbatimentosConsOpen(false)} />
             </header>
             <div className="abatimento-table-wrap">
               {abatimentosConsLoading ? (
@@ -981,8 +987,8 @@ const ConsultaAlterarContasReceberModal = memo(function ConsultaAlterarContasRec
                 </table>
               )}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="button" className="secondary-button abatimento-footer__fechar" onClick={() => setAbatimentosConsOpen(false)}>
+            <div className="modal-card__footer">
+              <button type="button" className="secondary-button modal-card__close abatimento-footer__fechar" onClick={() => setAbatimentosConsOpen(false)}>
                 Fechar
               </button>
             </div>
@@ -1364,38 +1370,12 @@ const LancamentoContasReceberModal = memo(function LancamentoContasReceberModal(
         <article className="modal-card modal-card--lancamento">
           {/* Header */}
           <header className="modal-card__header lancamento-modal-header">
-            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--color-heading)' }}>
+            <h2>
               Lançamento Contas a Receber
             </h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span className="lancamento-badge">Pend.</span>
-              <button
-                type="button"
-                aria-label="Fechar"
-                onClick={onClose}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid var(--color-border)',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--color-text)',
-                  borderRadius: '4px',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--color-primary)';
-                  e.currentTarget.style.color = 'var(--color-primary)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--color-border)';
-                  e.currentTarget.style.color = 'var(--color-text)';
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={onClose} />
             </div>
           </header>
 
@@ -1454,8 +1434,8 @@ const LancamentoContasReceberModal = memo(function LancamentoContasReceberModal(
                       onChange={(e) => { setLancPedido(e.target.value); setLancPedidoStatus('idle'); setLancPedidoMsg(''); }}
                       onBlur={() => void handleValidatePedido()}
                     />
-                    {lancPedidoStatus === 'ok' && <IoCheckmarkCircleOutline size={16} style={{ color: '#4caf50', flexShrink: 0 }} />}
-                    {lancPedidoStatus === 'error' && <IoCloseCircleOutline size={16} style={{ color: '#f44336', flexShrink: 0 }} title={lancPedidoMsg} />}
+                    {lancPedidoStatus === 'ok' && <IoCheckmarkCircleOutline size={16} style={{ color: 'var(--status-success)', flexShrink: 0 }} />}
+                    {lancPedidoStatus === 'error' && <IoCloseCircleOutline size={16} style={{ color: 'var(--status-danger)', flexShrink: 0 }} title={lancPedidoMsg} />}
                   </div>
 
                   <span className="lancamento-lbl">Previsão:</span>
@@ -1489,7 +1469,6 @@ const LancamentoContasReceberModal = memo(function LancamentoContasReceberModal(
                     <button
                       type="button"
                       className="secondary-button"
-                      style={{ width: 'auto', minWidth: 80, height: 34, fontSize: '0.78rem', padding: '0 12px' }}
                       onClick={() => void handleCalcular()}
                     >
                       Calcular
@@ -1641,8 +1620,8 @@ const LancamentoContasReceberModal = memo(function LancamentoContasReceberModal(
                       onChange={(e) => { setLancNotaFiscal(e.target.value); setLancNotaStatus('idle'); setLancNotaMsg(''); }}
                       onBlur={() => void handleValidateNota()}
                     />
-                    {lancNotaStatus === 'ok' && <IoCheckmarkCircleOutline size={16} style={{ color: '#4caf50', flexShrink: 0 }} />}
-                    {lancNotaStatus === 'error' && <IoCloseCircleOutline size={16} style={{ color: '#f44336', flexShrink: 0 }} title={lancNotaMsg} />}
+                    {lancNotaStatus === 'ok' && <IoCheckmarkCircleOutline size={16} style={{ color: 'var(--status-success)', flexShrink: 0 }} />}
+                    {lancNotaStatus === 'error' && <IoCloseCircleOutline size={16} style={{ color: 'var(--status-danger)', flexShrink: 0 }} title={lancNotaMsg} />}
                   </div>
 
                   <span className="lancamento-lbl">Série:</span>
@@ -1680,14 +1659,12 @@ const LancamentoContasReceberModal = memo(function LancamentoContasReceberModal(
                     <button
                       type="button"
                       className="secondary-button"
-                      style={{ width: 'auto', minWidth: 90, height: 34, fontSize: '0.78rem', padding: '0 12px' }}
                     >
                       Ocorrências
                     </button>
                     <button
                       type="button"
                       className="secondary-button"
-                      style={{ width: 'auto', minWidth: 90, height: 34, fontSize: '0.78rem', padding: '0 12px' }}
                     >
                       Abatimentos
                     </button>
@@ -1722,8 +1699,7 @@ const LancamentoContasReceberModal = memo(function LancamentoContasReceberModal(
             <div className="lancamento-modal-actions">
               <button
                 type="button"
-                className="secondary-button"
-                style={{ width: 'auto', minWidth: 80 }}
+                className="secondary-button modal-card__close"
                 onClick={onClose}
               >
                 Cancelar
@@ -1731,7 +1707,6 @@ const LancamentoContasReceberModal = memo(function LancamentoContasReceberModal(
               <button
                 type="button"
                 className="primary-button"
-                style={{ width: 'auto', minWidth: 80 }}
                 onClick={handleOkClick}
                 disabled={lancSaving}
               >
@@ -1746,15 +1721,15 @@ const LancamentoContasReceberModal = memo(function LancamentoContasReceberModal(
           <article className="modal-card" style={{ width: 'min(400px, 92vw)', gap: 20 }}>
             <header className="modal-card__header">
               <h2>Confirmar Lançamento</h2>
+              <ModalHeaderActions onClose={() => setLancConfirmOpen(false)} disabled={lancSaving} expandable={false} />
             </header>
             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)' }}>
               Deseja realmente realizar o lançamento deste documento?
             </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <div className="modal-card__footer">
               <button
                 type="button"
-                className="secondary-button"
-                style={{ width: 'auto', minWidth: 80 }}
+                className="secondary-button modal-card__close"
                 onClick={() => setLancConfirmOpen(false)}
                 disabled={lancSaving}
               >
@@ -1763,7 +1738,6 @@ const LancamentoContasReceberModal = memo(function LancamentoContasReceberModal(
               <button
                 type="button"
                 className="primary-button"
-                style={{ width: 'auto', minWidth: 80 }}
                 onClick={() => void handleConfirmLancamento()}
                 disabled={lancSaving}
               >
@@ -2020,11 +1994,6 @@ export function ContasReceberPage() {
     setSortDirection('asc');
   };
 
-  const getSortIndicator = (field: SortField) => {
-    if (sortField !== field) return '▲▼';
-    return sortDirection === 'asc' ? '▲' : '▼';
-  };
-
   const rowsOrdenadas = useMemo(() => {
     const list = [...rows];
     const collator = new Intl.Collator('pt-BR');
@@ -2099,6 +2068,11 @@ export function ContasReceberPage() {
         TipoDoc: row.tipo_Documento ?? 0,
       }));
   }, [rows, selectedRows]);
+
+  const selectedTotal = useMemo(
+    () => rows.reduce((acc, row) => (row.num_Lanc != null && selectedRows.has(row.num_Lanc) ? acc + (row.valor_Saldo ?? 0) : acc), 0),
+    [rows, selectedRows],
+  );
 
   // Suprime aviso de variável não usada durante desenvolvimento
   // selectedList é usado em handleCancelarClick e executarCancelar
@@ -2675,17 +2649,20 @@ export function ContasReceberPage() {
     setConsultaAlterarOpen(true);
   }, [selectedRows, rows, showToast]);
 
+  const obrigBaixa = useRequiredFields();
+
   const handleBaixarClick = useCallback(() => {
     if (selectedRows.size === 0) {
       showToast('Selecione ao menos um registro para baixar!', 'error');
       return;
     }
-    if (selectedRows.size > 1 && !dataBaixaLote.trim()) {
+    if (selectedRows.size > 1 && !obrigBaixa.validate([dataBaixaLote])) {
       showToast('Informe uma data para baixa em lote!', 'error');
       return;
     }
+    obrigBaixa.reset();
     setBaixarConfirmOpen(true);
-  }, [selectedRows, dataBaixaLote, showToast]);
+  }, [selectedRows, dataBaixaLote, showToast, obrigBaixa]);
 
   const handleExecutarBaixa = useCallback(async () => {
     const baseUrl = GlobalConfig.getBaseUrl();
@@ -2762,6 +2739,7 @@ export function ContasReceberPage() {
         </div>
       </section>
 
+      <div className="contas-receber-layout">
       <section className="clientes-panel list-layout-panel contas-receber-panel">
         <div className="clientes-panel__top list-layout-panel__top contas-receber-panel__top">
           <div className="clientes-panel__summary">
@@ -2933,154 +2911,54 @@ export function ContasReceberPage() {
               <p className="module-empty">Nenhum registro encontrado.</p>
             ) : (
               <>
-                <div className="table-scroll module-table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>
-                          <button className="module-table__sort" type="button" onClick={() => handleSort('prev')}>
-                            Previsão <span>{getSortIndicator('prev')}</span>
-                          </button>
-                        </th>
-                        <th>
-                          <button className="module-table__sort" type="button" onClick={() => handleSort('venc')}>
-                            Venc. <span>{getSortIndicator('venc')}</span>
-                          </button>
-                        </th>
-                        <th>
-                          <button className="module-table__sort" type="button" onClick={() => handleSort('tipoDoc')}>
-                            Tipo Doc. <span>{getSortIndicator('tipoDoc')}</span>
-                          </button>
-                        </th>
-                        <th>
-                          <button className="module-table__sort" type="button" onClick={() => handleSort('numero')}>
-                            Número <span>{getSortIndicator('numero')}</span>
-                          </button>
-                        </th>
-                        <th>
-                          <button className="module-table__sort" type="button" onClick={() => handleSort('emissao')}>
-                            Emissão <span>{getSortIndicator('emissao')}</span>
-                          </button>
-                        </th>
-                        <th>
-                          <button className="module-table__sort" type="button" onClick={() => handleSort('valor')}>
-                            Valor Liq. <span>{getSortIndicator('valor')}</span>
-                          </button>
-                        </th>
-                        <th>
-                          <button className="module-table__sort" type="button" onClick={() => handleSort('sacado')}>
-                            Sacado <span>{getSortIndicator('sacado')}</span>
-                          </button>
-                        </th>
-                        <th>Observação</th>
-                        <th>
-                          <button className="module-table__sort" type="button" onClick={() => handleSort('situacao')}>
-                            Sit. <span>{getSortIndicator('situacao')}</span>
-                          </button>
-                        </th>
-                        <th>B.Desc.</th>
-                        <th>Sit. Pagto</th>
-                        <th>Sel.</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rowsFiltradas.map((row, index) => {
-                        const key = row.num_Lanc ?? index;
-                        const isSelected = row.num_Lanc != null && selectedRows.has(row.num_Lanc);
-                        return (
-                          <tr key={key} className={isSelected ? 'module-row-selected' : undefined}>
-                            <td>{formatDateDdMmYy(row.data_Prev)}</td>
-                            <td>{formatDateDdMmYy(row.data_Vencimento)}</td>
-                            <td>{String(row.tipoDoc ?? '-')}</td>
-                            <td>{String(row.num_Documento ?? '-')}</td>
-                            <td>{formatDateDdMmYy(row.data_Emissao)}</td>
-                            <td>{formatCurrency(row.valor_Saldo)}</td>
-                            <td>{String(row.nome_Fantasia ?? '-')}</td>
-                            <td>{String(row.descricao_Lanc ?? '-')}</td>
-                            <td>{String(row.situacao ?? '-')}</td>
-                            <td>{row.num_Bordero_Desc != null ? String(row.num_Bordero_Desc) : '-'}</td>
-                            <td>{String(row.situacao_Pag ?? '-')}</td>
-                            <td>
-                              <input
-                                type="checkbox"
-                                aria-label={`Selecionar lançamento ${row.num_Lanc ?? index}`}
-                                checked={isSelected}
-                                onChange={() => toggleSelectRow(row.num_Lanc)}
-                                style={{ width: '0.75rem', height: '0.75rem', cursor: 'pointer' }}
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="module-cards">
-                  {rowsFiltradas.map((row, index) => {
-                    const key = `card-${row.num_Lanc ?? index}`;
-                    const isSelected = row.num_Lanc != null && selectedRows.has(row.num_Lanc);
-                    return (
-                      <article key={key} className={`module-card${isSelected ? ' module-row-selected' : ''}`}>
-                        <div className="module-card__row">
-                          <span>Sacado</span>
-                          <strong>{String(row.nome_Fantasia ?? '-')}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Número</span>
-                          <strong>{String(row.num_Documento ?? '-')}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Tipo Doc.</span>
-                          <strong>{String(row.tipoDoc ?? '-')}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Venc.</span>
-                          <strong>{formatDateDdMmYy(row.data_Vencimento)}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Previsão</span>
-                          <strong>{formatDateDdMmYy(row.data_Prev)}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Emissão</span>
-                          <strong>{formatDateDdMmYy(row.data_Emissao)}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Valor Liq.</span>
-                          <strong>{formatCurrency(row.valor_Saldo)}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Sit.</span>
-                          <strong>{String(row.situacao ?? '-')}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Sit. Pagto</span>
-                          <strong>{String(row.situacao_Pag ?? '-')}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>B.Desc.</span>
-                          <strong>{row.num_Bordero_Desc != null ? String(row.num_Bordero_Desc) : '-'}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Observação</span>
-                          <strong>{String(row.descricao_Lanc ?? '-')}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Sel.</span>
-                          <strong>
+                <div className="data-cards-region">
+                  <DataListSortBar
+                    options={[
+                      { field: 'prev', label: 'Previsão' },
+                      { field: 'venc', label: 'Vencimento' },
+                      { field: 'tipoDoc', label: 'Tipo doc.' },
+                      { field: 'numero', label: 'Número' },
+                      { field: 'emissao', label: 'Emissão' },
+                      { field: 'valor', label: 'Valor' },
+                      { field: 'sacado', label: 'Sacado' },
+                      { field: 'situacao', label: 'Situação' },
+                    ]}
+                    active={sortField}
+                    direction={sortDirection}
+                    onSort={handleSort}
+                  />
+                  <DataList ariaLabel="Contas a receber">
+                    {rowsFiltradas.map((row, index) => {
+                      const key = row.num_Lanc ?? index;
+                      const isSelected = row.num_Lanc != null && selectedRows.has(row.num_Lanc);
+                      return (
+                        <DataListItem
+                          key={key}
+                          selected={isSelected}
+                          leading={
                             <input
                               type="checkbox"
                               aria-label={`Selecionar lançamento ${row.num_Lanc ?? index}`}
                               checked={isSelected}
                               onChange={() => toggleSelectRow(row.num_Lanc)}
-                              style={{ width: '0.75rem', height: '0.75rem', cursor: 'pointer' }}
                             />
-                          </strong>
-                        </div>
-                      </article>
-                    );
-                  })}
+                          }
+                          code={`${String(row.tipoDoc ?? '-')} ${String(row.num_Documento ?? '-')}`}
+                          title={String(row.nome_Fantasia ?? '-')}
+                          subtitle={row.descricao_Lanc ? String(row.descricao_Lanc) : undefined}
+                          details={[
+                            { label: 'Venc.', value: formatDateDdMmYy(row.data_Vencimento) },
+                            { label: 'Previsão', value: formatDateDdMmYy(row.data_Prev) },
+                            { label: 'Emissão', value: formatDateDdMmYy(row.data_Emissao) },
+                            { label: 'Sit. pagto', value: String(row.situacao_Pag ?? '-') },
+                            row.num_Bordero_Desc != null ? { label: 'B. desc.', value: String(row.num_Bordero_Desc) } : null,
+                          ]}
+                          status={<StatusBadge label={row.situacao ?? '-'} />}
+                          aside={formatCurrency(row.valor_Saldo)}
+                        />
+                      );
+                    })}
+                  </DataList>
                 </div>
               </>
             )}
@@ -3090,81 +2968,84 @@ export function ContasReceberPage() {
             {notaDebitoRows.length === 0 ? (
               <p className="module-empty">Nenhum registro encontrado.</p>
             ) : (
-              <div className="table-scroll module-table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Venc.</th>
-                      <th>Número</th>
-                      <th>Emissão</th>
-                      <th>Valor Liq.</th>
-                      <th>Sacado</th>
-                      <th>Observação</th>
-                      <th>Sit.</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {notaDebitoRows.map((row, index) => (
-                      <tr key={row.num_Lanc ?? index}>
-                        <td>{formatDateDdMmYy(row.data_Vencimento)}</td>
-                        <td>{String(row.num_Documento ?? '-')}</td>
-                        <td>{formatDateDdMmYy(row.data_Emissao)}</td>
-                        <td>{formatCurrency(row.valor_Saldo)}</td>
-                        <td>{String(row.nome_Fantasia ?? '-')}</td>
-                        <td>{String(row.descricao_Lanc ?? '-')}</td>
-                        <td>{String(row.situacao ?? '-')}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataList ariaLabel="Notas de débito">
+                {notaDebitoRows.map((row, index) => (
+                  <DataListItem
+                    key={row.num_Lanc ?? index}
+                    code={String(row.num_Documento ?? '-')}
+                    title={String(row.nome_Fantasia ?? '-')}
+                    subtitle={row.descricao_Lanc ? String(row.descricao_Lanc) : undefined}
+                    details={[
+                      { label: 'Venc.', value: formatDateDdMmYy(row.data_Vencimento) },
+                      { label: 'Emissão', value: formatDateDdMmYy(row.data_Emissao) },
+                    ]}
+                    status={<StatusBadge label={row.situacao ?? '-'} />}
+                    aside={formatCurrency(row.valor_Saldo)}
+                  />
+                ))}
+              </DataList>
             )}
           </section>
         )}
 
-        {/* Rodapé de ações */}
-        <footer className="contas-receber-footer">
-
-          {/* Container com borda: Saldo para abater */}
-          <fieldset className="contas-receber-footer__saldo-box">
-            <legend className="contas-receber-footer__saldo-legend">Saldo para abater:</legend>
-
-            <div className="contas-receber-footer__saldo-inner">
-              <div className="contas-receber-footer__saldo-grid">
-                <span className="contas-receber-footer__saldo-label-text">Nota de débito:</span>
-                <input type="text" readOnly className="contas-receber-footer__input contas-receber-footer__input--saldo" value={saldoDebito != null ? formatCurrency(saldoDebito) : ''} />
-                <button type="button" className="secondary-button contas-receber-footer__btn contas-receber-footer__btn--saldo" onClick={() => void handleAbrirAbatimento()}>Abater</button>
-
-                <span className="contas-receber-footer__saldo-label-text">Adiantamento:</span>
-                <input type="text" readOnly className="contas-receber-footer__input contas-receber-footer__input--saldo" value={saldoAdiantamento != null ? formatCurrency(saldoAdiantamento) : ''} />
-                <button type="button" className="secondary-button contas-receber-footer__btn contas-receber-footer__btn--saldo" onClick={() => void handleAbrirEstorno()}>Estornar</button>
-              </div>
-
-              <button type="button" className="secondary-button contas-receber-footer__btn contas-receber-footer__btn--adiant" onClick={() => void handleAbrirAdiantamentos()}>
-                Adiantamentos<br />recebidos
-              </button>
-            </div>
-          </fieldset>
-
-          {/* Data da baixa em lote */}
-          <fieldset className="contas-receber-footer__saldo-box">
-            <label className="list-layout-field list-layout-field--date">
-              <span>Data da baixa em lote</span>
-              <CustomDatePicker value={dataBaixaLote} onChange={setDataBaixaLote} />
-            </label>
-          </fieldset>
-
-          {/* Botões de ação */}
-          <div className="contas-receber-footer__actions">
-            <div className="contas-receber-footer__actions-row">
-              <button type="button" className="secondary-button contas-receber-footer__btn" onClick={handleBaixarClick} disabled={baixarExecutando}>Baixar</button>
-              <button type="button" className="secondary-button contas-receber-footer__btn" onClick={handleAbrirConsulta}>Consultar</button>
-              <button type="button" className="secondary-button contas-receber-footer__btn" onClick={handleAbrirAlterar}>Alterar</button>
-              <button type="button" className="secondary-button contas-receber-footer__btn" onClick={handleCancelarClick} disabled={cancelarExecutando}>Cancelar</button>
-            </div>
-          </div>
-        </footer>
       </section>
+
+      {/* Painel lateral: seleção, baixa e saldos */}
+      <aside className="contas-receber-side" aria-label="Resumo e ações">
+        <section className="contas-receber-side__card">
+          <span className="contas-receber-side__label">Seleção</span>
+          <div className="contas-receber-side__total">
+            <span>{`${selectedRows.size} ${selectedRows.size === 1 ? 'título' : 'títulos'}`}</span>
+            <strong>{formatCurrency(selectedTotal)}</strong>
+          </div>
+          <label className="list-layout-field list-layout-field--date contas-receber-side__field">
+            <span className="contas-receber-side__label">Data da baixa em lote</span>
+            <CustomDatePicker
+              value={dataBaixaLote}
+              onChange={setDataBaixaLote}
+              className={obrigBaixa.wrapperClass(selectedRows.size > 1 ? dataBaixaLote : 'ok')}
+            />
+            {selectedRows.size > 1 && obrigBaixa.error(dataBaixaLote)}
+          </label>
+          <button
+            type="button"
+            className="primary-button contas-receber-side__baixar"
+            onClick={handleBaixarClick}
+            disabled={baixarExecutando}
+          >
+            <IoCheckmarkOutline size={16} />
+            {baixarExecutando ? 'Baixando...' : 'Baixar selecionadas'}
+          </button>
+          <div className="contas-receber-side__acoes">
+            <button type="button" className="secondary-button" onClick={handleAbrirConsulta}>Consultar</button>
+            <button type="button" className="secondary-button" onClick={handleAbrirAlterar}>Alterar</button>
+            <button type="button" className="secondary-button secondary-button--danger" onClick={handleCancelarClick} disabled={cancelarExecutando}>Cancelar</button>
+          </div>
+        </section>
+
+        <section className="contas-receber-side__card">
+          <span className="contas-receber-side__label">Saldo para abater</span>
+          <div className="contas-receber-side__saldo">
+            <div>
+              <span>Nota de débito</span>
+              <strong>{saldoDebito != null ? formatCurrency(saldoDebito) : '—'}</strong>
+            </div>
+            <button type="button" className="secondary-button contas-receber-side__mini" onClick={() => void handleAbrirAbatimento()}>Abater</button>
+          </div>
+          <div className="contas-receber-side__saldo">
+            <div>
+              <span>Adiantamento</span>
+              <strong>{saldoAdiantamento != null ? formatCurrency(saldoAdiantamento) : '—'}</strong>
+            </div>
+            <button type="button" className="secondary-button contas-receber-side__mini" onClick={() => void handleAbrirEstorno()}>Estornar</button>
+          </div>
+          <button type="button" className="contas-receber-side__link" onClick={() => void handleAbrirAdiantamentos()}>
+            Adiantamentos recebidos
+            <IoChevronForward size={15} />
+          </button>
+        </section>
+      </aside>
+      </div>
 
       {/* Result Baixar */}
       {baixaResultOpen && (
@@ -3173,11 +3054,12 @@ export function ContasReceberPage() {
             <header className="modal-card__header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {baixaResultSuccess
-                  ? <IoCheckmarkCircleOutline size={22} style={{ color: '#16a34a', flexShrink: 0 }} />
-                  : <IoCloseCircleOutline size={22} style={{ color: '#dc2626', flexShrink: 0 }} />
+                  ? <IoCheckmarkCircleOutline size={22} style={{ color: 'var(--status-success)', flexShrink: 0 }} />
+                  : <IoCloseCircleOutline size={22} style={{ color: 'var(--status-danger)', flexShrink: 0 }} />
                 }
-                <h2 style={{ margin: 0 }}>Resultado da Baixa</h2>
+                <h2>Resultado da Baixa</h2>
               </div>
+              <ModalHeaderActions onClose={() => setBaixaResultOpen(false)} expandable={false} />
             </header>
             <div style={{
               border: '1px solid var(--color-border)',
@@ -3189,11 +3071,10 @@ export function ContasReceberPage() {
                 {baixaResultMsg}
               </p>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div className="modal-card__footer">
               <button
                 type="button"
                 className="primary-button"
-                style={{ width: 'auto', minWidth: 80 }}
                 onClick={() => setBaixaResultOpen(false)}
               >
                 Ok
@@ -3209,15 +3090,15 @@ export function ContasReceberPage() {
           <article className="modal-card" style={{ width: 'min(460px, 92vw)', gap: 20 }}>
             <header className="modal-card__header">
               <h2>Confirmar Baixa</h2>
+              <ModalHeaderActions onClose={() => setBaixarConfirmOpen(false)} disabled={baixarExecutando} expandable={false} />
             </header>
             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)' }}>
               Deseja realizar as baixas do(s) documento(s) selecionado(s)?
             </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <div className="modal-card__footer">
               <button
                 type="button"
-                className="secondary-button"
-                style={{ width: 'auto', minWidth: 80 }}
+                className="secondary-button modal-card__close"
                 onClick={() => setBaixarConfirmOpen(false)}
                 disabled={baixarExecutando}
               >
@@ -3226,7 +3107,6 @@ export function ContasReceberPage() {
               <button
                 type="button"
                 className="primary-button"
-                style={{ width: 'auto', minWidth: 80 }}
                 onClick={() => void handleExecutarBaixa()}
                 disabled={baixarExecutando}
               >
@@ -3243,15 +3123,15 @@ export function ContasReceberPage() {
           <article className="modal-card" style={{ width: 'min(400px, 92vw)', gap: 20 }}>
             <header className="modal-card__header">
               <h2>Confirmar Abatimento</h2>
+              <ModalHeaderActions onClose={() => setAbatimentoConfirmOpen(false)} expandable={false} />
             </header>
             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)' }}>
               Deseja realmente abater esse documento?
             </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <div className="modal-card__footer">
               <button
                 type="button"
-                className="secondary-button"
-                style={{ width: 'auto', minWidth: 80 }}
+                className="secondary-button modal-card__close"
                 onClick={() => setAbatimentoConfirmOpen(false)}
               >
                 Não
@@ -3259,7 +3139,6 @@ export function ContasReceberPage() {
               <button
                 type="button"
                 className="primary-button"
-                style={{ width: 'auto', minWidth: 80 }}
                 onClick={() => void handleExecutarAbatimento()}
               >
                 Sim
@@ -3274,6 +3153,7 @@ export function ContasReceberPage() {
           <article className="modal-card modal-card--abatimento">
             <header className="modal-card__header">
               <h2>Abatimento</h2>
+              <ModalHeaderActions onClose={() => setAbatimentoModalOpen(false)} />
             </header>
 
             {/* Cabeçalho com dados do título */}
@@ -3389,7 +3269,7 @@ export function ContasReceberPage() {
                   Abater
                 </button>
               </div>
-              <button type="button" className="secondary-button abatimento-footer__fechar" onClick={() => setAbatimentoModalOpen(false)}>
+              <button type="button" className="secondary-button modal-card__close abatimento-footer__fechar" onClick={() => setAbatimentoModalOpen(false)}>
                 Fechar
               </button>
             </div>
@@ -3403,15 +3283,15 @@ export function ContasReceberPage() {
           <article className="modal-card" style={{ width: 'min(400px, 92vw)', gap: 20 }}>
             <header className="modal-card__header">
               <h2>Confirmar Estorno</h2>
+              <ModalHeaderActions onClose={() => setEstornoConfirmOpen(false)} expandable={false} />
             </header>
             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)' }}>
               Deseja realmente estornar esse abatimento?
             </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <div className="modal-card__footer">
               <button
                 type="button"
-                className="secondary-button"
-                style={{ width: 'auto', minWidth: 80 }}
+                className="secondary-button modal-card__close"
                 onClick={() => setEstornoConfirmOpen(false)}
               >
                 Não
@@ -3419,7 +3299,6 @@ export function ContasReceberPage() {
               <button
                 type="button"
                 className="primary-button"
-                style={{ width: 'auto', minWidth: 80 }}
                 onClick={() => void handleExecutarEstorno()}
               >
                 Sim
@@ -3435,6 +3314,7 @@ export function ContasReceberPage() {
           <article className="modal-card modal-card--abatimento">
             <header className="modal-card__header">
               <h2>Estorno Abatimento</h2>
+              <ModalHeaderActions onClose={() => setEstornoModalOpen(false)} />
             </header>
 
             {estornoLoading ? (
@@ -3544,7 +3424,7 @@ export function ContasReceberPage() {
                       Estornar
                     </button>
                   </div>
-                  <button type="button" className="secondary-button abatimento-footer__fechar" onClick={() => setEstornoModalOpen(false)}>
+                  <button type="button" className="secondary-button modal-card__close abatimento-footer__fechar" onClick={() => setEstornoModalOpen(false)}>
                     Fechar
                   </button>
                 </div>
@@ -3561,6 +3441,7 @@ export function ContasReceberPage() {
           <article className="modal-card modal-card--adiantamentos">
             <header className="modal-card__header">
               <h2>Adiantamentos Recebidos</h2>
+              <ModalHeaderActions onClose={() => setAdiantamentosModalOpen(false)} />
             </header>
 
             {/* Guias */}
@@ -3657,7 +3538,7 @@ export function ContasReceberPage() {
                       value={devolverData}
                       onChange={(e) => setDevolverData(e.target.value)}
                     />
-                    <button type="button" className="secondary-button" style={{ width: 'auto', minWidth: 80 }} onClick={() => void handleDevolver()} disabled={adiantamentosExecutando}>
+                    <button type="button" className="secondary-button" onClick={() => void handleDevolver()} disabled={adiantamentosExecutando}>
                       Devolver
                     </button>
                   </div>
@@ -3666,7 +3547,6 @@ export function ContasReceberPage() {
                   <button
                     type="button"
                     className="secondary-button"
-                    style={{ width: 'auto', minWidth: 90 }}
                     disabled={adiantamentosExecutando}
                     onClick={() => {
                       if (adiantamentosAbertosSelectedIdx == null) {
@@ -3678,7 +3558,7 @@ export function ContasReceberPage() {
                   >
                     Encerrar
                   </button>
-                  <button type="button" className="secondary-button abatimento-footer__fechar" onClick={() => setAdiantamentosModalOpen(false)}>
+                  <button type="button" className="secondary-button modal-card__close abatimento-footer__fechar" onClick={() => setAdiantamentosModalOpen(false)}>
                     Fechar
                   </button>
                 </div>
@@ -3692,7 +3572,6 @@ export function ContasReceberPage() {
                   <button
                     type="button"
                     className="secondary-button"
-                    style={{ width: 'auto', minWidth: 130 }}
                     disabled={adiantamentosExecutando}
                     onClick={() => {
                       if (adiantamentosEncerradosSelectedIdx == null) {
@@ -3707,7 +3586,6 @@ export function ContasReceberPage() {
                   <button
                     type="button"
                     className="secondary-button"
-                    style={{ width: 'auto', minWidth: 80 }}
                     disabled={adiantamentosExecutando}
                     onClick={() => {
                       if (adiantamentosEncerradosSelectedIdx == null) {
@@ -3720,7 +3598,7 @@ export function ContasReceberPage() {
                     Reabrir
                   </button>
                 </div>
-                <button type="button" className="secondary-button abatimento-footer__fechar" onClick={() => setAdiantamentosModalOpen(false)}>
+                <button type="button" className="secondary-button modal-card__close abatimento-footer__fechar" onClick={() => setAdiantamentosModalOpen(false)}>
                   Fechar
                 </button>
               </div>
@@ -3735,17 +3613,17 @@ export function ContasReceberPage() {
           <article className="modal-card" style={{ width: 'min(460px, 92vw)', gap: 20 }}>
             <header className="modal-card__header">
               <h2>Confirmar Cancelamento</h2>
+              <ModalHeaderActions onClose={() => setCancelarStep1Open(false)} expandable={false} />
             </header>
             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)' }}>
               {cancelarIsLote
                 ? 'Deseja realmente cancelar os títulos selecionados? Essa operação não poderá ser desfeita, deseja continuar?'
                 : 'Deseja realmente cancelar esse título?'}
             </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <div className="modal-card__footer">
               <button
                 type="button"
-                className="secondary-button"
-                style={{ width: 'auto', minWidth: 80 }}
+                className="secondary-button modal-card__close"
                 onClick={() => setCancelarStep1Open(false)}
               >
                 Não
@@ -3753,7 +3631,6 @@ export function ContasReceberPage() {
               <button
                 type="button"
                 className="primary-button"
-                style={{ width: 'auto', minWidth: 80 }}
                 onClick={handleCancelarStep1Confirm}
               >
                 Sim
@@ -3769,15 +3646,15 @@ export function ContasReceberPage() {
           <article className="modal-card" style={{ width: 'min(460px, 92vw)', gap: 20 }}>
             <header className="modal-card__header">
               <h2>Outros Títulos Selecionados</h2>
+              <ModalHeaderActions onClose={() => setCancelarStep2Open(false)} expandable={false} />
             </header>
             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)' }}>
               Existem outros títulos diferentes de 'Duplicatas' selecionados, deseja excluí-los do contas a receber?
             </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <div className="modal-card__footer">
               <button
                 type="button"
-                className="secondary-button"
-                style={{ width: 'auto', minWidth: 80 }}
+                className="secondary-button modal-card__close"
                 onClick={() => {
                   setCancelarStep2Open(false);
                   void executarCancelar(false);
@@ -3788,7 +3665,6 @@ export function ContasReceberPage() {
               <button
                 type="button"
                 className="primary-button"
-                style={{ width: 'auto', minWidth: 80 }}
                 onClick={handleCancelarStep2Confirm}
               >
                 Sim
@@ -3804,15 +3680,15 @@ export function ContasReceberPage() {
           <article className="modal-card" style={{ width: 'min(400px, 92vw)', gap: 20 }}>
             <header className="modal-card__header">
               <h2>Confirmar Estorno</h2>
+              <ModalHeaderActions onClose={() => setEstornarDevolucaoConfirmOpen(false)} expandable={false} />
             </header>
             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)' }}>
               Deseja estornar essa devolução?
             </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <div className="modal-card__footer">
               <button
                 type="button"
-                className="secondary-button"
-                style={{ width: 'auto', minWidth: 80 }}
+                className="secondary-button modal-card__close"
                 onClick={() => setEstornarDevolucaoConfirmOpen(false)}
               >
                 Não
@@ -3820,7 +3696,6 @@ export function ContasReceberPage() {
               <button
                 type="button"
                 className="primary-button"
-                style={{ width: 'auto', minWidth: 80 }}
                 onClick={() => void handleEstornarDevolucao()}
               >
                 Sim
@@ -3836,15 +3711,15 @@ export function ContasReceberPage() {
           <article className="modal-card" style={{ width: 'min(400px, 92vw)', gap: 20 }}>
             <header className="modal-card__header">
               <h2>Confirmar Encerramento</h2>
+              <ModalHeaderActions onClose={() => setEncerrarConfirmOpen(false)} expandable={false} />
             </header>
             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)' }}>
               Deseja encerrar esse documento?
             </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <div className="modal-card__footer">
               <button
                 type="button"
-                className="secondary-button"
-                style={{ width: 'auto', minWidth: 80 }}
+                className="secondary-button modal-card__close"
                 onClick={() => setEncerrarConfirmOpen(false)}
               >
                 Não
@@ -3852,7 +3727,6 @@ export function ContasReceberPage() {
               <button
                 type="button"
                 className="primary-button"
-                style={{ width: 'auto', minWidth: 80 }}
                 onClick={() => void handleEncerrar()}
               >
                 Sim
@@ -3868,15 +3742,15 @@ export function ContasReceberPage() {
           <article className="modal-card" style={{ width: 'min(400px, 92vw)', gap: 20 }}>
             <header className="modal-card__header">
               <h2>Confirmar Reabertura</h2>
+              <ModalHeaderActions onClose={() => setReabrirConfirmOpen(false)} expandable={false} />
             </header>
             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)' }}>
               Deseja reabrir o documento?
             </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <div className="modal-card__footer">
               <button
                 type="button"
-                className="secondary-button"
-                style={{ width: 'auto', minWidth: 80 }}
+                className="secondary-button modal-card__close"
                 onClick={() => setReabrirConfirmOpen(false)}
               >
                 Não
@@ -3884,7 +3758,6 @@ export function ContasReceberPage() {
               <button
                 type="button"
                 className="primary-button"
-                style={{ width: 'auto', minWidth: 80 }}
                 onClick={() => void handleReabrir()}
               >
                 Sim

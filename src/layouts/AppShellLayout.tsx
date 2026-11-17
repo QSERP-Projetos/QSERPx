@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { IoCloseOutline, IoHomeOutline, IoLogOutOutline, IoMenuOutline } from 'react-icons/io5';
+import { IoHomeOutline, IoLogOutOutline, IoMenuOutline } from 'react-icons/io5';
 import { createPortal } from 'react-dom';
 import { Sidebar } from '../components/Sidebar';
 import { ConfigScreen } from '../components/ConfigScreen';
@@ -13,6 +13,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { GlobalConfig } from '../services/globalConfig';
 import { verificarSessaoCall, logoutCall } from '../services/apiCalls';
+import { ModalHeaderActions } from '../components/ModalHeaderActions';
 
 const resolveRouteFromTransaction = (transactionCode: string, title: string): string | undefined => {
   const normalizedCode = String(transactionCode || '').toUpperCase();
@@ -228,6 +229,21 @@ export function AppShellLayout() {
   const isApontamentoProducaoRoute = location.pathname === ROUTES.pcpApontamentoProducao;
   const isHomeRoute = location.pathname === ROUTES.home;
 
+  const isTransactionActive = (transactionCode: string, title: string) => {
+    const route = resolveRouteFromTransaction(transactionCode, title);
+    return Boolean(route) && route === location.pathname;
+  };
+
+  // Abre automaticamente no menu o módulo da tela atual
+  useEffect(() => {
+    const activeMenu = menus.find((menu) =>
+      menu.subitems.some((sub) => resolveRouteFromTransaction(sub.transactionCode, sub.title) === location.pathname),
+    );
+    if (activeMenu) {
+      setExpandedMenu(activeMenu.id);
+    }
+  }, [location.pathname, menus]);
+
   const handleLogout = async () => {
     if (logoutPending) return;
     if (GlobalConfig.isAtualizando()) {
@@ -373,6 +389,8 @@ export function AppShellLayout() {
             setConfigModalOpen(true);
           }}
           onShowInfo={(message) => showToast(message, 'info')}
+          isTransactionActive={isTransactionActive}
+          isHomeActive={isHomeRoute}
         />
       ) : null}
 
@@ -403,7 +421,7 @@ export function AppShellLayout() {
               position: 'sticky',
               top: 0,
               zIndex: 100,
-              backgroundColor: '#d97706',
+              backgroundColor: 'var(--status-warning)',
               color: '#fff',
               padding: '0.5rem 1.25rem',
               fontWeight: 600,
@@ -446,7 +464,7 @@ export function AppShellLayout() {
           ) : null}
           <button
             type="button"
-            className="secondary-button app-shell__simplified-action-button"
+            className="icon-button--danger secondary-button app-shell__simplified-action-button"
             onClick={() => setLogoutConfirmOpen(true)}
           >
             <IoLogOutOutline size={16} />
@@ -460,18 +478,10 @@ export function AppShellLayout() {
           <article className="modal-card app-shell-logout-modal">
             <header className="modal-card__header">
               <h2 id="logout-confirm-title">Deseja realmente sair do sistema?</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   if (logoutPending) return;
                   setLogoutConfirmOpen(false);
-                }}
-                disabled={logoutPending}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} disabled={logoutPending} expandable={false} />
             </header>
 
             <p>Você será desconectado da sessão atual.</p>
@@ -479,7 +489,7 @@ export function AppShellLayout() {
 
             <div className="form-actions logout-confirm-actions">
               <button
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 type="button"
                 onClick={() => {
                   if (logoutPending) return;

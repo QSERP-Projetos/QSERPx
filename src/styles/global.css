@@ -1,8 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  font-family: "Montserrat", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-chat: "Montserrat", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
+  --font-chat: var(--font-sans);
   --font-mobile-content: 16px;
   --font-mobile-content-lg: 18px;
   --font-mobile-label: 14px;
@@ -119,6 +120,8 @@
 
 /*
 AI STYLE CONTRACT (QSERPx React)
+Layout v2: a aparencia final (fonte, menu, telas, tabelas, modais) e padronizada em src/styles/theme.css,
+que e carregado por ultimo. Ajustes visuais globais devem ser feitos la.
 Use this file + ThemeContext tokens to keep UI consistent.
 
 Core tokens (useTheme -> CSS vars):
@@ -479,7 +482,7 @@ select {
 }
 
 .sidebar__brand h1 {
-  font-family: "Montserrat", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   font-size: 1.3rem;
   letter-spacing: 0.03em;
   margin: 0;
@@ -733,7 +736,7 @@ select {
 }
 
 .app-shell__topbar-title {
-  font-family: "Montserrat", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   font-weight: 700;
   letter-spacing: 0.02em;
   min-width: 0;
@@ -818,7 +821,7 @@ select {
 }
 
 .page-header h1 {
-  font-family: "Montserrat", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   font-size: 1.55rem;
   margin: 0;
   color: var(--color-heading);
@@ -1516,7 +1519,7 @@ select {
 }
 
 .support-conversation-header__ticket {
-  font-family: "Montserrat", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   font-size: 1.35rem;
   font-weight: 800;
   color: var(--color-heading);
@@ -3021,14 +3024,14 @@ select {
 }
 
 .modal header h2 {
-  font-family: "Montserrat", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   margin: 0;
   font-size: 1.4rem;
   color: var(--color-heading);
 }
 
 .modal header .modal__title {
-  font-family: "Montserrat", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   margin: 0;
   font-size: 1.4rem;
   color: var(--color-heading);

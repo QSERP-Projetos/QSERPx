@@ -3,10 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   IoAddOutline,
   IoArrowBack,
-  IoChevronDownOutline,
-  IoChevronForwardOutline,
   IoCheckmarkDoneOutline,
-  IoCloseOutline,
   IoFilterOutline,
   IoRefreshOutline,
 } from 'react-icons/io5';
@@ -28,6 +25,10 @@ import { AdvancedFiltersPanel } from '../../../components/AdvancedFiltersPanel';
 import { ListSearchField } from '../../../components/ListSearchField';
 import { filterListByTerm } from '../../../utils/filterListByTerm';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
+import { StatusBadge } from '../../../components/StatusBadge';
+import { REQUIRED_FIELDS_MESSAGE, useRequiredFields } from '../../../hooks/useRequiredFields';
 
 type SelectOption = { value: string; label: string };
 
@@ -101,6 +102,7 @@ const isCronometroTipo = (value?: string) => {
 export function ApontamentoMaoObraPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const obrig = useRequiredFields();
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -112,7 +114,6 @@ export function ApontamentoMaoObraPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [codigoFuncionario, setCodigoFuncionario] = useState('');
   const [apenasPendentes, setApenasPendentes] = useState(false);
-  const [expandedMaoObraCards, setExpandedMaoObraCards] = useState<Record<string, boolean>>({});
   const [filtroErrors, setFiltroErrors] = useState<FiltroErrors>({});
   const [filtrosOpen, setFiltrosOpen] = useState(false);
   const [sortField, setSortField] = useState<SortField>('os');
@@ -195,11 +196,6 @@ export function ApontamentoMaoObraPage() {
 
     setSortField(field);
     setSortDirection('asc');
-  };
-
-  const getSortIndicator = (field: SortField) => {
-    if (sortField !== field) return '▲▼';
-    return sortDirection === 'asc' ? '▲' : '▼';
   };
 
   const carregarListas = useCallback(async () => {
@@ -318,13 +314,8 @@ export function ApontamentoMaoObraPage() {
       return;
     }
 
-    if (!form.numOS || !form.numOperacao || !form.codigoFuncionario) {
-      showToast('OS, operação e funcionário são obrigatórios.', 'error');
-      return;
-    }
-
-    if (!form.dataServico || !form.horaInicio) {
-      showToast('Data de serviço e hora início são obrigatórias.', 'error');
+    if (!obrig.validate([form.numOS, form.numOperacao, form.codigoFuncionario, form.dataServico, form.horaInicio])) {
+      showToast(REQUIRED_FIELDS_MESSAGE, 'error');
       return;
     }
 
@@ -489,7 +480,10 @@ export function ApontamentoMaoObraPage() {
             <button
               className="icon-button module-action-button module-action-button--primary"
               type="button"
-              onClick={() => setModalOpen(true)}
+              onClick={() => {
+                obrig.reset();
+                setModalOpen(true);
+              }}
               title="Novo apontamento"
               aria-label="Novo apontamento"
               disabled={loading}
@@ -597,49 +591,22 @@ export function ApontamentoMaoObraPage() {
           <p className="module-empty">Nenhum apontamento encontrado.</p>
         ) : (
           <>
-            <div className="table-scroll module-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('os')}>
-                        OS <span>{getSortIndicator('os')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('data')}>
-                        Data <span>{getSortIndicator('data')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('inicio')}>
-                        Início <span>{getSortIndicator('inicio')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('fim')}>
-                        Fim <span>{getSortIndicator('fim')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('centroTrabalho')}>
-                        Centro de Trabalho <span>{getSortIndicator('centroTrabalho')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('funcionario')}>
-                        Funcionário <span>{getSortIndicator('funcionario')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('situacao')}>
-                        Situação <span>{getSortIndicator('situacao')}</span>
-                      </button>
-                    </th>
-                    <th className="module-table__actions-col"></th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div className="data-cards-region">
+                <DataListSortBar
+                  options={[
+                    { field: 'os', label: 'OS' },
+                    { field: 'data', label: 'Data' },
+                    { field: 'inicio', label: 'Início' },
+                    { field: 'fim', label: 'Fim' },
+                    { field: 'centroTrabalho', label: 'Centro de trabalho' },
+                    { field: 'funcionario', label: 'Funcionário' },
+                    { field: 'situacao', label: 'Situação' },
+                  ]}
+                  active={sortField}
+                  direction={sortDirection}
+                  onSort={handleSort}
+                />
+                <DataList ariaLabel="Apontamentos de mão de obra">
                   {rowsFiltradas.map((row, index) => {
                     const concluido = Boolean(row?.apont_Concluido ?? row?.apontConcluido ?? false);
                     const os = String(row?.num_Ordem ?? row?.numOrdem ?? '-');
@@ -650,105 +617,37 @@ export function ApontamentoMaoObraPage() {
                     const funcionarioNome = String(row?.nome_Func ?? row?.nomeFunc ?? '-');
 
                     return (
-                      <tr key={`amo-${index}`}>
-                        <td>{os}</td>
-                        <td>{data}</td>
-                        <td>{inicio}</td>
-                        <td>{fim}</td>
-                        <td>{centroTrabalho}</td>
-                        <td>{funcionarioNome}</td>
-                        <td>{concluido ? 'Concluído' : 'Pendente'}</td>
-                        <td>
-                          <div className="table-actions">
-                            {!concluido && (
-                              <button type="button" title="Concluir" onClick={() => void abrirConcluir(row)}>
-                                <IoCheckmarkDoneOutline size={16} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="module-cards">
-              {rowsFiltradas.map((row, index) => {
-                const concluido = Boolean(row?.apont_Concluido ?? row?.apontConcluido ?? false);
-                const os = String(row?.num_Ordem ?? row?.numOrdem ?? '-');
-                const data = String(row?.data_Servico ?? row?.dataServico ?? '-');
-                const inicio = String(row?.hora_Inicio ?? row?.horaInicio ?? '-');
-                const fim = String(row?.hora_Fim ?? row?.horaFim ?? '-');
-                const centroTrabalho = String(row?.descricao_CTrab ?? row?.descricaoCTrab ?? '-');
-                const funcionarioNome = String(row?.nome_Func ?? row?.nomeFunc ?? '-');
-                const cardKey = `${os || `idx-${index}`}-${funcionarioNome}`;
-                const isExpandedCard = Boolean(expandedMaoObraCards[cardKey]);
-
-                return (
-                  <article className="module-card" key={`card-amo-${index}`}>
-                    <div className="module-card__row module-card__row--split">
-                      <div className="module-card__row-stack">
-                        <span>OM</span>
-                        <strong>{os}</strong>
-                      </div>
-                      <button
-                        type="button"
-                        className="module-card__expand-toggle"
-                        onClick={() =>
-                          setExpandedMaoObraCards((prev) => ({
-                            ...prev,
-                            [cardKey]: !prev[cardKey],
-                          }))
+                      <DataListItem
+                        key={`amo-${index}`}
+                        code={`OS ${os}`}
+                        title={funcionarioNome}
+                        subtitle={centroTrabalho}
+                        details={[
+                          { label: 'Data', value: data },
+                          { label: 'Início', value: inicio },
+                          { label: 'Fim', value: fim },
+                        ]}
+                        status={
+                          <StatusBadge tone={concluido ? 'success' : 'warning'}>{concluido ? 'Concluído' : 'Pendente'}</StatusBadge>
                         }
-                        aria-label={isExpandedCard ? 'Recolher detalhes da OM' : 'Expandir detalhes da OM'}
-                        title={isExpandedCard ? 'Recolher detalhes' : 'Expandir detalhes'}
-                      >
-                        {isExpandedCard ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
-                      </button>
-                    </div>
-
-                    {isExpandedCard ? (
-                      <>
-                        <div className="module-card__row">
-                          <span>Data</span>
-                          <strong>{data}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Início</span>
-                          <strong>{inicio}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Fim</span>
-                          <strong>{fim}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Centro de Trabalho</span>
-                          <strong>{centroTrabalho}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Funcionário</span>
-                          <strong>{funcionarioNome}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Situação</span>
-                          <strong>{concluido ? 'Concluído' : 'Pendente'}</strong>
-                        </div>
-
-                        {!concluido && (
-                          <div className="module-card__actions">
-                            <button type="button" title="Concluir" onClick={() => void abrirConcluir(row)}>
+                        actions={
+                          !concluido ? (
+                            <button
+                              type="button"
+                              className="icon-button module-action-button--primary"
+                              title="Concluir"
+                              aria-label="Concluir"
+                              onClick={() => void abrirConcluir(row)}
+                            >
                               <IoCheckmarkDoneOutline size={16} />
                             </button>
-                          </div>
-                        )}
-                      </>
-                    ) : null}
-                  </article>
-                );
-              })}
-            </div>
+                          ) : undefined
+                        }
+                      />
+                    );
+                  })}
+                </DataList>
+              </div>
           </>
         )}
         </section>
@@ -759,38 +658,43 @@ export function ApontamentoMaoObraPage() {
           <article className="modal-card modal-card--wide">
             <header className="modal-card__header">
               <h2>Novo apontamento de mão de obra ({apontamentoCronometro ? 'Cronômetro' : 'Normal'})</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   if (saving) return;
                   setModalOpen(false);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <div className="form-grid-3">
               <label>
                 <span>Número OS *</span>
-                <input value={form.numOS} onChange={(event) => setForm((prev) => ({ ...prev, numOS: event.target.value }))} />
+                <input
+                  className={obrig.inputClass(form.numOS)}
+                  value={form.numOS}
+                  onChange={(event) => setForm((prev) => ({ ...prev, numOS: event.target.value }))}
+                />
+                {obrig.error(form.numOS)}
               </label>
               <label>
                 <span>Operação *</span>
-                <input value={form.numOperacao} onChange={(event) => setForm((prev) => ({ ...prev, numOperacao: event.target.value }))} />
+                <input
+                  className={obrig.inputClass(form.numOperacao)}
+                  value={form.numOperacao}
+                  onChange={(event) => setForm((prev) => ({ ...prev, numOperacao: event.target.value }))}
+                />
+                {obrig.error(form.numOperacao)}
               </label>
               <label className="form-grid-3__full"></label>
               <label>
                 <span>Funcionário *</span>
                 <SearchableSelect
+                  className={obrig.wrapperClass(form.codigoFuncionario)}
                   value={form.codigoFuncionario}
                   onChange={(nextValue) => setForm((prev) => ({ ...prev, codigoFuncionario: nextValue }))}
                   options={funcionarioOptions}
                   ariaLabel="Funcionário"
                   searchPlaceholder="Pesquisar funcionário"
                 />
+                {obrig.error(form.codigoFuncionario)}
               </label>
               <label>
                 <span>Centro trabalho</span>
@@ -813,13 +717,20 @@ export function ApontamentoMaoObraPage() {
               <label>
                 <span>Data serviço *</span>
                 <CustomDatePicker
+                  className={obrig.wrapperClass(form.dataServico)}
                   value={form.dataServico}
                   onChange={(nextDate) => setForm((prev) => ({ ...prev, dataServico: nextDate }))}
                 />
+                {obrig.error(form.dataServico)}
               </label>
               <label>
                 <span>Hora início *</span>
-                <CustomTimePicker value={form.horaInicio} onChange={(nextValue) => setForm((prev) => ({ ...prev, horaInicio: nextValue }))} />
+                <CustomTimePicker
+                  className={obrig.wrapperClass(form.horaInicio)}
+                  value={form.horaInicio}
+                  onChange={(nextValue) => setForm((prev) => ({ ...prev, horaInicio: nextValue }))}
+                />
+                {obrig.error(form.horaInicio)}
               </label>
 
               {apontamentoCronometro ? (
@@ -835,7 +746,7 @@ export function ApontamentoMaoObraPage() {
             </div>
 
             <div className="form-actions">
-              <button className="secondary-button" type="button" onClick={() => setModalOpen(false)}>
+              <button className="secondary-button modal-card__close" type="button" onClick={() => setModalOpen(false)}>
                 Cancelar
               </button>
               <button className="primary-button" type="button" onClick={() => void handleSalvar()} disabled={saving}>
@@ -851,17 +762,10 @@ export function ApontamentoMaoObraPage() {
           <article className="modal-card">
             <header className="modal-card__header">
               <h2>Concluir apontamento</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   if (finalizando) return;
                   setConcluirOpen(false);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <div className="form-grid-3">
@@ -883,7 +787,7 @@ export function ApontamentoMaoObraPage() {
             </div>
 
             <div className="form-actions">
-              <button className="secondary-button" type="button" onClick={() => setConcluirOpen(false)}>
+              <button className="secondary-button modal-card__close" type="button" onClick={() => setConcluirOpen(false)}>
                 Cancelar
               </button>
               <button className="primary-button" type="button" onClick={() => void handleConcluir()} disabled={finalizando}>

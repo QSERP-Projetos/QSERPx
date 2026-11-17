@@ -4,7 +4,6 @@ import {
   IoAddOutline,
   IoArrowBack,
   IoCloseCircleOutline,
-  IoCloseOutline,
   IoFilterOutline,
   IoRefreshOutline,
   IoTimeOutline,
@@ -30,6 +29,8 @@ import {
 } from '../../../services/apiCalls';
 import { filterListByTerm } from '../../../utils/filterListByTerm';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
 
 const formatToday = () => {
   const now = new Date();
@@ -796,11 +797,6 @@ export function ApontamentoProducaoPage() {
     setSortDirection('asc');
   };
 
-  const getSortIndicator = (field: SortField) => {
-    if (sortField !== field) return '▲▼';
-    return sortDirection === 'asc' ? '▲' : '▼';
-  };
-
   const carregar = useCallback(async () => {
     const baseUrl = GlobalConfig.getBaseUrl();
     const token = GlobalConfig.getJwToken();
@@ -1263,160 +1259,61 @@ export function ApontamentoProducaoPage() {
             <p className="module-empty">Nenhum apontamento encontrado.</p>
           ) : (
             <>
-              <div className="table-scroll module-table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th className="apontamento-producao-status-col">Status</th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('ordem')}>
-                          Ordem <span>{getSortIndicator('ordem')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('operacao')}>
-                          Operação <span>{getSortIndicator('operacao')}</span>
-                        </button>
-                      </th>
-                      <th>Produto</th>
-                      <th>Funcionário</th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('maquina')}>
-                          Máquina <span>{getSortIndicator('maquina')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('inicio')}>
-                          Início <span>{getSortIndicator('inicio')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('fim')}>
-                          Fim <span>{getSortIndicator('fim')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('qtdProduzida')}>
-                          Qtd produzida <span>{getSortIndicator('qtdProduzida')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('qtdRejeitada')}>
-                          Qtd rejeitada <span>{getSortIndicator('qtdRejeitada')}</span>
-                        </button>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <div className="data-cards-region">
+                  <DataListSortBar
+                    options={[
+                      { field: 'ordem', label: 'Ordem' },
+                      { field: 'operacao', label: 'Operação' },
+                      { field: 'maquina', label: 'Máquina' },
+                      { field: 'inicio', label: 'Início' },
+                      { field: 'fim', label: 'Fim' },
+                      { field: 'qtdProduzida', label: 'Qtd produzida' },
+                      { field: 'qtdRejeitada', label: 'Qtd rejeitada' },
+                    ]}
+                    active={sortField}
+                    direction={sortDirection}
+                    onSort={handleSort}
+                  />
+                  <DataList ariaLabel="Apontamentos de produção">
                     {rowsFiltradas.map((row, index) => {
                       const current = resolveListRow(row);
                       const cronometroAberto = isApontCronometroAberto(row);
                       const cronometroStatus = getCronometroStatus(row);
 
                       return (
-                        <tr
+                        <DataListItem
                           key={`ap-${index}`}
-                          className={`module-row-clickable${cronometroAberto ? ' apontamento-producao-row--cronometro' : ''}`}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => (cronometroAberto ? abrirFinalizarCronometro(row) : abrirConsulta(row))}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
-                              if (cronometroAberto) {
-                                abrirFinalizarCronometro(row);
-                              } else {
-                                abrirConsulta(row);
-                              }
-                            }
-                          }}
-                        >
-                          <td className="apontamento-producao-status-col">
-                            {cronometroStatus ? (
-                              <IoTimeOutline
-                                size={18}
+                          className={cronometroAberto ? 'apontamento-producao-row--cronometro' : undefined}
+                          code={`OF ${current.ordem}`}
+                          title={current.produto}
+                          subtitle={[current.operacao ? `Operação ${current.operacao}` : '', current.maquina].filter(Boolean).join(' · ')}
+                          details={[
+                            { label: 'Funcionário', value: current.funcionario },
+                            { label: 'Início', value: formatDateTimeLabel(current.inicioData, current.inicioHora) },
+                            { label: 'Fim', value: formatDateTimeLabel(current.fimData, current.fimHora) },
+                            { label: 'Produzida', value: current.qtdProduzida },
+                            { label: 'Rejeitada', value: current.qtdRejeitada },
+                          ]}
+                          status={
+                            cronometroStatus ? (
+                              <span
                                 className={`apontamento-producao-status-icon apontamento-producao-status-icon--${cronometroStatus}`}
                                 title={
                                   cronometroStatus === 'pendente'
                                     ? 'Apontamento cronômetro pendente de finalização'
                                     : 'Apontamento cronômetro concluído'
                                 }
-                              />
-                            ) : null}
-                          </td>
-                          <td>{current.ordem}</td>
-                          <td>{current.operacao}</td>
-                          <td>{current.produto}</td>
-                          <td>{current.funcionario}</td>
-                          <td>{current.maquina}</td>
-                          <td className="apontamento-producao-datetime-cell">{formatDateTimeLabel(current.inicioData, current.inicioHora)}</td>
-                          <td className="apontamento-producao-datetime-cell">{formatDateTimeLabel(current.fimData, current.fimHora)}</td>
-                          <td>{current.qtdProduzida}</td>
-                          <td>{current.qtdRejeitada}</td>
-                        </tr>
+                              >
+                                <IoTimeOutline size={18} aria-hidden="true" />
+                              </span>
+                            ) : null
+                          }
+                          onOpen={() => (cronometroAberto ? abrirFinalizarCronometro(row) : abrirConsulta(row))}
+                        />
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="module-cards">
-                {rowsFiltradas.map((row, index) => {
-                  const current = resolveListRow(row);
-                  const cronometroAberto = isApontCronometroAberto(row);
-                  const cronometroStatus = getCronometroStatus(row);
-                  const produtoLinha =
-                    current.produto !== '-' && current.descricaoProduto !== '-'
-                      ? `${current.produto} - ${current.descricaoProduto}`
-                      : current.produto !== '-'
-                        ? current.produto
-                        : current.descricaoProduto;
-
-                  return (
-                    <article
-                      className={`module-card module-row-clickable${cronometroAberto ? ' apontamento-producao-row--cronometro' : ''}`}
-                      key={`card-ap-${index}`}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => (cronometroAberto ? abrirFinalizarCronometro(row) : abrirConsulta(row))}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          if (cronometroAberto) {
-                            abrirFinalizarCronometro(row);
-                          } else {
-                            abrirConsulta(row);
-                          }
-                        }
-                      }}
-                    >
-                      {cronometroStatus ? (
-                        <IoTimeOutline
-                          size={18}
-                          className={`apontamento-producao-status-icon apontamento-producao-status-icon--${cronometroStatus} apontamento-producao-status-icon--card`}
-                          title={
-                            cronometroStatus === 'pendente'
-                              ? 'Apontamento cronômetro pendente de finalização'
-                              : 'Apontamento cronômetro concluído'
-                          }
-                        />
-                      ) : null}
-                      <div className="module-card__row">
-                        <span>Ordem</span>
-                        <strong>{current.ordem}</strong>
-                      </div>
-                      <div className="module-card__row">
-                        <span>Operação</span>
-                        <strong>{current.operacao}</strong>
-                      </div>
-                      <div className="module-card__row">
-                        <span>Produto</span>
-                        <strong className="module-card__product-inline">{produtoLinha}</strong>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+                  </DataList>
+                </div>
             </>
           )}
         </section>
@@ -1428,18 +1325,11 @@ export function ApontamentoProducaoPage() {
           <article className="modal-card modal-card--wide apontamento-producao-modal">
             <header className="modal-card__header">
               <h2>Apontamento de Produção ({apontamentoCronometro ? 'Cronômetro' : 'Normal'})</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   if (saving) return;
                   setModalOpen(false);
                   resetModalState();
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <div className="form-grid-3">
@@ -1737,6 +1627,13 @@ export function ApontamentoProducaoPage() {
             </div>
 
             <div className="form-actions apontamento-producao-modal__actions apontamento-producao-modal__actions--split">
+              <button type="button" className="secondary-button modal-card__close" onClick={() => {
+                  if (saving) return;
+                  setModalOpen(false);
+                  resetModalState();
+                }}>
+                Fechar
+              </button>
               <button
                 className="secondary-button"
                 type="button"
@@ -1760,14 +1657,7 @@ export function ApontamentoProducaoPage() {
           <article className="modal-card apontamento-producao-modal">
             <header className="modal-card__header">
               <h2>Observações do Apontamento</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setObsModalOpen(false)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setObsModalOpen(false)} />
             </header>
 
             <div className="form-grid-3">
@@ -1784,6 +1674,9 @@ export function ApontamentoProducaoPage() {
             </div>
 
             <div className="form-actions apontamento-producao-modal__actions">
+              <button type="button" className="secondary-button modal-card__close" onClick={() => setObsModalOpen(false)}>
+                Fechar
+              </button>
               <button
                 className="primary-button"
                 type="button"
@@ -1804,17 +1697,10 @@ export function ApontamentoProducaoPage() {
           <article className="modal-card modal-card--wide apontamento-producao-modal">
             <header className="modal-card__header">
               <h2>Consulta de Apontamento de Produção</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar consulta"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   setDetalheOpen(false);
                   setDetalheRow(null);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <div className="form-grid-3">
@@ -1914,7 +1800,7 @@ export function ApontamentoProducaoPage() {
                 Observações
               </button>
               <button
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 type="button"
                 onClick={() => {
                   setDetalheOpen(false);
@@ -1934,14 +1820,7 @@ export function ApontamentoProducaoPage() {
           <article className="modal-card apontamento-producao-modal">
             <header className="modal-card__header">
               <h2>Observações do Apontamento</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setObsConsultaOpen(false)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setObsConsultaOpen(false)} expandable={false} />
             </header>
 
             <div className="form-grid-3">
@@ -1952,7 +1831,7 @@ export function ApontamentoProducaoPage() {
             </div>
 
             <div className="form-actions apontamento-producao-modal__actions">
-              <button className="secondary-button" type="button" onClick={() => setObsConsultaOpen(false)}>
+              <button className="secondary-button modal-card__close" type="button" onClick={() => setObsConsultaOpen(false)}>
                 Fechar
               </button>
             </div>
@@ -1965,17 +1844,10 @@ export function ApontamentoProducaoPage() {
           <article className="modal-card modal-card--wide apontamento-producao-modal">
             <header className="modal-card__header">
               <h2>Finalizar Apontamento Cronômetro</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   setFinalizarOpen(false);
                   setFinalizarRow(null);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <div className="form-grid-3">
@@ -2101,6 +1973,12 @@ export function ApontamentoProducaoPage() {
             </div>
 
             <div className="form-actions apontamento-producao-modal__actions">
+              <button type="button" className="secondary-button modal-card__close" onClick={() => {
+                  setFinalizarOpen(false);
+                  setFinalizarRow(null);
+                }}>
+                Fechar
+              </button>
               <button className="primary-button" type="button" onClick={() => void handleFinalizarCronometro()} disabled={finalizando}>
                 {finalizando ? 'Finalizando...' : 'Finalizar'}
               </button>

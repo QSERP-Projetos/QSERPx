@@ -5,7 +5,6 @@ import {
   IoAlertCircleOutline,
   IoArrowBack,
   IoCloseCircleOutline,
-  IoCloseOutline,
   IoCodeSlashOutline,
   IoDocumentTextOutline,
   IoFilterOutline,
@@ -23,6 +22,9 @@ import { SearchableSelect } from '../../../components/SearchableSelect';
 import { AdvancedFiltersPanel } from '../../../components/AdvancedFiltersPanel';
 import { ListSearchField } from '../../../components/ListSearchField';
 import { CustomDatePicker } from '../../../components/CustomDatePicker';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
+import { REQUIRED_FIELDS_MESSAGE } from '../../../hooks/useRequiredFields';
 
 type NotaFiscal = {
   num_Nota_Fiscal?: string | number | null;
@@ -510,7 +512,7 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
         if (!formNova.atividade.trim()) invalidFields.add('atividade');
       }
     }
-    if (invalidFields.size > 0) { setFormErrors(invalidFields); return; }
+    if (invalidFields.size > 0) { setFormErrors(invalidFields); showToast(REQUIRED_FIELDS_MESSAGE, 'error'); return; }
     setFormErrors(new Set());
     const baseUrl = GlobalConfig.getBaseUrl();
     const token = GlobalConfig.getJwToken();
@@ -589,26 +591,25 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
   const getFieldLabel = (label: string, field: string) => (
     <span>
       {label}
-      {isRequiredNfseField(field) ? <strong className="nfs-required-asterisk"> (*) obrigatório</strong> : null}
+      {isRequiredNfseField(field) ? ' *' : null}
     </span>
   );
   const getInputClassName = (field: string, base?: string) => [
     base,
-    isRequiredNfseField(field) ? 'nfs-required-field' : '',
-    formErrors.has(field) ? 'nfs-input-error' : '',
+    formErrors.has(field) ? 'module-input-error' : '',
   ].filter(Boolean).join(' ');
   const getSelectClassName = (field: string) => [
-    formErrors.has(field) ? 'nfs-error is-error' : '',
-    isRequiredNfseField(field) ? 'nfs-required-field' : '',
+    formErrors.has(field) ? 'is-error' : '',
   ].filter(Boolean).join(' ');
+  const fieldError = (field: string) => (formErrors.has(field)
+    ? <small className="module-field-error">{field === 'codTribNac' ? 'Informe 6 dígitos' : 'Campo obrigatório'}</small>
+    : null);
   return (
     <section className="modal-backdrop" role="dialog" aria-modal="true">
       <article className="modal-card modal-card--nfs-nova">
         <header className="modal-card__header">
           <h2>Nova Nota Fiscal de Serviço</h2>
-          <button type="button" className="icon-button" aria-label="Fechar" onClick={onClose}>
-            <IoCloseOutline size={18} />
-          </button>
+          <ModalHeaderActions onClose={onClose} />
         </header>
 
         <div className="nfs-nova-body">
@@ -682,10 +683,12 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
                   );
                 }}
               />
+              {fieldError('serie')}
             </div>
             <label className="nfs-nova-label">
               {getFieldLabel('Nota Fiscal', 'numNotaFiscal')}
               <input className={getInputClassName('numNotaFiscal')} value={formNova.numNotaFiscal} onChange={(e) => handleFieldNova('numNotaFiscal', e.target.value)} />
+              {fieldError('numNotaFiscal')}
             </label>
             <div className="nfs-nova-label">
               <span>Emissão</span>
@@ -732,6 +735,7 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
                     );
                   }}
                 />
+                {fieldError('codigoDestinatario')}
               </div>
               <label className="nfs-nova-label">
                 <span>Tipo</span>
@@ -744,6 +748,7 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
           <div className="nfs-nova-label">
             {getFieldLabel('Cond. pagto', 'condPagto')}
             <SearchableSelect options={condPagtoOptions} value={formNova.condPagto} onChange={(v) => handleFieldNova('condPagto', v)} enableSearch searchPlaceholder="Pesquisar..." disabled={carregandoListas} className={getSelectClassName('condPagto')} />
+            {fieldError('condPagto')}
           </div>
 
           {/* Serviço */}
@@ -780,6 +785,7 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
                 }}
                 enableSearch searchPlaceholder="Pesquisar..." disabled={carregandoListas || isNfServico} className={getSelectClassName('codigoServico')}
               />
+              {fieldError('codigoServico')}
             </div>
           )}
 
@@ -788,21 +794,22 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
             <label className="nfs-nova-label">
               {getFieldLabel('Descrição', 'descricao')}
               <textarea className={getInputClassName('descricao')} rows={3} value={formNova.descricao} onChange={(e) => handleFieldNova('descricao', e.target.value)} />
+              {fieldError('descricao')}
             </label>
           )}
 
           {/* Tipo serv. | Atividade | Cód.Trib.Nac */}
           <div className="nfs-nova-row nfs-nova-row--tipo3">
-            {!isNfse && <label className="nfs-nova-label"><span>Tipo serv.</span><input className={getInputClassName('tipoServ')} value={formNova.tipoServ} onChange={(e) => handleFieldNova('tipoServ', e.target.value)} /></label>}
-            {!isNfse && <label className="nfs-nova-label"><span>Atividade</span><input className={getInputClassName('atividade')} value={formNova.atividade} onChange={(e) => handleFieldNova('atividade', e.target.value)} /></label>}
-            <label className="nfs-nova-label">{getFieldLabel('Cód. Trib. Nac', 'codTribNac')}<input className={getInputClassName('codTribNac')} value={formNova.codTribNac} onChange={(e) => handleFieldNova('codTribNac', e.target.value)} disabled={isNfServico} inputMode="numeric" maxLength={6} /></label>
+            {!isNfse && <label className="nfs-nova-label"><span>Tipo serv. *</span><input className={getInputClassName('tipoServ')} value={formNova.tipoServ} onChange={(e) => handleFieldNova('tipoServ', e.target.value)} />{fieldError('tipoServ')}</label>}
+            {!isNfse && <label className="nfs-nova-label"><span>Atividade *</span><input className={getInputClassName('atividade')} value={formNova.atividade} onChange={(e) => handleFieldNova('atividade', e.target.value)} />{fieldError('atividade')}</label>}
+            <label className="nfs-nova-label">{getFieldLabel('Cód. Trib. Nac', 'codTribNac')}<input className={getInputClassName('codTribNac')} value={formNova.codTribNac} onChange={(e) => handleFieldNova('codTribNac', e.target.value)} disabled={isNfServico} inputMode="numeric" maxLength={6} />{fieldError('codTribNac')}</label>
           </div>
 
           {/* Trib. ISSQN | Ret. ISSQN | Valor serviço */}
           {(!isNotaAjuste || ajusteDeveIncluirValores) && (
             <div className="nfs-nova-row nfs-nova-row--tipo3">
-              <div className="nfs-nova-label">{getFieldLabel('Trib. ISSQN', 'tribISSQN')}<SearchableSelect enableSearch={false} options={OPTIONS_TRIB_ISSQN} value={formNova.tribISSQN} onChange={(v) => handleFieldNova('tribISSQN', v)} disabled={isNfServico} className={getSelectClassName('tribISSQN')} /></div>
-              <div className="nfs-nova-label">{getFieldLabel('Ret. ISSQN', 'retISSQN')}<SearchableSelect enableSearch={false} options={OPTIONS_RET_ISSQN} value={formNova.retISSQN} onChange={(v) => handleFieldNova('retISSQN', v)} disabled={isNfServico} className={getSelectClassName('retISSQN')} /></div>
+              <div className="nfs-nova-label">{getFieldLabel('Trib. ISSQN', 'tribISSQN')}<SearchableSelect enableSearch={false} options={OPTIONS_TRIB_ISSQN} value={formNova.tribISSQN} onChange={(v) => handleFieldNova('tribISSQN', v)} disabled={isNfServico} className={getSelectClassName('tribISSQN')} />{fieldError('tribISSQN')}</div>
+              <div className="nfs-nova-label">{getFieldLabel('Ret. ISSQN', 'retISSQN')}<SearchableSelect enableSearch={false} options={OPTIONS_RET_ISSQN} value={formNova.retISSQN} onChange={(v) => handleFieldNova('retISSQN', v)} disabled={isNfServico} className={getSelectClassName('retISSQN')} />{fieldError('retISSQN')}</div>
               <label className="nfs-nova-label"><span>Valor serviço</span><input className="nfs-nova-input--right" value={formNova.valorServico} onChange={(e) => handleFieldNova('valorServico', e.target.value)} placeholder="0,00" /></label>
             </div>
           )}
@@ -911,9 +918,7 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
               <article className="modal-card" style={{ maxWidth: 520 }}>
                 <header className="modal-card__header">
                   <h2>Código Indicador da Operação</h2>
-                  <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setInfoIndicadorOpen(false)}>
-                    <IoCloseOutline size={18} />
-                  </button>
+                  <ModalHeaderActions onClose={() => setInfoIndicadorOpen(false)} expandable={false} />
                 </header>
                 <div className="modal-card__body" style={{ padding: '1.2rem 1.5rem', lineHeight: 1.7 }}>
                   <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.88rem' }}>
@@ -925,7 +930,7 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
                   </ul>
                 </div>
                 <footer className="nfs-nova-footer">
-                  <button type="button" className="secondary-button" onClick={() => setInfoIndicadorOpen(false)}>Fechar</button>
+                  <button type="button" className="secondary-button modal-card__close" onClick={() => setInfoIndicadorOpen(false)}>Fechar</button>
                 </footer>
               </article>
             </section>
@@ -961,7 +966,7 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
               {/* PIS/Cofins/CSLL */}
               <div className="nfs-nova-fieldset">
                 <div className="nfs-nova-fieldset__title">PIS/Cofins/CSLL</div>
-                <div className="nfs-nova-label">{getFieldLabel('Tipo Retenção', 'tipoRetencao')}<SearchableSelect enableSearch={false} options={OPTIONS_TIPO_RETENCAO} value={formNova.tipoRetencao} onChange={(v) => handleFieldNova('tipoRetencao', v)} disabled={isNfServico} className={getSelectClassName('tipoRetencao')} /></div>
+                <div className="nfs-nova-label">{getFieldLabel('Tipo Retenção', 'tipoRetencao')}<SearchableSelect enableSearch={false} options={OPTIONS_TIPO_RETENCAO} value={formNova.tipoRetencao} onChange={(v) => handleFieldNova('tipoRetencao', v)} disabled={isNfServico} className={getSelectClassName('tipoRetencao')} />{fieldError('tipoRetencao')}</div>
                 <div className="nfs-nova-pis-bottom">
                   <div className="nfs-nova-pis-col">
                     <div className="nfs-nova-value-row"><span>IRRF</span><input value={formNova.irrf} onChange={(e) => handleFieldNova('irrf', e.target.value)} placeholder="0,00" /></div>
@@ -1003,7 +1008,7 @@ const NovaNotaFiscalModal = memo(function NovaNotaFiscalModal({
         </div>
 
         <footer className="nfs-nova-footer">
-          <button type="button" className="secondary-button" onClick={onClose} disabled={salvandoNova}>Cancelar</button>
+          <button type="button" className="secondary-button modal-card__close" onClick={onClose} disabled={salvandoNova}>Cancelar</button>
           <button type="button" className="primary-button" onClick={() => void handleEmitirNF()} disabled={salvandoNova}>
             {salvandoNova ? 'Emitindo...' : 'Emitir'}
           </button>
@@ -1948,11 +1953,6 @@ export function NotaFiscalServicoPage() {
     setSortDirection('asc');
   };
 
-  const getSortIndicator = (field: SortField) => {
-    if (sortField !== field) return '▲▼';
-    return sortDirection === 'asc' ? '▲' : '▼';
-  };
-
   return (
     <main className="clientes-page list-layout-page">
       <section className="clientes-page__header">
@@ -2071,114 +2071,94 @@ export function NotaFiscalServicoPage() {
           ) : rowsFiltradas.length === 0 ? (
             <p className="module-empty">Nenhuma nota fiscal encontrada.</p>
           ) : (
-            <div className="table-scroll module-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('nota')}>
-                        Nota <span>{getSortIndicator('nota')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('serie')}>
-                        Série <span>{getSortIndicator('serie')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('data')}>
-                        Data <span>{getSortIndicator('data')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('destinatario')}>
-                        Destinatário <span>{getSortIndicator('destinatario')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('situacao')}>
-                        Situação <span>{getSortIndicator('situacao')}</span>
-                      </button>
-                    </th>
-                    <th>Último retorno</th>
-                    <th>Aut.</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rowsFiltradas.map((row, idx) => {
-                    const situacaoNum = row.situacao_Nota != null ? Number(row.situacao_Nota) : null;
-                    const autorizado = isNotaAutorizada(row.autorizado);
-                    return (
-                      <tr
-                        key={`${asText(row.num_Nota_Fiscal)}-${idx}`}
-                        onClick={() => void abrirConsulta(String(row.num_Nota_Fiscal ?? ''), String(row.serie ?? ''), String(row.data_Emissao ?? ''), String(row.autorizado ?? ''))}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <td>{asText(row.num_Nota_Fiscal) || '-'}</td>
-                        <td>{asText(row.serie) || '-'}</td>
-                        <td>{asText(row.data_Emissao)?.slice(0, 10).split('-').reverse().join('/') || '-'}</td>
-                        <td>{asText(row.nome_Fantasia) || '-'}</td>
-                        <td>
-                          <span className={`nfs-situacao ${getSituacaoClass(situacaoNum)}`}>
-                            {getSituacaoLabel(situacaoNum)}
+            <div className="data-cards-region">
+              <DataListSortBar
+                options={[
+                  { field: 'nota', label: 'Nota' },
+                  { field: 'serie', label: 'Série' },
+                  { field: 'data', label: 'Data' },
+                  { field: 'destinatario', label: 'Destinatário' },
+                  { field: 'situacao', label: 'Situação' },
+                ]}
+                active={sortField}
+                direction={sortDirection}
+                onSort={handleSort}
+              />
+              <DataList ariaLabel="Notas fiscais de serviço">
+                {rowsFiltradas.map((row, idx) => {
+                  const situacaoNum = row.situacao_Nota != null ? Number(row.situacao_Nota) : null;
+                  const autorizado = isNotaAutorizada(row.autorizado);
+                  const ocorrencia = asText(row.ultimaOcorrencia);
+                  return (
+                    <DataListItem
+                      key={`${asText(row.num_Nota_Fiscal)}-${idx}`}
+                      code={`${asText(row.num_Nota_Fiscal) || '-'} / ${asText(row.serie) || '-'}`}
+                      title={asText(row.nome_Fantasia) || '-'}
+                      subtitle={
+                        ocorrencia ? (
+                          <span title={ocorrencia.length > 80 ? ocorrencia : undefined}>
+                            {ocorrencia.length > 80 ? `${ocorrencia.slice(0, 80)}…` : ocorrencia}
                           </span>
-                        </td>
-                        <td>
-                          {(() => {
-                            const txt = asText(row.ultimaOcorrencia);
-                            if (!txt) return '-';
-                            const truncated = txt.length > 50 ? txt.slice(0, 50) + '…' : txt;
-                            return <span title={txt.length > 50 ? txt : undefined}>{truncated}</span>;
-                          })()}
-                        </td>
-                        <td>{asText(row.autorizado) || '-'}</td>
-                        <td className="nfs-table-actions">
-                          <button
-                            type="button"
-                            className="icon-button"
-                            title={autorizado ? 'Imprimir Danfe' : 'Reenviar Xml'}
-                            aria-label={autorizado ? 'Imprimir Danfe' : 'Reenviar Xml'}
-                            onClick={(e) => handleReenvioClick(e, row)}
-                          >
-                            {autorizado ? <IoDocumentTextOutline size={16} /> : <IoCodeSlashOutline size={16} />}
-                          </button>
-                          <button
-                            type="button"
-                            className="icon-button"
-                            title="Histórico de operações"
-                            aria-label="Histórico de operações"
-                            onClick={(e) => void abrirHistorico(e, row)}
-                          >
-                            <IoTimeOutline size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            className="icon-button"
-                            title="Enviar email"
-                            aria-label="Enviar email"
-                            onClick={(e) => handleEnviarEmailClick(e, row)}
-                            disabled={!autorizado}
-                            style={!autorizado ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
-                          >
-                            <IoPaperPlaneOutline size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            className="icon-button"
-                            title="Cancelar / Excluir NFSe"
-                            aria-label="Cancelar / Excluir NFSe"
-                            style={{ color: 'var(--color-danger, #e53e3e)' }}
-                            onClick={(e) => handleCancelarClick(e, row)}
-                          >
-                            <IoCloseCircleOutline size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        ) : undefined
+                      }
+                      details={[
+                        { label: 'Emissão', value: asText(row.data_Emissao)?.slice(0, 10).split('-').reverse().join('/') || '-' },
+                        { label: 'Aut.', value: asText(row.autorizado) || '-' },
+                      ]}
+                      status={<span className={`nfs-situacao ${getSituacaoClass(situacaoNum)}`}>{getSituacaoLabel(situacaoNum)}</span>}
+                      onOpen={() =>
+                        void abrirConsulta(
+                          String(row.num_Nota_Fiscal ?? ''),
+                          String(row.serie ?? ''),
+                          String(row.data_Emissao ?? ''),
+                          String(row.autorizado ?? ''),
+                        )
+                      }
+                      actions={
+                        <>
+                        <button
+                          type="button"
+                          className="icon-button"
+                          title={autorizado ? 'Imprimir Danfe' : 'Reenviar Xml'}
+                          aria-label={autorizado ? 'Imprimir Danfe' : 'Reenviar Xml'}
+                          onClick={(e) => handleReenvioClick(e, row)}
+                        >
+                          {autorizado ? <IoDocumentTextOutline size={16} /> : <IoCodeSlashOutline size={16} />}
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-button"
+                          title="Histórico de operações"
+                          aria-label="Histórico de operações"
+                          onClick={(e) => void abrirHistorico(e, row)}
+                        >
+                          <IoTimeOutline size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-button"
+                          title="Enviar email"
+                          aria-label="Enviar email"
+                          onClick={(e) => handleEnviarEmailClick(e, row)}
+                          disabled={!autorizado}
+                                                    >
+                          <IoPaperPlaneOutline size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-button"
+                          title="Cancelar / Excluir NFSe"
+                          aria-label="Cancelar / Excluir NFSe"
+                          onClick={(e) => handleCancelarClick(e, row)}
+                        >
+                          <IoCloseCircleOutline size={16} />
+                        </button>
+                        </>
+                      }
+                    />
+                  );
+                })}
+              </DataList>
             </div>
           )}
         </section>
@@ -2211,9 +2191,7 @@ export function NotaFiscalServicoPage() {
             <article className="modal-card modal-card--nfs-nova">
               <header className="modal-card__header">
                 <h2>Consulta Nota Fiscal de Serviço</h2>
-                <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setConsultaOpen(false)}>
-                  <IoCloseOutline size={18} />
-                </button>
+                <ModalHeaderActions onClose={() => setConsultaOpen(false)} />
               </header>
 
               {carregandoConsulta ? (
@@ -2588,7 +2566,7 @@ export function NotaFiscalServicoPage() {
               )}
 
               <footer className="nfs-nova-footer">
-                <button type="button" className="secondary-button" onClick={() => setConsultaOpen(false)}>
+                <button type="button" className="secondary-button modal-card__close" onClick={() => setConsultaOpen(false)}>
                   Fechar
                 </button>
                 {!consultaAutorizada && (
@@ -2620,15 +2598,7 @@ export function NotaFiscalServicoPage() {
           <article className="modal-card modal-card--confirm">
             <header className="modal-card__header">
               <h2>Reenviar XML</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setReenvioAposEdicaoOpen(false)}
-                disabled={reenvioAposEdicaoLoading}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setReenvioAposEdicaoOpen(false)} disabled={reenvioAposEdicaoLoading} expandable={false} />
             </header>
             <div className="modal-card__body modal-card__body--confirm">
               <IoAlertCircleOutline size={36} className="modal-confirm__icon" />
@@ -2641,7 +2611,7 @@ export function NotaFiscalServicoPage() {
             <footer className="nfs-nova-footer">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setReenvioAposEdicaoOpen(false)}
                 disabled={reenvioAposEdicaoLoading}
               >
@@ -2665,15 +2635,7 @@ export function NotaFiscalServicoPage() {
           <article className="modal-card modal-card--confirm">
             <header className="modal-card__header">
               <h2>Confirmar alteração</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setConfirmSalvarOpen(false)}
-                disabled={consultaSalvando}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setConfirmSalvarOpen(false)} disabled={consultaSalvando} expandable={false} />
             </header>
             <div className="modal-card__body modal-card__body--confirm">
               <IoAlertCircleOutline size={36} className="modal-confirm__icon" />
@@ -2686,7 +2648,7 @@ export function NotaFiscalServicoPage() {
             <footer className="nfs-nova-footer">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setConfirmSalvarOpen(false)}
                 disabled={consultaSalvando}
               >
@@ -2710,15 +2672,7 @@ export function NotaFiscalServicoPage() {
           <article className="modal-card modal-card--confirm">
             <header className="modal-card__header">
               <h2>Reenviar XML</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setReenvioConfirmRow(null)}
-                disabled={reenvioLoading}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setReenvioConfirmRow(null)} disabled={reenvioLoading} expandable={false} />
             </header>
             <div className="modal-card__body modal-card__body--confirm">
               <IoAlertCircleOutline size={36} className="modal-confirm__icon" />
@@ -2731,7 +2685,7 @@ export function NotaFiscalServicoPage() {
             <footer className="nfs-nova-footer">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setReenvioConfirmRow(null)}
                 disabled={reenvioLoading}
               >
@@ -2755,15 +2709,7 @@ export function NotaFiscalServicoPage() {
           <article className="modal-card modal-card--confirm">
             <header className="modal-card__header">
               <h2>Imprimir DANFE</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setImprimirDanfeRow(null)}
-                disabled={imprimirDanfeLoading}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setImprimirDanfeRow(null)} disabled={imprimirDanfeLoading} expandable={false} />
             </header>
             <div className="modal-card__body modal-card__body--confirm">
               <IoAlertCircleOutline size={36} className="modal-confirm__icon" />
@@ -2775,7 +2721,7 @@ export function NotaFiscalServicoPage() {
             <footer className="nfs-nova-footer">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setImprimirDanfeRow(null)}
                 disabled={imprimirDanfeLoading}
               >
@@ -2799,18 +2745,10 @@ export function NotaFiscalServicoPage() {
           <article className="modal-card modal-card--confirm">
             <header className="modal-card__header">
               <h2>Enviar Email</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   setEnviarEmailConfirmOpen(false);
                   setEnviarEmailRow(null);
-                }}
-                disabled={enviarEmailLoading}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} disabled={enviarEmailLoading} expandable={false} />
             </header>
             <div className="modal-card__body modal-card__body--confirm">
               <IoAlertCircleOutline size={36} className="modal-confirm__icon" />
@@ -2822,7 +2760,7 @@ export function NotaFiscalServicoPage() {
             <footer className="nfs-nova-footer">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => {
                   setEnviarEmailConfirmOpen(false);
                   setEnviarEmailRow(null);
@@ -2849,14 +2787,7 @@ export function NotaFiscalServicoPage() {
           <article className="modal-card modal-card--historico">
             <header className="modal-card__header">
               <h2>Histórico de Operações - NFS-e</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setHistoricoRow(null)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setHistoricoRow(null)} />
             </header>
 
             <div className="nfs-historico-fields">
@@ -2913,7 +2844,7 @@ export function NotaFiscalServicoPage() {
             <footer className="nfs-nova-footer">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setHistoricoRow(null)}
               >
                 Fechar
@@ -2928,14 +2859,7 @@ export function NotaFiscalServicoPage() {
           <article className="modal-card modal-card--ocorrencia-detalhe">
             <header className="modal-card__header">
               <h2>Detalhes do Histórico</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setOcorrenciaDetalhe(null)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setOcorrenciaDetalhe(null)} expandable={false} />
             </header>
             <div className="nfs-ocorrencia-detalhe-body">
               <p className="nfs-ocorrencia-detalhe-body__text">{ocorrenciaDetalhe.descricao}</p>
@@ -2943,7 +2867,7 @@ export function NotaFiscalServicoPage() {
             <footer className="nfs-nova-footer">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setOcorrenciaDetalhe(null)}
               >
                 Fechar
@@ -2959,14 +2883,7 @@ export function NotaFiscalServicoPage() {
           <article className="modal-card" style={{ maxWidth: 420 }}>
             <header className="modal-card__header">
               <h2>Cancelar NFSe</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => { setCancelarConfirm1Open(false); setCancelarRow(null); }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => { setCancelarConfirm1Open(false); setCancelarRow(null); }} expandable={false} />
             </header>
             <div className="modal-card__body" style={{ padding: '1.2rem 1.5rem' }}>
               <p>Deseja cancelar a NFSe <strong>{cancelarRow.num_Nota_Fiscal}</strong> série <strong>{cancelarRow.serie}</strong>?</p>
@@ -2974,7 +2891,7 @@ export function NotaFiscalServicoPage() {
             <footer className="nfs-nova-footer">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => { setCancelarConfirm1Open(false); setCancelarRow(null); }}
               >
                 Não
@@ -2997,14 +2914,7 @@ export function NotaFiscalServicoPage() {
           <article className="modal-card" style={{ maxWidth: 480 }}>
             <header className="modal-card__header">
               <h2>Motivo do Cancelamento</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => { setCancelarMotivoOpen(false); setCancelarRow(null); setCancelarMotivo(''); }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => { setCancelarMotivoOpen(false); setCancelarRow(null); setCancelarMotivo(''); }} />
             </header>
             <div className="modal-card__body" style={{ padding: '1.2rem 1.5rem' }}>
               <label htmlFor="cancelar-motivo-textarea" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
@@ -3023,15 +2933,14 @@ export function NotaFiscalServicoPage() {
             <footer className="nfs-nova-footer">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => { setCancelarMotivoOpen(false); setCancelarRow(null); setCancelarMotivo(''); }}
               >
                 Fechar
               </button>
               <button
                 type="button"
-                className="primary-button"
-                style={{ background: 'var(--color-danger, #e53e3e)', border: 'none' }}
+                className="primary-button primary-button--danger"
                 onClick={() => {
                   if (!cancelarMotivo.trim()) {
                     showToast('Informe o motivo do cancelamento.', 'error');
@@ -3053,14 +2962,7 @@ export function NotaFiscalServicoPage() {
           <article className="modal-card" style={{ maxWidth: 420 }}>
             <header className="modal-card__header">
               <h2>Confirmar Cancelamento</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setCancelarConfirm2Open(false)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setCancelarConfirm2Open(false)} expandable={false} />
             </header>
             <div className="modal-card__body" style={{ padding: '1.2rem 1.5rem' }}>
               <p>Confirmar o cancelamento da NFSe <strong>{cancelarRow.num_Nota_Fiscal}</strong> série <strong>{cancelarRow.serie}</strong>?</p>
@@ -3069,7 +2971,7 @@ export function NotaFiscalServicoPage() {
             <footer className="nfs-nova-footer">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 disabled={cancelarLoading}
                 onClick={() => setCancelarConfirm2Open(false)}
               >
@@ -3077,8 +2979,7 @@ export function NotaFiscalServicoPage() {
               </button>
               <button
                 type="button"
-                className="primary-button"
-                style={{ background: 'var(--color-danger, #e53e3e)', border: 'none' }}
+                className="primary-button primary-button--danger"
                 disabled={cancelarLoading}
                 onClick={() => void handleCancelarNFSe()}
               >
@@ -3095,14 +2996,7 @@ export function NotaFiscalServicoPage() {
           <article className="modal-card" style={{ maxWidth: 440 }}>
             <header className="modal-card__header">
               <h2>Excluir Nota Fiscal</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setDeleteConfirmRow(null)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setDeleteConfirmRow(null)} expandable={false} />
             </header>
             <div className="modal-card__body" style={{ padding: '1.2rem 1.5rem' }}>
               <p>
@@ -3115,7 +3009,7 @@ export function NotaFiscalServicoPage() {
             <footer className="nfs-nova-footer">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 disabled={deleteLoading}
                 onClick={() => setDeleteConfirmRow(null)}
               >
@@ -3123,8 +3017,7 @@ export function NotaFiscalServicoPage() {
               </button>
               <button
                 type="button"
-                className="primary-button"
-                style={{ background: 'var(--color-danger, #e53e3e)', border: 'none' }}
+                className="primary-button primary-button--danger"
                 disabled={deleteLoading}
                 onClick={() => void handleDeleteNFSe()}
               >

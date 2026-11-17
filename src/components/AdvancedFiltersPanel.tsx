@@ -1,6 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { IoCloseOutline } from 'react-icons/io5';
-
+import { ModalHeaderActions } from './ModalHeaderActions';
 type AdvancedFiltersPanelProps = {
   open: boolean;
   onClose: () => void;
@@ -56,9 +55,7 @@ export function AdvancedFiltersPanel({
       <article className="modal-card filters-panel">
         <header className="modal-card__header">
           <h2 id="advanced-filters-title">{title}</h2>
-          <button type="button" className="icon-button" aria-label="Fechar filtros" onClick={onClose}>
-            <IoCloseOutline size={18} />
-          </button>
+          <ModalHeaderActions onClose={onClose} expandable={false} />
         </header>
 
         <div className="filters-panel__content">
@@ -66,6 +63,9 @@ export function AdvancedFiltersPanel({
 
           {onApply ? (
             <div className="filters-panel__actions">
+              <button type="button" className="secondary-button modal-card__close" onClick={onClose}>
+                Fechar
+              </button>
               <button type="button" className="secondary-button" onClick={onClose}>
                 {cancelLabel}
               </button>

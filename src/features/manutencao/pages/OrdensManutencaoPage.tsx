@@ -4,7 +4,6 @@ import {
   IoAddOutline,
   IoArrowBack,
   IoCloseCircleOutline,
-  IoCloseOutline,
   IoFilterOutline,
   IoRefreshOutline,
 } from 'react-icons/io5';
@@ -24,6 +23,8 @@ import { AdvancedFiltersPanel } from '../../../components/AdvancedFiltersPanel';
 import { ListSearchField } from '../../../components/ListSearchField';
 import { filterListByTerm } from '../../../utils/filterListByTerm';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
 
 type SelectOption = {
   value: string;
@@ -273,11 +274,6 @@ export function OrdensManutencaoPage() {
 
     setSortField(field);
     setSortDirection('asc');
-  };
-
-  const getSortIndicator = (field: SortField) => {
-    if (sortField !== field) return '▲▼';
-    return sortDirection === 'asc' ? '▲' : '▼';
   };
 
   const carregarMaquinas = useCallback(async () => {
@@ -630,130 +626,51 @@ export function OrdensManutencaoPage() {
           <p className="module-empty">Nenhuma ordem encontrada.</p>
         ) : (
           <>
-            <div className="table-scroll module-table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('om')}>
-                      OM <span>{getSortIndicator('om')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('maquina')}>
-                      Máquina <span>{getSortIndicator('maquina')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('abertura')}>
-                      Abertura <span>{getSortIndicator('abertura')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('prioridade')}>
-                      Prioridade <span>{getSortIndicator('prioridade')}</span>
-                    </button>
-                  </th>
-                  <th>Situação</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rowsFiltradas.map((row, index) => (
-                  <tr
-                    key={`${row?.num_Ordem ?? row?.num_ordem ?? index}`}
-                    className="module-row-clickable"
-                    onClick={() => {
-                      setSelecionado(row);
-                      setDetalhesOpen(true);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
+              <div className="data-cards-region">
+                <DataListSortBar
+                  options={[
+                    { field: 'om', label: 'OM' },
+                    { field: 'maquina', label: 'Máquina' },
+                    { field: 'abertura', label: 'Abertura' },
+                    { field: 'prioridade', label: 'Prioridade' },
+                  ]}
+                  active={sortField}
+                  direction={sortDirection}
+                  onSort={handleSort}
+                />
+                <DataList ariaLabel="Ordens de manutenção">
+                  {rowsFiltradas.map((row, index) => (
+                    <DataListItem
+                      key={`${row?.num_Ordem ?? row?.num_ordem ?? index}`}
+                      code={String(row?.num_Ordem ?? row?.num_ordem ?? '-')}
+                      title={`${String(row?.num_Ident ?? row?.num_ident ?? '-')} - ${String(row?.descricao_Portug ?? row?.descricao_portug ?? '-')}`}
+                      details={[
+                        {
+                          label: 'Abertura',
+                          value: `${String(row?.data_Abertura ?? row?.data_abertura ?? '-')} ${String(row?.hora_Abertura ?? row?.hora_abertura ?? '')}`.trim(),
+                        },
+                        {
+                          label: 'Prioridade',
+                          value: (
+                            <span className={`ordens-manutencao-prioridade ordens-manutencao-prioridade--${prioridadeTextoClass(row?.prioridade)}`}>
+                              {prioridadeLabel(row?.prioridade)}
+                            </span>
+                          ),
+                        },
+                      ]}
+                      status={
+                        <span className={`badge ${situacaoBadgeClass(getSituacaoOrdemCodigo(row))}`}>
+                          {obterDescricaoSituacaoOrdemManut(getSituacaoOrdemCodigo(row)) || '-'}
+                        </span>
+                      }
+                      onOpen={() => {
                         setSelecionado(row);
                         setDetalhesOpen(true);
-                      }
-                    }}
-                    tabIndex={0}
-                  >
-                    <td>{String(row?.num_Ordem ?? row?.num_ordem ?? '-')}</td>
-                    <td>
-                      {String(row?.num_Ident ?? row?.num_ident ?? '-')} -{' '}
-                      {String(row?.descricao_Portug ?? row?.descricao_portug ?? '-')}
-                    </td>
-                    <td>
-                      {String(row?.data_Abertura ?? row?.data_abertura ?? '-')} {String(row?.hora_Abertura ?? row?.hora_abertura ?? '')}
-                    </td>
-                    <td>
-                      <span className={`ordens-manutencao-prioridade ordens-manutencao-prioridade--${prioridadeTextoClass(row?.prioridade)}`}>
-                        {prioridadeLabel(row?.prioridade)}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`badge ${situacaoBadgeClass(getSituacaoOrdemCodigo(row))}`}>
-                        {obterDescricaoSituacaoOrdemManut(getSituacaoOrdemCodigo(row)) || '-'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-
-            <div className="module-cards">
-              {rowsFiltradas.map((row, index) => (
-                <article
-                  key={`card-${row?.num_Ordem ?? row?.num_ordem ?? index}`}
-                  className="module-card module-row-clickable"
-                  onClick={() => {
-                    setSelecionado(row);
-                    setDetalhesOpen(true);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      setSelecionado(row);
-                      setDetalhesOpen(true);
-                    }
-                  }}
-                  tabIndex={0}
-                >
-                  <div className="ordens-manutencao-card-top">
-                    <div className="module-card__row">
-                      <span>OM</span>
-                      <strong>{String(row?.num_Ordem ?? row?.num_ordem ?? '-')}</strong>
-                    </div>
-                    <div className="module-card__row ordens-manutencao-card-prioridade">
-                      <span>Prioridade</span>
-                      <strong>
-                        <span className={`ordens-manutencao-prioridade ordens-manutencao-prioridade--${prioridadeTextoClass(row?.prioridade)}`}>
-                          {prioridadeLabel(row?.prioridade)}
-                        </span>
-                      </strong>
-                    </div>
-                  </div>
-                  <div className="module-card__row">
-                    <span>Máquina</span>
-                    <strong>
-                      {String(row?.num_Ident ?? row?.num_ident ?? '-')} - {String(row?.descricao_Portug ?? row?.descricao_portug ?? '-')}
-                    </strong>
-                  </div>
-                  <div className="module-card__row">
-                    <span>Abertura</span>
-                    <strong>
-                      {String(row?.data_Abertura ?? row?.data_abertura ?? '-')} {String(row?.hora_Abertura ?? row?.hora_abertura ?? '')}
-                    </strong>
-                  </div>
-                  <div className="module-card__row">
-                    <span>Situação</span>
-                    <strong>
-                      <span className={`badge ${situacaoBadgeClass(getSituacaoOrdemCodigo(row))}`}>
-                        {obterDescricaoSituacaoOrdemManut(getSituacaoOrdemCodigo(row)) || '-'}
-                      </span>
-                    </strong>
-                  </div>
-                </article>
-              ))}
-            </div>
+                      }}
+                    />
+                  ))}
+                </DataList>
+              </div>
           </>
         )}
         </section>
@@ -764,17 +681,10 @@ export function OrdensManutencaoPage() {
           <article className="modal-card modal-card--wide">
             <header className="modal-card__header">
               <h2>Nova ordem de manutenção</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   if (saving) return;
                   setIncluirOpen(false);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <div className="form-grid-3">
@@ -825,7 +735,7 @@ export function OrdensManutencaoPage() {
 
             <div className="form-actions ordens-manutencao-modal-actions">
               <button
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 type="button"
                 onClick={() => {
                   if (saving) return;
@@ -848,17 +758,10 @@ export function OrdensManutencaoPage() {
           <article className="modal-card modal-card--wide">
             <header className="modal-card__header">
               <h2>Detalhes da OM</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   setDetalhesOpen(false);
                   setSelecionado(null);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <div className="form-grid-3">
@@ -909,7 +812,7 @@ export function OrdensManutencaoPage() {
 
             <div className="form-actions ordens-manutencao-detalhes-actions">
               <button
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 type="button"
                 onClick={() => {
                   setDetalhesOpen(false);

@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   IoAddOutline,
   IoArrowBack,
-  IoChevronDownOutline,
-  IoChevronForwardOutline,
   IoCloseCircleOutline,
   IoCopyOutline,
   IoCreateOutline,
@@ -29,6 +27,8 @@ import {
 import { CustomDatePicker } from '../../../components/CustomDatePicker';
 import { SearchableSelect } from '../../../components/SearchableSelect';
 import { filterListByTerm } from '../../../utils/filterListByTerm';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
 
 const situacaoSelectOptions = [
   { value: 'Elaboração', label: 'Elaboração' },
@@ -245,7 +245,6 @@ export function PedidoVendaPage({ isRepresentantes = false }: PedidoVendaPagePro
   const [pedidoFormKey, setPedidoFormKey] = useState(0);
   const [pedidoExcluirConfirm, setPedidoExcluirConfirm] = useState<number | null>(null);
   const [emptyMessage, setEmptyMessage] = useState('Nenhum pedido de venda encontrado.');
-  const [expandedPedidoCards, setExpandedPedidoCards] = useState<Record<string, boolean>>({});
   const [sortField, setSortField] = useState<SortField>('data');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const initialLoadRef = useRef(false);
@@ -316,11 +315,6 @@ export function PedidoVendaPage({ isRepresentantes = false }: PedidoVendaPagePro
     }
 
     return date;
-  };
-
-  const getSortIndicator = (field: SortField) => {
-    if (sortField !== field) return '▲▼';
-    return sortDirection === 'asc' ? '▲' : '▼';
   };
 
   const checkAcao = async (codigoAcao: string, deniedMessage: string) => {
@@ -737,44 +731,21 @@ export function PedidoVendaPage({ isRepresentantes = false }: PedidoVendaPagePro
           <p className="module-empty">{emptyMessage}</p>
         ) : (
           <>
-            <div className="table-scroll module-table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('numero')}>
-                      Número <span>{getSortIndicator('numero')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('data')}>
-                      Data <span>{getSortIndicator('data')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('cliente')}>
-                      Cliente <span>{getSortIndicator('cliente')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('vendedor')}>
-                      Vendedor <span>{getSortIndicator('vendedor')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('situacao')}>
-                      Situação <span>{getSortIndicator('situacao')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('valor')}>
-                      Valor <span>{getSortIndicator('valor')}</span>
-                    </button>
-                  </th>
-                  <th className="module-table__actions-col">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
+            <div className="data-cards-region">
+              <DataListSortBar
+                options={[
+                  { field: 'numero', label: 'Número' },
+                  { field: 'data', label: 'Data' },
+                  { field: 'cliente', label: 'Cliente' },
+                  { field: 'vendedor', label: 'Vendedor' },
+                  { field: 'situacao', label: 'Situação' },
+                  { field: 'valor', label: 'Valor' },
+                ]}
+                active={sortField}
+                direction={sortDirection}
+                onSort={handleSort}
+              />
+              <DataList ariaLabel="Pedidos de venda">
                 {pedidosFiltrados.map((pedido) => {
                   const numPedido = Number((pedido as any).num_Pedido || (pedido as any).numPedido || 0);
                   const data = String((pedido as any).data_Pedido || (pedido as any).dataPedido || '-');
@@ -786,185 +757,53 @@ export function PedidoVendaPage({ isRepresentantes = false }: PedidoVendaPagePro
                   const podeEditar = isSituacaoElaboracao(situ.label);
 
                   return (
-                    <tr
+                    <DataListItem
                       key={numPedido}
-                      className="module-row-clickable"
-                      onClick={() => void handleConsultar(pedido, situ.label)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          void handleConsultar(pedido, situ.label);
-                        }
-                      }}
-                      tabIndex={0}
-                    >
-                      <td>{numPedido}</td>
-                      <td>{data}</td>
-                      <td>{cliente}</td>
-                      <td>{vendedor}</td>
-                      <td>
-                        <span className={`badge ${situ.badgeClass}`}>{situ.label}</span>
-                      </td>
-                      <td>
-                        {formatCurrencyBRL(valor)}
-                      </td>
-                      <td>
-                        <div className="table-actions">
+                      code={`#${numPedido}`}
+                      title={cliente}
+                      details={[
+                        { label: 'Data', value: data },
+                        { label: 'Vendedor', value: vendedor },
+                      ]}
+                      status={<span className={`badge ${situ.badgeClass}`}>{situ.label}</span>}
+                      aside={formatCurrencyBRL(valor)}
+                      onOpen={() => void handleConsultar(pedido, situ.label)}
+                      actions={
+                        <>
                           <button
                             type="button"
+                            className="icon-button"
                             disabled={!podeEditar}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void handleEditar(pedido, situ.label);
-                            }}
+                            onClick={() => void handleEditar(pedido, situ.label)}
                             title={podeEditar ? 'Editar' : 'Somente pedidos em Elaboração podem ser editados'}
+                            aria-label="Editar"
                           >
                             <IoCreateOutline size={16} />
                           </button>
                           <button
                             type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void handleDuplicar(pedido);
-                            }}
+                            className="icon-button"
+                            onClick={() => void handleDuplicar(pedido)}
                             title="Duplicar"
+                            aria-label="Duplicar"
                           >
                             <IoCopyOutline size={16} />
                           </button>
                           <button
-                            className="danger"
+                            className="icon-button icon-button--danger"
                             type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void handleExcluir(numPedido, situ.label);
-                            }}
+                            onClick={() => void handleExcluir(numPedido, situ.label)}
                             title="Excluir"
+                            aria-label="Excluir"
                           >
                             <IoTrashOutline size={16} />
                           </button>
-                        </div>
-                      </td>
-                    </tr>
+                        </>
+                      }
+                    />
                   );
                 })}
-              </tbody>
-            </table>
-            </div>
-
-            <div className="module-cards">
-              {pedidosFiltrados.map((pedido) => {
-                const numPedido = Number((pedido as any).num_Pedido || (pedido as any).numPedido || 0);
-                const data = String((pedido as any).data_Pedido || (pedido as any).dataPedido || '-');
-                const cliente =
-                  String((pedido as any).nome_Fantasia || (pedido as any).nome_Cliente || (pedido as any).nomeCliente || '-');
-                const vendedor = String((pedido as any).nome_Vendedor || (pedido as any).nomeVendedor || '-');
-                const situ = getSituacaoInfo(pedido as any);
-                const valor = getPedidoValorRaw(pedido as any);
-                const podeEditar = isSituacaoElaboracao(situ.label);
-                const cardKey = String(numPedido || `idx-${cliente}-${data}`);
-                const isExpandedCard = Boolean(expandedPedidoCards[cardKey]);
-
-                return (
-                  <article
-                    key={`card-${numPedido}`}
-                    className="module-card module-row-clickable"
-                    onClick={() => void handleConsultar(pedido, situ.label)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        void handleConsultar(pedido, situ.label);
-                      }
-                    }}
-                    tabIndex={0}
-                  >
-                    <div className="module-card__row module-card__row--split">
-                      <div className="module-card__row-stack">
-                        <span>Número</span>
-                        <strong>{numPedido}</strong>
-                      </div>
-                      <button
-                        type="button"
-                        className="module-card__expand-toggle"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setExpandedPedidoCards((prev) => ({
-                            ...prev,
-                            [cardKey]: !prev[cardKey],
-                          }));
-                        }}
-                        aria-label={isExpandedCard ? 'Recolher detalhes do pedido' : 'Expandir detalhes do pedido'}
-                        title={isExpandedCard ? 'Recolher detalhes' : 'Expandir detalhes'}
-                      >
-                        {isExpandedCard ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
-                      </button>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Cliente</span>
-                      <strong>{cliente}</strong>
-                    </div>
-                    {isExpandedCard ? (
-                      <>
-                        <div className="module-card__row">
-                          <span>Data</span>
-                          <strong>{data}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Vendedor</span>
-                          <strong>{vendedor}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Situação</span>
-                          <strong>
-                            <span className={`badge ${situ.badgeClass}`}>{situ.label}</span>
-                          </strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Valor</span>
-                          <strong>{formatCurrencyBRL(valor)}</strong>
-                        </div>
-                      </>
-                    ) : null}
-
-                    <div className="module-card__actions">
-                      {!isExpandedCard ? (
-                        <span className={`badge ${situ.badgeClass} pedido-venda-mobile-card-situacao`}>{situ.label}</span>
-                      ) : null}
-                      <button
-                        type="button"
-                            disabled={!podeEditar}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void handleEditar(pedido, situ.label);
-                        }}
-                            title={podeEditar ? 'Editar' : 'Somente pedidos em Elaboração podem ser editados'}
-                      >
-                        <IoCreateOutline size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void handleDuplicar(pedido);
-                        }}
-                        title="Duplicar"
-                      >
-                        <IoCopyOutline size={16} />
-                      </button>
-                      <button
-                        className="danger"
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void handleExcluir(numPedido, situ.label);
-                        }}
-                        title="Excluir"
-                      >
-                        <IoTrashOutline size={16} />
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
+              </DataList>
             </div>
           </>
         )}
@@ -996,12 +835,13 @@ export function PedidoVendaPage({ isRepresentantes = false }: PedidoVendaPagePro
           <article className="modal-card">
             <header className="modal-card__header">
               <h2>Confirmar exclusão</h2>
+              <ModalHeaderActions onClose={() => setPedidoExcluirConfirm(null)} disabled={loading} expandable={false} />
             </header>
             <section className="module-form">
               <p>Deseja excluir o pedido {pedidoExcluirConfirm}?</p>
               <div className="form-actions">
                 <button
-                  className="secondary-button"
+                  className="secondary-button modal-card__close"
                   type="button"
                   onClick={() => setPedidoExcluirConfirm(null)}
                   disabled={loading}

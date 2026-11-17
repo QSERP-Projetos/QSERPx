@@ -8,7 +8,6 @@ import {
   IoCheckmarkDoneOutline,
   IoCloseCircle,
   IoCloseCircleOutline,
-  IoCloseOutline,
   IoFilterOutline,
   IoHelpCircleOutline,
   IoRefreshOutline,
@@ -35,6 +34,9 @@ import {
 } from '../../../services/apiCalls';
 import { filterListByTerm } from '../../../utils/filterListByTerm';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
+import { StatusBadge } from '../../../components/StatusBadge';
 
 type TipoLaudo = 'Processo' | 'Recebimento';
 
@@ -413,11 +415,6 @@ export function FichaInspecaoPage({
 
     setSortField(field);
     setSortDirection('asc');
-  };
-
-  const getSortIndicator = (field: SortField) => {
-    if (sortField !== field) return '▲▼';
-    return sortDirection === 'asc' ? '▲' : '▼';
   };
 
   const registrarAcoesUsuario = useCallback(async () => {
@@ -1121,39 +1118,20 @@ export function FichaInspecaoPage({
             <p className="module-empty">Nenhuma ficha encontrada.</p>
           ) : (
             <>
-              <div className="table-scroll module-table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('data')}>
-                          Data <span>{getSortIndicator('data')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('material')}>
-                          Material <span>{getSortIndicator('material')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('descricao')}>
-                          Descrição <span>{getSortIndicator('descricao')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('lote')}>
-                          Lote <span>{getSortIndicator('lote')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('situacao')}>
-                          Situação <span>{getSortIndicator('situacao')}</span>
-                        </button>
-                      </th>
-                      <th className="module-table__actions-col">Ação</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <div className="data-cards-region">
+                  <DataListSortBar
+                    options={[
+                      { field: 'data', label: 'Data' },
+                      { field: 'material', label: 'Material' },
+                      { field: 'descricao', label: 'Descrição' },
+                      { field: 'lote', label: 'Lote' },
+                      { field: 'situacao', label: 'Situação' },
+                    ]}
+                    active={sortField}
+                    direction={sortDirection}
+                    onSort={handleSort}
+                  />
+                  <DataList ariaLabel="Fichas de inspeção">
                     {rowsFiltradas.map((row, index) => {
                       const data = String(row?.data_Inspecao ?? row?.data_inspecao ?? '-');
                       const material = String(row?.codigo_Material ?? row?.codigo_material ?? '-');
@@ -1163,76 +1141,32 @@ export function FichaInspecaoPage({
                       const key = String(row?.num_Laudo ?? row?.num_laudo ?? `${material}-${lote}-${index}`);
 
                       return (
-                        <tr key={key}>
-                          <td>{data}</td>
-                          <td>{material}</td>
-                          <td>{descricao}</td>
-                          <td>{lote}</td>
-                          <td>{situacao}</td>
-                          <td>
-                            <div className="table-actions">
-                              <button
-                                type="button"
-                                className="icon-button module-action-button module-action-button--primary"
-                                onClick={() => void abrirLaudo(row)}
-                                aria-label="Abrir laudo"
-                                title="Abrir laudo"
-                              >
-                                <IoCheckmarkDoneOutline size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                        <DataListItem
+                          key={key}
+                          code={material}
+                          title={descricao}
+                          details={[
+                            { label: 'Data', value: data },
+                            { label: 'Lote', value: lote },
+                          ]}
+                          status={situacao ? <StatusBadge label={situacao} /> : null}
+                          onOpen={() => void abrirLaudo(row)}
+                          actions={
+                            <button
+                              type="button"
+                              className="icon-button module-action-button--primary"
+                              onClick={() => void abrirLaudo(row)}
+                              aria-label="Abrir laudo"
+                              title="Abrir laudo"
+                            >
+                              <IoCheckmarkDoneOutline size={16} />
+                            </button>
+                          }
+                        />
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="module-cards">
-                {rowsFiltradas.map((row, index) => {
-                  const data = String(row?.data_Inspecao ?? row?.data_inspecao ?? '-');
-                  const material = String(row?.codigo_Material ?? row?.codigo_material ?? '-');
-                  const descricao = String(row?.descricao_Portug ?? row?.descricao_portug ?? '-');
-                  const lote = String(row?.codigo_Lote ?? row?.codigo_lote ?? '-');
-                  const situacao = getSituacaoLaudoLabel(row?.situacao_Laudo ?? row?.situacao_laudo ?? '-');
-                  const key = String(row?.num_Laudo ?? row?.num_laudo ?? `${material}-${lote}-${index}`);
-
-                  return (
-                    <article key={`card-${key}`} className="module-card">
-                      <div className="module-card__row">
-                        <span>Data</span>
-                        <strong>{data}</strong>
-                      </div>
-                      <div className="module-card__row">
-                        <span>Produto</span>
-                        <strong className="module-card__product-inline">
-                          {material !== '-' && descricao !== '-' ? `${material} - ${descricao}` : material !== '-' ? material : descricao}
-                        </strong>
-                      </div>
-                      <div className="module-card__row">
-                        <span>Lote</span>
-                        <strong>{lote}</strong>
-                      </div>
-                      <div className="module-card__row">
-                        <span>Situação</span>
-                        <strong>{situacao}</strong>
-                      </div>
-
-                      <div className="module-card__actions">
-                        <button
-                          type="button"
-                          onClick={() => void abrirLaudo(row)}
-                          aria-label="Abrir laudo"
-                          title="Abrir laudo"
-                        >
-                          <IoCheckmarkDoneOutline size={16} />
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+                  </DataList>
+                </div>
             </>
           )}
         </section>
@@ -1243,17 +1177,10 @@ export function FichaInspecaoPage({
           <article className="modal-card modal-card--wide">
             <header className="modal-card__header">
               <h2>Nova ficha de inspeção - {tipoLaudo.toLowerCase()}</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   if (saving) return;
                   setNovaFichaOpen(false);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <div className="form-grid-3">
@@ -1340,7 +1267,7 @@ export function FichaInspecaoPage({
 
             <div className="form-actions">
               <button
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 type="button"
                 onClick={() => {
                   if (saving) return;
@@ -1367,20 +1294,13 @@ export function FichaInspecaoPage({
             <article className="modal-card modal-card--wide ficha-inspecao-laudo-modal">
               <header className="modal-card__header">
                 <h2>Laudo de inspeção - {tipoLaudo.toLowerCase()}{laudoSomenteLeitura ? ' (somente leitura)' : ''}</h2>
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label="Fechar"
-                  onClick={() => {
+                <ModalHeaderActions onClose={() => {
                     if (saving) return;
                     setLaudoOpen(false);
                     setSelecionado(null);
                     setLaudoItens([]);
                     setItemState({});
-                  }}
-                >
-                  <IoCloseOutline size={18} />
-                </button>
+                  }} />
               </header>
 
               <div className="form-grid-3">
@@ -1536,7 +1456,7 @@ export function FichaInspecaoPage({
 
               <div className="form-actions">
                 <button
-                  className="secondary-button"
+                  className="secondary-button modal-card__close"
                   type="button"
                   onClick={() => {
                     if (saving) return;
@@ -1551,7 +1471,7 @@ export function FichaInspecaoPage({
                 </button>
                 {!laudoSomenteLeitura ? (
                   <>
-                    <button className="secondary-button" type="button" onClick={() => void salvarLaudo('Salvar')} disabled={saving}>
+                    <button className="primary-button" type="button" onClick={() => void salvarLaudo('Salvar')} disabled={saving}>
                       {saving ? 'Salvando...' : 'Salvar'}
                     </button>
                     <button className="primary-button" type="button" onClick={() => void salvarLaudo('Confirmar')} disabled={saving}>
@@ -1573,18 +1493,11 @@ export function FichaInspecaoPage({
             <article className="modal-card ficha-inspecao-medicoes-modal">
               <header className="modal-card__header">
                 <h2>Medições do item {medicoesItem.numItemExib || medicoesItem.numItem}{medicoesSomenteLeitura ? ' (somente leitura)' : ''}</h2>
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label="Fechar"
-                  onClick={() => {
+                <ModalHeaderActions onClose={() => {
                     if (savingMedicoes) return;
                     setMedicoesOpen(false);
                     setMedicoesItem(null);
-                  }}
-                >
-                  <IoCloseOutline size={18} />
-                </button>
+                  }} />
               </header>
 
               {!medicoesSomenteLeitura ? (
@@ -1637,7 +1550,7 @@ export function FichaInspecaoPage({
 
               <div className="form-actions ficha-inspecao-medicoes-modal__actions">
                 <button
-                  className="secondary-button"
+                  className="secondary-button modal-card__close"
                   type="button"
                   onClick={() => {
                     if (savingMedicoes) return;

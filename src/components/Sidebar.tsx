@@ -3,19 +3,19 @@ import {
   IoBagHandleOutline,
   IoBriefcaseOutline,
   IoChevronBackOutline,
-  IoCloseOutline,
   IoChevronDown,
-  IoChevronForward,
   IoBuildOutline,
   IoBusinessOutline,
   IoCalculatorOutline,
   IoCartOutline,
   IoCashOutline,
   IoCheckmarkDoneOutline,
+  IoCloseCircle,
   IoConstructOutline,
   IoDocumentTextOutline,
   IoListOutline,
   IoLogOutOutline,
+  IoSearchOutline,
   IoSettingsOutline,
   IoShieldCheckmarkOutline,
   IoChevronForwardOutline,
@@ -30,9 +30,11 @@ import { LogoIcon } from './LogoIcon';
 import { ThemeIcon } from './ThemeIcon';
 import { useLanguage } from '../contexts/LanguageContext';
 import { APP_NAME, APP_VERSION } from '../constants/appInfo';
+import { ModalHeaderActions } from './ModalHeaderActions';
 
 type SidebarProps = {
-  userName: string;
+  /** Mantido por compatibilidade: o nome do usuário aparece na saudação da página inicial. */
+  userName?: string;
   companyName: string;
   menus: MenuItem[];
   loadingMenus: boolean;
@@ -48,6 +50,10 @@ type SidebarProps = {
   canOpenConfigScreen: boolean;
   onOpenConfigScreen: () => void;
   onShowInfo?: (message: string) => void;
+  /** Indica se a transação corresponde à tela aberta no momento (destaca o item no menu). */
+  isTransactionActive?: (transactionCode: string, title: string) => boolean;
+  /** Indica se a Home está aberta. */
+  isHomeActive?: boolean;
 };
 
 const iconMap: Record<string, ComponentType<{ size?: number }>> = {
@@ -69,10 +75,10 @@ const iconMap: Record<string, ComponentType<{ size?: number }>> = {
 };
 
 const languageOptions = [
-  { value: 'pt', label: 'Portugues' },
+  { value: 'pt', label: 'Português' },
   { value: 'en', label: 'English' },
-  { value: 'es', label: 'Espanol' },
-  { value: 'ja', label: 'Japanese' },
+  { value: 'es', label: 'Español' },
+  { value: 'ja', label: '日本語' },
 ] as const;
 
 type SidebarFlyoutState =
@@ -86,8 +92,14 @@ type SidebarFlyoutState =
       rect: DOMRect;
     };
 
+const normalizeText = (value: string) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim();
+
 export function Sidebar({
-  userName,
   companyName,
   menus,
   loadingMenus,
@@ -103,6 +115,7 @@ export function Sidebar({
   canOpenConfigScreen,
   onOpenConfigScreen,
   onShowInfo,
+  isTransactionActive,
 }: SidebarProps) {
   const { language, setLanguage } = useLanguage();
   const [isCompactViewport, setIsCompactViewport] = useState(() => {
@@ -110,14 +123,38 @@ export function Sidebar({
     return window.matchMedia('(max-width: 1024px)').matches;
   });
   const [activeFlyout, setActiveFlyout] = useState<SidebarFlyoutState | null>(null);
-  const [settingsExpanded, setSettingsExpanded] = useState(true);
+  const [settingsExpanded, setSettingsExpanded] = useState(false);
   const [languageModalOpen, setLanguageModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const closeFlyoutTimeoutRef = useRef<number | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const flyoutEnabled = collapsed && !isCompactViewport;
   const showInlineSections = !flyoutEnabled;
 
   const currentLanguageLabel =
     languageOptions.find((item) => item.value === language)?.label || String(language || '').toUpperCase();
+
+  const normalizedSearch = normalizeText(searchTerm);
+  const isSearching = showInlineSections && normalizedSearch.length > 0;
+
+  const visibleMenus = useMemo(() => {
+    if (!isSearching) return menus;
+
+    return menus
+      .map((menu) => {
+        if (normalizeText(menu.title).includes(normalizedSearch)) return menu;
+        const subitems = menu.subitems.filter(
+          (sub) =>
+            normalizeText(sub.title).includes(normalizedSearch) ||
+            normalizeText(sub.transactionCode).includes(normalizedSearch),
+        );
+        return { ...menu, subitems };
+      })
+      .filter((menu) => menu.subitems.length > 0);
+  }, [menus, isSearching, normalizedSearch]);
+
+  const isSubActive = (code: string, title: string) => Boolean(isTransactionActive?.(code, title));
+  const menuHasActive = (menu: MenuItem) => menu.subitems.some((sub) => isSubActive(sub.transactionCode, sub.title));
 
   useEffect(() => {
     return () => {
@@ -160,6 +197,23 @@ export function Sidebar({
     };
   }, [languageModalOpen]);
 
+  // Atalho Ctrl+K / Cmd+K para focar a busca do menu
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        if (!searchInputRef.current) return;
+        event.preventDefault();
+        searchInputRef.current.focus();
+        searchInputRef.current.select();
+      }
+    };
+
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, []);
+
   const cancelFlyoutClose = () => {
     if (closeFlyoutTimeoutRef.current) {
       window.clearTimeout(closeFlyoutTimeoutRef.current);
@@ -188,7 +242,7 @@ export function Sidebar({
 
   const flyoutStyle = useMemo(() => {
     if (!activeFlyout || typeof window === 'undefined') return undefined;
-    const left = Math.min(activeFlyout.rect.right + 12, window.innerWidth - 12 - 280);
+    const left = Math.min(activeFlyout.rect.right + 10, window.innerWidth - 12 - 280);
     const maxHeight = activeFlyout.type === 'settings' ? 420 : 360;
     const top = Math.max(12, Math.min(activeFlyout.rect.top, window.innerHeight - 12 - maxHeight));
     return { left, top };
@@ -225,6 +279,12 @@ export function Sidebar({
     onOpenConfigScreen();
   };
 
+  const handleNavigate = (code: string, title: string) => {
+    onNavigateTransaction(code, title);
+    setActiveFlyout(null);
+    if (searchTerm) setSearchTerm('');
+  };
+
   const renderSettingsItems = (fromFlyout = false) => {
     const buttonClass = fromFlyout ? 'nav-link nav-link--full nav-link--child' : 'nav-link nav-link--child';
 
@@ -233,7 +293,6 @@ export function Sidebar({
         {canOpenConfigScreen ? (
           <li>
             <button className={buttonClass} type="button" onClick={handleOpenConfigScreen}>
-              <span className="nav-link__subicon nav-link__subicon--round" aria-hidden="true" />
               <span className="nav-link__title">Tela de configuração</span>
             </button>
           </li>
@@ -241,15 +300,13 @@ export function Sidebar({
 
         <li>
           <button className={buttonClass} type="button" onClick={handleOpenLanguageSelector}>
-            <span className="nav-link__subicon nav-link__subicon--round" aria-hidden="true" />
             <span className="nav-link__title">Idioma</span>
-            <span className="nav-link__value">{currentLanguageLabel}</span>
+            <span className="nav-link__value" data-no-translate>{currentLanguageLabel}</span>
           </button>
         </li>
 
         <li>
           <button className={buttonClass} type="button" onClick={handleToggleMenuOnOpen}>
-            <span className="nav-link__subicon nav-link__subicon--round" aria-hidden="true" />
             <span className="nav-link__title">Menu ao abrir</span>
             <span className="nav-link__value">{collapsed ? 'Recolhido' : 'Expandido'}</span>
           </button>
@@ -257,10 +314,10 @@ export function Sidebar({
 
         <li>
           <button className={buttonClass} type="button" onClick={handleToggleTheme}>
-            <span className="nav-link__subicon nav-link__subicon--round" aria-hidden="true" />
             <span className="nav-link__title">Tema</span>
             <span className="nav-link__value nav-link__value--icon">
               <ThemeIcon mode={themeMode} size={16} />
+              {themeMode === 'dark' ? 'Escuro' : 'Claro'}
             </span>
           </button>
         </li>
@@ -271,62 +328,102 @@ export function Sidebar({
   return (
     <aside className="sidebar" data-collapsed={collapsed ? 'true' : 'false'} aria-label="Menu principal">
       <div className="sidebar__brand">
-        <div className="sidebar__brand-row">
+        <div className="sidebar__top">
           <button
             type="button"
             onClick={onNavigateHome}
             className="sidebar__brand-home"
-            aria-label="Ir para Home"
-            title="Ir para Home"
+            aria-label="Ir para o início"
+            title="Ir para o início"
           >
-            <div className="sidebar__brand-home-content">
-              <LogoIcon size={40} mode={themeMode} />
-              <div className="sidebar__brand-text">
-                <p className="sidebar__brand-title">Bem vindo ao {APP_NAME}</p>
-                <p className="sidebar__brand-subtitle">v{APP_VERSION}</p>
-              </div>
-            </div>
+            <LogoIcon size={30} mode={themeMode} />
+            <span className="sidebar__brand-name">{APP_NAME}</span>
           </button>
+
+          <div className="sidebar__company" title={`Empresa: ${companyName || '-'}`}>
+            <span className="sidebar__company-name">{companyName || '-'}</span>
+          </div>
         </div>
 
-        <div className="sidebar__meta-group">
-          <p className="sidebar__meta">
-            <span className="sidebar__meta-label">Usuario:</span> {userName || '-'}
-          </p>
-          <p className="sidebar__meta">
-            <span className="sidebar__meta-label">Empresa:</span> {companyName || '-'}
-          </p>
-        </div>
+
       </div>
 
-      <div className="sidebar__scroll" aria-label="Módulos" onScroll={() => flyoutEnabled && setActiveFlyout(null)}>
-        {loadingMenus && <p className="sidebar__status">Carregando menus...</p>}
+      {showInlineSections ? (
+        <label className="sidebar__search">
+          <IoSearchOutline size={16} aria-hidden="true" />
+          <input
+            ref={searchInputRef}
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') setSearchTerm('');
+            }}
+            placeholder="Buscar no menu"
+            aria-label="Buscar no menu"
+          />
+          {searchTerm ? (
+            <button
+              type="button"
+              className="sidebar__search-clear"
+              onClick={() => setSearchTerm('')}
+              aria-label="Limpar busca"
+            >
+              <IoCloseCircle size={16} />
+            </button>
+          ) : (
+            <kbd className="sidebar__search-kbd" aria-hidden="true">
+              Ctrl K
+            </kbd>
+          )}
+        </label>
+      ) : null}
+
+      <nav className="sidebar__scroll" aria-label="Módulos" onScroll={() => flyoutEnabled && setActiveFlyout(null)}>
+        <p className="sidebar__group-label">{isSearching ? 'Resultados' : 'Módulos'}</p>
+
+        {loadingMenus && (
+          <div className="sidebar__skeleton" aria-label="Carregando menus">
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
+        )}
 
         {!loadingMenus && menus.length === 0 && (
           <p className="sidebar__status">Nenhum menu liberado para este usuário.</p>
         )}
 
-        {menus.map((menu) => {
+        {!loadingMenus && isSearching && visibleMenus.length === 0 && (
+          <p className="sidebar__status">Nada encontrado para “{searchTerm.trim()}”.</p>
+        )}
+
+        {visibleMenus.map((menu) => {
           const Icon = iconMap[menu.icon] || IoListOutline;
-          const isExpanded = expandedMenu === menu.id;
+          const isExpanded = isSearching || expandedMenu === menu.id;
+          const hasActive = menuHasActive(menu);
 
           return (
-            <section className="sidebar__section" key={menu.id}>
+            <section
+              className={`sidebar__section ${isExpanded ? 'is-expanded' : ''} ${hasActive ? 'has-active' : ''}`}
+              key={menu.id}
+            >
               <button
-                className="nav-link"
+                className={`nav-link nav-link--parent ${hasActive ? 'is-parent-active' : ''}`}
                 type="button"
                 onClick={(event) => {
                   if (flyoutEnabled) {
                     const single = menu.subitems.length === 1 ? menu.subitems[0] : null;
                     if (single) {
-                      onNavigateTransaction(single.transactionCode, single.title);
+                      handleNavigate(single.transactionCode, single.title);
                       return;
                     }
                     openMenuFlyout(menu, event.currentTarget);
                     return;
                   }
 
-                  onToggleMenu(menu.id);
+                  if (!isSearching) onToggleMenu(menu.id);
                 }}
                 onMouseEnter={(event) => openMenuFlyout(menu, event.currentTarget)}
                 onMouseLeave={() => flyoutEnabled && scheduleFlyoutClose()}
@@ -335,65 +432,87 @@ export function Sidebar({
                 aria-expanded={isExpanded}
                 title={menu.title}
               >
-                <Icon size={18} />
+                <span className="nav-link__icon">
+                  <Icon size={17} />
+                </span>
                 <span className="nav-link__title">{menu.title}</span>
-                <span className="nav-link__right">{isExpanded ? <IoChevronDown size={16} /> : <IoChevronForward size={16} />}</span>
+                <span className="nav-link__right">
+                  <IoChevronDown size={14} />
+                </span>
               </button>
 
               {showInlineSections && isExpanded && (
                 <ul className="nav-list nav-list--nested">
-                  {menu.subitems.map((sub) => (
-                    <li key={`${menu.id}-${sub.transactionCode}-${sub.title}`}>
-                      <button
-                        className="nav-link nav-link--child"
-                        type="button"
-                        onClick={() => onNavigateTransaction(sub.transactionCode, sub.title)}
-                      >
-                        <span className="nav-link__subicon nav-link__subicon--round" aria-hidden="true" />
-                        <span className="nav-link__title">{sub.title}</span>
-                      </button>
-                    </li>
-                  ))}
+                  {menu.subitems.map((sub) => {
+                    const active = isSubActive(sub.transactionCode, sub.title);
+                    return (
+                      <li key={`${menu.id}-${sub.transactionCode}-${sub.title}`}>
+                        <button
+                          className={`nav-link nav-link--child ${active ? 'is-active' : ''}`}
+                          type="button"
+                          onClick={() => handleNavigate(sub.transactionCode, sub.title)}
+                          aria-current={active ? 'page' : undefined}
+                        >
+                          <span className="nav-link__title">{sub.title}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </section>
           );
         })}
 
-        <section className="sidebar__section sidebar__section--settings">
-          <button
-            className="nav-link"
-            type="button"
-            onClick={(event) => {
-              if (flyoutEnabled) {
-                openSettingsFlyout(event.currentTarget);
-                return;
-              }
-              setSettingsExpanded((prev) => !prev);
-            }}
-            onMouseEnter={(event) => openSettingsFlyout(event.currentTarget)}
-            onMouseLeave={() => flyoutEnabled && scheduleFlyoutClose()}
-            onFocus={(event) => openSettingsFlyout(event.currentTarget)}
-            onBlur={() => flyoutEnabled && scheduleFlyoutClose()}
-            aria-expanded={settingsExpanded}
-            title="Configurações"
-          >
-            <IoSettingsOutline size={18} />
-            <span className="nav-link__title">Configurações</span>
-            <span className="nav-link__right">
-              {settingsExpanded ? <IoChevronDown size={16} /> : <IoChevronForward size={16} />}
-            </span>
-          </button>
+        {!isSearching ? (
+          <>
+            <p className="sidebar__group-label">Preferências</p>
+            <section className={`sidebar__section sidebar__section--settings ${settingsExpanded ? 'is-expanded' : ''}`}>
+              <button
+                className="nav-link nav-link--parent"
+                type="button"
+                onClick={(event) => {
+                  if (flyoutEnabled) {
+                    openSettingsFlyout(event.currentTarget);
+                    return;
+                  }
+                  setSettingsExpanded((prev) => !prev);
+                }}
+                onMouseEnter={(event) => openSettingsFlyout(event.currentTarget)}
+                onMouseLeave={() => flyoutEnabled && scheduleFlyoutClose()}
+                onFocus={(event) => openSettingsFlyout(event.currentTarget)}
+                onBlur={() => flyoutEnabled && scheduleFlyoutClose()}
+                aria-expanded={settingsExpanded}
+                title="Configurações"
+              >
+                <span className="nav-link__icon">
+                  <IoSettingsOutline size={17} />
+                </span>
+                <span className="nav-link__title">Configurações</span>
+                <span className="nav-link__right">
+                  <IoChevronDown size={14} />
+                </span>
+              </button>
 
-          {showInlineSections && settingsExpanded && <ul className="nav-list nav-list--nested">{renderSettingsItems()}</ul>}
-        </section>
-      </div>
+              {showInlineSections && settingsExpanded && (
+                <ul className="nav-list nav-list--nested">{renderSettingsItems()}</ul>
+              )}
+            </section>
+          </>
+        ) : null}
+      </nav>
 
       <div className="sidebar__footer">
-        <button className="nav-link sidebar__footer-logout" type="button" onClick={onLogout}>
-          <IoLogOutOutline size={18} />
+        <button className="icon-button--danger nav-link sidebar__footer-logout" type="button" onClick={onLogout} title="Sair">
+          <span className="nav-link__icon">
+            <IoLogOutOutline size={17} />
+          </span>
           <span className="nav-link__title">Sair</span>
         </button>
+
+        <span className="sidebar__version-chip" title={`Versão ${APP_VERSION}`}>
+          v{APP_VERSION}
+        </span>
 
         <button
           type="button"
@@ -402,7 +521,7 @@ export function Sidebar({
           aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
           title={collapsed ? 'Expandir menu' : 'Recolher menu'}
         >
-          {collapsed ? <IoChevronForwardOutline size={18} /> : <IoChevronBackOutline size={18} />}
+          {collapsed ? <IoChevronForwardOutline size={17} /> : <IoChevronBackOutline size={17} />}
         </button>
       </div>
 
@@ -420,21 +539,21 @@ export function Sidebar({
               <ul className="nav-list">
                 {activeFlyout.type === 'settings'
                   ? renderSettingsItems(true)
-                  : activeFlyout.menu.subitems.map((item) => (
-                      <li key={`${activeFlyout.menu.id}-${item.transactionCode}`}>
-                        <button
-                          type="button"
-                          className="nav-link nav-link--full nav-link--child"
-                          onClick={() => {
-                            onNavigateTransaction(item.transactionCode, item.title);
-                            setActiveFlyout(null);
-                          }}
-                        >
-                          <span className="nav-link__subicon nav-link__subicon--round" aria-hidden="true" />
-                          <span className="nav-link__title">{item.title}</span>
-                        </button>
-                      </li>
-                    ))}
+                  : activeFlyout.menu.subitems.map((item) => {
+                      const active = isSubActive(item.transactionCode, item.title);
+                      return (
+                        <li key={`${activeFlyout.menu.id}-${item.transactionCode}`}>
+                          <button
+                            type="button"
+                            className={`nav-link nav-link--full nav-link--child ${active ? 'is-active' : ''}`}
+                            onClick={() => handleNavigate(item.transactionCode, item.title)}
+                            aria-current={active ? 'page' : undefined}
+                          >
+                            <span className="nav-link__title">{item.title}</span>
+                          </button>
+                        </li>
+                      );
+                    })}
               </ul>
             </div>,
             document.body,
@@ -457,14 +576,7 @@ export function Sidebar({
               <article className="modal-card modal-card--language">
                 <header className="modal-card__header">
                   <h2>Selecionar idioma</h2>
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label="Fechar"
-                    onClick={() => setLanguageModalOpen(false)}
-                  >
-                    <IoCloseOutline size={18} />
-                  </button>
+                  <ModalHeaderActions onClose={() => setLanguageModalOpen(false)} expandable={false} />
                 </header>
                 <p>Escolha o idioma para traducao da interface.</p>
 
@@ -476,7 +588,7 @@ export function Sidebar({
                         className={`sidebar-language-option ${language === option.value ? 'is-active' : ''}`}
                         onClick={() => handleSetLanguage(option.value)}
                       >
-                        <span>{option.label}</span>
+                        <span data-no-translate>{option.label}</span>
                         {language === option.value ? <IoCheckmarkDoneOutline size={16} /> : null}
                       </button>
                     </li>
@@ -484,7 +596,7 @@ export function Sidebar({
                 </ul>
 
                 <div className="sidebar-language-actions">
-                  <button className="secondary-button" type="button" onClick={() => setLanguageModalOpen(false)}>
+                  <button className="secondary-button modal-card__close" type="button" onClick={() => setLanguageModalOpen(false)}>
                     Cancelar
                   </button>
                 </div>

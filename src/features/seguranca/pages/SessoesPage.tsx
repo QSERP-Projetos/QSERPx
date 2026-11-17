@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   IoArrowBack,
-  IoCloseOutline,
   IoFilterOutline,
   IoLogOutOutline,
   IoRefreshOutline,
@@ -28,6 +27,8 @@ import {
 import { buscaLicencaCliente, licencaPorHd } from '../../../services/supabaseQueries';
 import { filterListByTerm } from '../../../utils/filterListByTerm';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
 
 type SelectOption = {
   value: string;
@@ -444,11 +445,6 @@ export function SessoesPage() {
     setSortDirection(field === 'dataLogin' ? 'desc' : 'asc');
   };
 
-  const getSortIndicator = (field: SortField) => {
-    if (sortField !== field) return '▲▼';
-    return sortDirection === 'asc' ? '▲' : '▼';
-  };
-
   return (
     <main className="clientes-page list-layout-page">
       <section className="clientes-page__header">
@@ -551,34 +547,19 @@ export function SessoesPage() {
             <p className="module-empty">Nenhuma sessão encontrada.</p>
           ) : (
             <>
-              <div className="table-scroll module-table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('usuario')}>
-                          Usuário <span>{getSortIndicator('usuario')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('sessao')}>
-                          Sessão <span>{getSortIndicator('sessao')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('dataLogin')}>
-                          Data login <span>{getSortIndicator('dataLogin')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('versao')}>
-                          Versão <span>{getSortIndicator('versao')}</span>
-                        </button>
-                      </th>
-                      <th className="module-table__actions-col">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <div className="data-cards-region">
+                  <DataListSortBar
+                    options={[
+                      { field: 'usuario', label: 'Usuário' },
+                      { field: 'sessao', label: 'Sessão' },
+                      { field: 'dataLogin', label: 'Data login' },
+                      { field: 'versao', label: 'Versão' },
+                    ]}
+                    active={sortField}
+                    direction={sortDirection}
+                    onSort={handleSort}
+                  />
+                  <DataList ariaLabel="Sessões">
                     {rowsPesquisa.map((row, index) => {
                       const key = resolveSessaoId(row) || index;
                       const usuarioSessao = resolveSessaoUsuario(row) || '-';
@@ -586,70 +567,30 @@ export function SessoesPage() {
                       const versao = String(row?.versao_Sistema ?? row?.versao_sistema ?? '-');
 
                       return (
-                        <tr key={key}>
-                          <td>{usuarioSessao}</td>
-                          <td>{resolveSessaoId(row) || '-'}</td>
-                          <td>{dataLogin}</td>
-                          <td>{versao}</td>
-                          <td>
-                            <div className="table-actions">
-                              <button
-                                type="button"
-                                title="Encerrar sessão"
-                                aria-label="Encerrar sessão"
-                                onClick={() => abrirEncerrarSessao(row)}
-                              >
-                                <IoLogOutOutline size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                        <DataListItem
+                          key={key}
+                          code={resolveSessaoId(row) || '-'}
+                          title={usuarioSessao}
+                          details={[
+                            { label: 'Login', value: dataLogin },
+                            { label: 'Versão', value: versao },
+                          ]}
+                          actions={
+                            <button
+                              type="button"
+                              className="icon-button icon-button--danger"
+                              title="Encerrar sessão"
+                              aria-label="Encerrar sessão"
+                              onClick={() => abrirEncerrarSessao(row)}
+                            >
+                              <IoLogOutOutline size={16} />
+                            </button>
+                          }
+                        />
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="module-cards">
-                {rowsPesquisa.map((row, index) => {
-                  const key = resolveSessaoId(row) || index;
-                  const usuarioSessao = resolveSessaoUsuario(row) || '-';
-                  const dataLogin = formatDateTime(String(row?.data_Hora_Login ?? row?.data_hora_login ?? ''));
-                  const versao = String(row?.versao_Sistema ?? row?.versao_sistema ?? '-');
-
-                  return (
-                    <article className="module-card" key={`card-${key}`}>
-                      <div className="module-card__row">
-                        <span>Usuário</span>
-                        <strong>{usuarioSessao}</strong>
-                      </div>
-                      <div className="module-card__row">
-                        <span>Sessão</span>
-                        <strong>{resolveSessaoId(row) || '-'}</strong>
-                      </div>
-                      <div className="module-card__row">
-                        <span>Data login</span>
-                        <strong>{dataLogin}</strong>
-                      </div>
-                      <div className="module-card__row">
-                        <span>Versão</span>
-                        <strong>{versao}</strong>
-                      </div>
-
-                      <div className="module-card__actions">
-                        <button
-                          type="button"
-                          title="Encerrar sessão"
-                          aria-label="Encerrar sessão"
-                          onClick={() => abrirEncerrarSessao(row)}
-                        >
-                          <IoLogOutOutline size={16} />
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+                  </DataList>
+                </div>
             </>
           )}
         </section>
@@ -660,18 +601,11 @@ export function SessoesPage() {
           <article className="modal-card">
             <header className="modal-card__header">
               <h2>Encerrar sessão</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   if (encerrando) return;
                   setConfirmOpen(false);
                   setSessaoSelecionada(null);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} expandable={false} />
             </header>
 
             <p className="module-empty">
@@ -681,7 +615,7 @@ export function SessoesPage() {
 
             <div className="form-actions">
               <button
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 type="button"
                 onClick={() => {
                   if (encerrando) return;
