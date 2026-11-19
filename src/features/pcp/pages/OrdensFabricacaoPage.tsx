@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   IoArrowBack,
-  IoChevronDownOutline,
-  IoChevronForwardOutline,
   IoCloseCircleOutline,
   IoFilterOutline,
   IoRefreshOutline,
@@ -16,6 +14,8 @@ import { ListSearchField } from '../../../components/ListSearchField';
 import { GlobalConfig } from '../../../services/globalConfig';
 import { listOrdensFabricacaoCall } from '../../../services/apiCalls';
 import { filterListByTerm } from '../../../utils/filterListByTerm';
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
+import { StatusBadge } from '../../../components/StatusBadge';
 
 const formatToday = () => {
   const now = new Date();
@@ -193,7 +193,6 @@ export function OrdensFabricacaoPage() {
   const [filtroErrors, setFiltroErrors] = useState<FiltroErrors>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filtrosOpen, setFiltrosOpen] = useState(false);
-  const [expandedOfCards, setExpandedOfCards] = useState<Record<string, boolean>>({});
   const [sortField, setSortField] = useState<SortField>('numero');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const initialLoadRef = useRef(false);
@@ -240,11 +239,6 @@ export function OrdensFabricacaoPage() {
 
     setSortField(field);
     setSortDirection('asc');
-  };
-
-  const getSortIndicator = (field: SortField) => {
-    if (sortField !== field) return '▲▼';
-    return sortDirection === 'asc' ? '▲' : '▼';
   };
 
   const carregar = useCallback(async () => {
@@ -484,43 +478,21 @@ export function OrdensFabricacaoPage() {
           <p className="module-empty">Nenhuma ordem encontrada.</p>
         ) : (
           <>
-            <div className="table-scroll module-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('numero')}>
-                        Número <span>{getSortIndicator('numero')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('produto')}>
-                        Produto <span>{getSortIndicator('produto')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('descricao')}>
-                        Descrição <span>{getSortIndicator('descricao')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('data')}>
-                        Data <span>{getSortIndicator('data')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('quantidade')}>
-                        Quantidade <span>{getSortIndicator('quantidade')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('situacao')}>
-                        Situação <span>{getSortIndicator('situacao')}</span>
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div className="data-cards-region">
+                <DataListSortBar
+                  options={[
+                    { field: 'numero', label: 'Número' },
+                    { field: 'produto', label: 'Produto' },
+                    { field: 'descricao', label: 'Descrição' },
+                    { field: 'data', label: 'Data' },
+                    { field: 'quantidade', label: 'Quantidade' },
+                    { field: 'situacao', label: 'Situação' },
+                  ]}
+                  active={sortField}
+                  direction={sortDirection}
+                  onSort={handleSort}
+                />
+                <DataList ariaLabel="Ordens de fabricação">
                   {rowsFiltradas.map((row, index) => {
                     const numero = getTextByKeys(row, ORDEM_KEYS);
                     const codigoProduto = getTextByKeys(row, PRODUTO_KEYS);
@@ -530,83 +502,21 @@ export function OrdensFabricacaoPage() {
                     const situacao = getTextByKeys(row, SITUACAO_KEYS);
 
                     return (
-                      <tr key={`of-${index}`}>
-                        <td>{numero}</td>
-                        <td>{codigoProduto}</td>
-                        <td>{descricao}</td>
-                        <td>{data}</td>
-                        <td>{quantidade}</td>
-                        <td>{situacao}</td>
-                      </tr>
+                      <DataListItem
+                        key={`of-${index}`}
+                        code={numero}
+                        title={descricao}
+                        subtitle={codigoProduto}
+                        details={[
+                          { label: 'Data', value: data },
+                          { label: 'Quantidade', value: quantidade },
+                        ]}
+                        status={situacao ? <StatusBadge label={situacao} /> : null}
+                      />
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="module-cards">
-              {rowsFiltradas.map((row, index) => {
-                const numero = getTextByKeys(row, ORDEM_KEYS);
-                const codigoProduto = getTextByKeys(row, PRODUTO_KEYS);
-                const descricao = getTextByKeys(row, DESCRICAO_KEYS);
-                const produtoLinha =
-                  codigoProduto !== '-' && descricao !== '-'
-                    ? `${codigoProduto} - ${descricao}`
-                    : codigoProduto !== '-'
-                      ? codigoProduto
-                      : descricao;
-                const data = formatDateLabel(getFirstValue(row, DATA_KEYS));
-                const quantidade = getTextByKeys(row, QUANTIDADE_KEYS);
-                const situacao = getTextByKeys(row, SITUACAO_KEYS);
-                const cardKey = `${numero || `idx-${index}`}-${codigoProduto}`;
-                const isExpandedCard = Boolean(expandedOfCards[cardKey]);
-
-                return (
-                  <article className="module-card" key={`card-of-${index}`}>
-                    <div className="module-card__row module-card__row--split">
-                      <div className="module-card__row-stack">
-                        <span>Número</span>
-                        <strong>{numero}</strong>
-                      </div>
-                      <button
-                        type="button"
-                        className="module-card__expand-toggle"
-                        onClick={() =>
-                          setExpandedOfCards((prev) => ({
-                            ...prev,
-                            [cardKey]: !prev[cardKey],
-                          }))
-                        }
-                        aria-label={isExpandedCard ? 'Recolher detalhes da ordem' : 'Expandir detalhes da ordem'}
-                        title={isExpandedCard ? 'Recolher detalhes' : 'Expandir detalhes'}
-                      >
-                        {isExpandedCard ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
-                      </button>
-                    </div>
-                    <div className="module-card__row">
-                      <span>Produto</span>
-                      <strong className="module-card__product-inline">{produtoLinha}</strong>
-                    </div>
-                    {isExpandedCard ? (
-                      <>
-                        <div className="module-card__row">
-                          <span>Data</span>
-                          <strong>{data}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Quantidade</span>
-                          <strong>{quantidade}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Situação</span>
-                          <strong>{situacao}</strong>
-                        </div>
-                      </>
-                    ) : null}
-                  </article>
-                );
-              })}
-            </div>
+                </DataList>
+              </div>
           </>
         )}
         </section>

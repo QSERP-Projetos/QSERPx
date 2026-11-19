@@ -3,10 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   IoAddOutline,
   IoArrowBack,
-  IoChevronDownOutline,
-  IoChevronForwardOutline,
   IoCloseCircleOutline,
-  IoCloseOutline,
   IoFilterOutline,
   IoRefreshOutline,
 } from 'react-icons/io5';
@@ -27,6 +24,9 @@ import {
 } from '../../../services/apiCalls';
 import { filterListByTerm } from '../../../utils/filterListByTerm';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
+import { StatusBadge } from '../../../components/StatusBadge';
 
 const formatToday = () => {
   const now = new Date();
@@ -238,7 +238,6 @@ export function PreparacaoMaquinaPage() {
   const [filtroErrors, setFiltroErrors] = useState<FiltroErrors>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filtrosOpen, setFiltrosOpen] = useState(false);
-  const [expandedPreparacaoCards, setExpandedPreparacaoCards] = useState<Record<string, boolean>>({});
   const [sortField, setSortField] = useState<SortField>('ordem');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const initialLoadRef = useRef(false);
@@ -310,11 +309,6 @@ export function PreparacaoMaquinaPage() {
 
     setSortField(field);
     setSortDirection('asc');
-  };
-
-  const getSortIndicator = (field: SortField) => {
-    if (sortField !== field) return '▲▼';
-    return sortDirection === 'asc' ? '▲' : '▼';
   };
 
   const carregar = useCallback(async () => {
@@ -722,139 +716,43 @@ export function PreparacaoMaquinaPage() {
           <p className="module-empty">Nenhuma preparação encontrada.</p>
         ) : (
           <>
-            <div className="table-scroll module-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('ordem')}>
-                        Ordem <span>{getSortIndicator('ordem')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('operacao')}>
-                        Operação <span>{getSortIndicator('operacao')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('maquina')}>
-                        Máquina <span>{getSortIndicator('maquina')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('situacao')}>
-                        Situação <span>{getSortIndicator('situacao')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('inicio')}>
-                        Início <span>{getSortIndicator('inicio')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('fim')}>
-                        Fim <span>{getSortIndicator('fim')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('usuario')}>
-                        Usuário <span>{getSortIndicator('usuario')}</span>
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div className="data-cards-region">
+                <DataListSortBar
+                  options={[
+                    { field: 'ordem', label: 'Ordem' },
+                    { field: 'operacao', label: 'Operação' },
+                    { field: 'maquina', label: 'Máquina' },
+                    { field: 'situacao', label: 'Situação' },
+                    { field: 'inicio', label: 'Início' },
+                    { field: 'fim', label: 'Fim' },
+                    { field: 'usuario', label: 'Usuário' },
+                  ]}
+                  active={sortField}
+                  direction={sortDirection}
+                  onSort={handleSort}
+                />
+                <DataList ariaLabel="Preparações de máquina">
                   {rowsFiltradas.map((row, index) => {
                     const current = resolvePreparacaoListRow(row);
                     const situacao = getSituacaoApontLabel(current.situacaoCodigo);
 
                     return (
-                      <tr key={`prep-${index}`}>
-                        <td>{current.ordem}</td>
-                        <td>{current.operacao}</td>
-                        <td>{current.maquina}</td>
-                        <td>{situacao}</td>
-                        <td>
-                          {current.inicioData} {current.inicioHora}
-                        </td>
-                        <td>
-                          {current.fimData} {current.fimHora}
-                        </td>
-                        <td>{current.usuario}</td>
-                      </tr>
+                      <DataListItem
+                        key={`prep-${index}`}
+                        code={current.ordem}
+                        title={current.maquina}
+                        subtitle={current.operacao ? `Operação ${current.operacao}` : undefined}
+                        details={[
+                          { label: 'Início', value: `${current.inicioData} ${current.inicioHora}`.trim() || '-' },
+                          { label: 'Fim', value: `${current.fimData} ${current.fimHora}`.trim() || '-' },
+                          { label: 'Usuário', value: current.usuario || '-' },
+                        ]}
+                        status={situacao ? <StatusBadge label={situacao} /> : null}
+                      />
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="module-cards">
-              {rowsFiltradas.map((row, index) => {
-                const current = resolvePreparacaoListRow(row);
-                const situacao = getSituacaoApontLabel(current.situacaoCodigo);
-                const cardKey = `${current.ordem || `idx-${index}`}-${current.maquina}`;
-                const isExpandedCard = Boolean(expandedPreparacaoCards[cardKey]);
-
-                return (
-                  <article className="module-card" key={`card-prep-${index}`}>
-                    <div className="module-card__row module-card__row--split">
-                      <div className="module-card__row-stack">
-                        <span>Ordem</span>
-                        <strong>{current.ordem}</strong>
-                      </div>
-                      <button
-                        type="button"
-                        className="module-card__expand-toggle"
-                        onClick={() =>
-                          setExpandedPreparacaoCards((prev) => ({
-                            ...prev,
-                            [cardKey]: !prev[cardKey],
-                          }))
-                        }
-                        aria-label={isExpandedCard ? 'Recolher detalhes da preparação' : 'Expandir detalhes da preparação'}
-                        title={isExpandedCard ? 'Recolher detalhes' : 'Expandir detalhes'}
-                      >
-                        {isExpandedCard ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
-                      </button>
-                    </div>
-
-                    <div className="module-card__row">
-                      <span>Máquina</span>
-                      <strong>{current.maquina}</strong>
-                    </div>
-
-                    {isExpandedCard ? (
-                      <>
-                        <div className="module-card__row">
-                          <span>Operação</span>
-                          <strong>{current.operacao}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Situação</span>
-                          <strong>{situacao}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Início</span>
-                          <strong>
-                            {current.inicioData} {current.inicioHora}
-                          </strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Fim</span>
-                          <strong>
-                            {current.fimData} {current.fimHora}
-                          </strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Usuário</span>
-                          <strong>{current.usuario}</strong>
-                        </div>
-                      </>
-                    ) : null}
-                  </article>
-                );
-              })}
-            </div>
+                </DataList>
+              </div>
           </>
         )}
         </section>
@@ -865,17 +763,10 @@ export function PreparacaoMaquinaPage() {
           <article className="modal-card modal-card--wide preparacao-maquina-modal">
             <header className="modal-card__header">
               <h2>Nova preparação de máquina</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   if (saving) return;
                   setModalOpen(false);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <div className="form-grid-3">
@@ -1002,7 +893,7 @@ export function PreparacaoMaquinaPage() {
             </div>
 
             <div className="form-actions">
-              <button className="secondary-button" type="button" onClick={() => setModalOpen(false)}>
+              <button className="secondary-button modal-card__close" type="button" onClick={() => setModalOpen(false)}>
                 Cancelar
               </button>
               <button className="primary-button" type="button" onClick={() => void handleSalvar()} disabled={saving}>

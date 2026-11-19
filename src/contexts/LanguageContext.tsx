@@ -1,6 +1,7 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { STORAGE_KEYS } from '../constants/storageKeys';
+import { setUiLanguage } from '../i18n/domTranslator';
 
 type Language = 'pt' | 'en' | 'es' | 'ja';
 
@@ -72,6 +73,11 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
     }
     return 'pt';
   });
+
+  // Traduz toda a interface (textos e avisos de todas as telas) para o idioma escolhido.
+  useEffect(() => {
+    void setUiLanguage(language);
+  }, [language]);
 
   const setLanguage = (value: Language) => {
     setLanguageState(value);

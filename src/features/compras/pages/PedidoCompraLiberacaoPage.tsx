@@ -6,7 +6,6 @@ import {
   IoChevronDownOutline,
   IoChevronForwardOutline,
   IoCloseCircleOutline,
-  IoCloseOutline,
   IoEyeOffOutline,
   IoEyeOutline,
   IoRefreshOutline,
@@ -24,6 +23,9 @@ import {
   tokenCall,
 } from '../../../services/apiCalls';
 import { filterListByTerm } from '../../../utils/filterListByTerm';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
+import { REQUIRED_FIELDS_MESSAGE, useRequiredFields } from '../../../hooks/useRequiredFields';
 
 type PedidoCompra = {
   numPedido: string;
@@ -179,6 +181,7 @@ const parseDateForSort = (value: any) => {
 export function PedidoCompraLiberacaoPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const obrig = useRequiredFields();
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -194,7 +197,6 @@ export function PedidoCompraLiberacaoPage() {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(max-width: 1024px)').matches;
   });
-  const [expandedPedidoCards, setExpandedPedidoCards] = useState<Record<string, boolean>>({});
   const [detalhesHeaderExpanded, setDetalhesHeaderExpanded] = useState(false);
   const [expandedDetalheItens, setExpandedDetalheItens] = useState<Record<string, boolean>>({});
   const [sortField, setSortField] = useState<SortField>('pedido');
@@ -245,11 +247,6 @@ export function PedidoCompraLiberacaoPage() {
 
     setSortField(field);
     setSortDirection('asc');
-  };
-
-  const getSortIndicator = (field: SortField) => {
-    if (sortField !== field) return '▲▼';
-    return sortDirection === 'asc' ? '▲' : '▼';
   };
 
   const carregarPedidos = useCallback(async () => {
@@ -407,8 +404,8 @@ export function PedidoCompraLiberacaoPage() {
       return;
     }
 
-    if (!usuario || !senha) {
-      showToast('Informe usuário e senha para liberar o pedido.', 'error');
+    if (!obrig.validate([usuario, senha])) {
+      showToast(REQUIRED_FIELDS_MESSAGE, 'error');
       return;
     }
 
@@ -528,124 +525,47 @@ export function PedidoCompraLiberacaoPage() {
             <p className="module-empty">Nenhum pedido encontrado.</p>
           ) : (
             <>
-              <div className="table-scroll module-table-wrap">
-                <table>
-              <thead>
-                <tr>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('pedido')}>
-                      Pedido <span>{getSortIndicator('pedido')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('data')}>
-                      Data <span>{getSortIndicator('data')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('tipo')}>
-                      Tipo <span>{getSortIndicator('tipo')}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button className="module-table__sort" type="button" onClick={() => handleSort('fornecedor')}>
-                      Fornecedor <span>{getSortIndicator('fornecedor')}</span>
-                    </button>
-                  </th>
-                  <th>Código material</th>
-                  <th className="module-table__actions-col pedido-liberacao-table__actions-col">Ação</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pedidosFiltrados.map((pedido, index) => {
-                  const materialInfo = resolvePedidoMaterialInfo(pedido);
-                  return (
-                    <tr key={`${pedido.numPedido}-${index}`}>
-                      <td>{pedido.numPedido || '-'}</td>
-                      <td>{pedido.dataPedido || '-'}</td>
-                      <td>{pedido.tipoPedido || '-'}</td>
-                      <td>{pedido.fornecedor || '-'}</td>
-                      <td>{materialInfo.codigoMaterial}</td>
-                      <td className="pedido-liberacao-table__action-cell">
-                        <button
-                          className="icon-button module-action-button module-action-button--primary"
-                          type="button"
-                          onClick={() => void handleAbrirDetalhes(pedido)}
-                          aria-label="Detalhes"
-                          title="Detalhes"
-                        >
-                          <IoCheckmarkDoneOutline size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-              </div>
-
-              <div className="module-cards">
-                {pedidosFiltrados.map((pedido, index) => {
-                  const materialInfo = resolvePedidoMaterialInfo(pedido);
-                  const cardKey = `${pedido.numPedido || `idx-${index}`}`;
-                  const isExpandedCard = Boolean(expandedPedidoCards[cardKey]);
-                  return (
-                    <article key={`card-${pedido.numPedido}-${index}`} className="module-card">
-                      <div className="module-card__row module-card__row--split">
-                        <div className="module-card__row-stack">
-                          <span>Pedido</span>
-                          <strong>{pedido.numPedido || '-'}</strong>
-                        </div>
-                        <button
-                          type="button"
-                          className="module-card__expand-toggle"
-                          onClick={() =>
-                            setExpandedPedidoCards((prev) => ({
-                              ...prev,
-                              [cardKey]: !prev[cardKey],
-                            }))
-                          }
-                          aria-label={isExpandedCard ? 'Recolher detalhes do pedido' : 'Expandir detalhes do pedido'}
-                          title={isExpandedCard ? 'Recolher detalhes' : 'Expandir detalhes'}
-                        >
-                          {isExpandedCard ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
-                        </button>
-                      </div>
-                      <div className="module-card__row">
-                        <span>Data</span>
-                        <strong>{pedido.dataPedido || '-'}</strong>
-                      </div>
-
-                      {isExpandedCard ? (
-                        <>
-                          <div className="module-card__row">
-                            <span>Tipo</span>
-                            <strong>{pedido.tipoPedido || '-'}</strong>
-                          </div>
-                          <div className="module-card__row">
-                            <span>Fornecedor</span>
-                            <strong>{pedido.fornecedor || '-'}</strong>
-                          </div>
-                          <div className="module-card__row">
-                            <span>Código material</span>
-                            <strong>{materialInfo.codigoMaterial}</strong>
-                          </div>
-                        </>
-                      ) : null}
-
-                      <div className="module-card__actions pedido-liberacao-card-actions">
-                        <button
-                          type="button"
-                          onClick={() => void handleAbrirDetalhes(pedido)}
-                          aria-label="Detalhes"
-                          title="Detalhes"
-                        >
-                          <IoCheckmarkDoneOutline size={16} />
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
+              <div className="data-cards-region">
+                <DataListSortBar
+                  options={[
+                    { field: 'pedido', label: 'Pedido' },
+                    { field: 'data', label: 'Data' },
+                    { field: 'tipo', label: 'Tipo' },
+                    { field: 'fornecedor', label: 'Fornecedor' },
+                  ]}
+                  active={sortField}
+                  direction={sortDirection}
+                  onSort={handleSort}
+                />
+                <DataList ariaLabel="Pedidos de compra">
+                  {pedidosFiltrados.map((pedido, index) => {
+                    const materialInfo = resolvePedidoMaterialInfo(pedido);
+                    return (
+                      <DataListItem
+                        key={`${pedido.numPedido}-${index}`}
+                        code={pedido.numPedido || '-'}
+                        title={pedido.fornecedor || '-'}
+                        details={[
+                          { label: 'Data', value: pedido.dataPedido || '-' },
+                          { label: 'Tipo', value: pedido.tipoPedido || '-' },
+                          { label: 'Material', value: materialInfo.codigoMaterial },
+                        ]}
+                        onOpen={() => void handleAbrirDetalhes(pedido)}
+                        actions={
+                          <button
+                            className="icon-button module-action-button--primary"
+                            type="button"
+                            onClick={() => void handleAbrirDetalhes(pedido)}
+                            aria-label="Detalhes"
+                            title="Detalhes"
+                          >
+                            <IoCheckmarkDoneOutline size={16} />
+                          </button>
+                        }
+                      />
+                    );
+                  })}
+                </DataList>
               </div>
             </>
           )}
@@ -659,21 +579,14 @@ export function PedidoCompraLiberacaoPage() {
               <div>
                 <h2>Pedido de compra - Detalhes</h2>
               </div>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar detalhes"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   if (saving) return;
                   setDetalhesOpen(false);
                   setEstornoConfirmOpen(false);
                   setSelecionado(null);
                   setDetalhesHeaderExpanded(false);
                   setExpandedDetalheItens({});
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <div className="pedido-liberacao-detalhes-head">
@@ -847,7 +760,7 @@ export function PedidoCompraLiberacaoPage() {
                 {saving ? 'Processando...' : 'Estornar liberação'}
               </button>
               <button
-                className="secondary-button pedido-liberacao-details-actions__button"
+                className="secondary-button modal-card__close pedido-liberacao-details-actions__button"
                 type="button"
                 onClick={() => {
                   if (saving) return;
@@ -865,6 +778,7 @@ export function PedidoCompraLiberacaoPage() {
                 onClick={() => {
                   setCredenciais({ usuario: '', senha: '' });
                   setShowSenhaLiberacao(false);
+                  obrig.reset();
                   setLiberarOpen(true);
                 }}
                 disabled={saving}
@@ -881,17 +795,10 @@ export function PedidoCompraLiberacaoPage() {
           <article className="modal-card">
             <header className="modal-card__header">
               <h2>Confirmar</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar confirmação de estorno"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   if (saving) return;
                   setEstornoConfirmOpen(false);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} expandable={false} />
             </header>
 
             <p className="module-empty">
@@ -900,7 +807,7 @@ export function PedidoCompraLiberacaoPage() {
 
             <div className="form-actions">
               <button
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 type="button"
                 onClick={() => setEstornoConfirmOpen(false)}
                 disabled={saving}
@@ -920,27 +827,20 @@ export function PedidoCompraLiberacaoPage() {
           <article className="modal-card">
             <header className="modal-card__header">
               <h2>Liberar pedido</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   if (saving) return;
                   setCredenciais({ usuario: '', senha: '' });
                   setShowSenhaLiberacao(false);
                   setLiberarOpen(false);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <p className="module-empty">Pedido: {selecionado.numPedido || '-'}</p>
 
             <div className="form-grid-3">
               <label className="form-grid-3__full">
-                <span>Usuário</span>
-                <div className="login-password-field">
+                <span>Usuário *</span>
+                <div className={obrig.wrapperClass(credenciais.usuario, 'login-password-field')}>
                   <input
                     className="text-field"
                     type="text"
@@ -963,10 +863,11 @@ export function PedidoCompraLiberacaoPage() {
                     </button>
                   ) : null}
                 </div>
+                {obrig.error(credenciais.usuario)}
               </label>
               <label className="form-grid-3__full">
-                <span>Senha</span>
-                <div className="login-password-field">
+                <span>Senha *</span>
+                <div className={obrig.wrapperClass(credenciais.senha, 'login-password-field')}>
                   <input
                     className="text-field"
                     type={showSenhaLiberacao ? 'text' : 'password'}
@@ -986,12 +887,13 @@ export function PedidoCompraLiberacaoPage() {
                     {showSenhaLiberacao ? <IoEyeOffOutline size={18} /> : <IoEyeOutline size={18} />}
                   </button>
                 </div>
+                {obrig.error(credenciais.senha)}
               </label>
             </div>
 
             <div className="form-actions">
               <button
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 type="button"
                 onClick={() => {
                   if (saving) return;

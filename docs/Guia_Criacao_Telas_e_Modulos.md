@@ -1,5 +1,7 @@
 # Guia de Desenvolvimento: Criação de Telas, Módulos, Rotas e APIs no QSErpx
 
+> **Padrão visual obrigatório das telas:** siga `docs/PADRAO_TELAS.md` (página, lista, popups, botões, status, campos obrigatórios, celular e idiomas).
+
 Este documento serve como referência técnica para qualquer desenvolvedor que precise adicionar novos módulos, telas, menus, rotas, tabelas (DataTables) ou integrações de API no projeto **QSErpx**.
 
 ---
@@ -513,17 +515,23 @@ O layout das tabelas do QSErpx utiliza classes prontas em `app.css` que garantem
 </div>
 ```
 
-### Estrutura Padrão de Modal:
+### Estrutura Padrão de Popup (Modal)
+
+Todo popup segue o modelo da **Ordem de Separação**:
+
+- **Cabeçalho:** título à esquerda e, à direita, o componente `ModalHeaderActions`, que mostra os botões **Expandir** e **Fechar (X)**. Em confirmações simples (só texto + Sim/Não), use `expandable={false}`.
+- **Rodapé:** sempre tem o botão **Fechar** (ou Cancelar). A ação **primária** (cor primária) fica **à esquerda** e as **secundárias** à direita; Fechar/Cancelar fica sempre por último.
+- Use a classe `modal-card__close` no botão Fechar/Cancelar e `modal-card__footer` no rodapé. A ordem é garantida pelo `src/styles/theme.css`.
 
 ```tsx
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+
 {isModalOpen && (
-  <section className="modal-backdrop" role="dialog" aria-modal="true">
+  <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Novo registro">
     <article className="modal-card modal-card--wide">
       <header className="modal-card__header">
         <h2>{isNovo ? 'Novo Registro' : 'Editar Registro'}</h2>
-        <button type="button" className="icon-button" onClick={() => setIsModalOpen(false)}>
-          <IoCloseOutline size={18} />
-        </button>
+        <ModalHeaderActions onClose={() => setIsModalOpen(false)} disabled={salvando} />
       </header>
 
       <form onSubmit={handleSalvar} className="module-form">
@@ -534,28 +542,131 @@ O layout das tabelas do QSErpx utiliza classes prontas em `app.css` que garantem
           </label>
           <label style={{ gridColumn: 'span 2' }}>
             <span>Descrição *</span>
-            <input
-              type="text"
-              required
-              value={formDescricao}
-              onChange={(e) => setFormDescricao(e.target.value)}
-            />
+            <input type="text" required value={formDescricao} onChange={(e) => setFormDescricao(e.target.value)} />
           </label>
         </div>
 
-        <div className="form-actions clientes-modal-actions">
-          <button type="button" className="secondary-button" onClick={() => setIsModalOpen(false)}>
-            Cancelar
-          </button>
-          <button type="submit" className="primary-button">
+        <footer className="modal-card__footer">
+          <button type="submit" className="primary-button" disabled={salvando}>
             Salvar
           </button>
-        </div>
+          <button type="button" className="secondary-button modal-card__close" onClick={() => setIsModalOpen(false)}>
+            Fechar
+          </button>
+        </footer>
       </form>
     </article>
   </section>
 )}
 ```
+
+Não use estilos inline em títulos (`h2`), cabeçalhos ou rodapés de popup: o visual vem do `theme.css`.
+
+### Listagens: use sempre o componente `DataList` (no lugar de tabela)
+
+Todas as listagens das telas usam o componente `src/components/DataList.tsx`, no mesmo estilo da lista de notificações da página inicial. Não crie novas tabelas para listagens; tabelas ficam só para grades de edição (com campos) dentro de popups.
+
+```tsx
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
+
+<div className="data-cards-region">
+  <DataListSortBar
+    options={[
+      { field: 'codigo', label: 'Código' },
+      { field: 'nome', label: 'Nome' },
+    ]}
+    active={sortField}
+    direction={sortDirection}
+    onSort={handleSort}
+  />
+  <DataList ariaLabel="Clientes">
+    {itens.map((item) => (
+      <DataListItem
+        key={item.codigo}
+        code={`#${item.codigo}`}                 // coluna da esquerda
+        title={item.nome}                         // texto principal
+        subtitle={item.razaoSocial}               // linha secundária (opcional)
+        details={[{ label: 'Cidade', value: item.cidade }]} // "RÓTULO valor" (opcional)
+        status={<span className="badge success">Ativo</span>} // selo (opcional)
+        aside="R$ 1.234,00"                       // valor em destaque à direita (opcional)
+        onOpen={() => abrir(item)}                // clique na linha (opcional)
+        actions={<button className="icon-button" aria-label="Editar">…</button>} // botões (opcional)
+        leading={<input type="checkbox" />}       // seleção (opcional)
+        selected={false}
+      />
+    ))}
+  </DataList>
+</div>
+```
+
+Botões de excluir/cancelar na linha usam `className="icon-button icon-button--danger"`.
+
+### Botões e selos de status
+
+- **Tamanho:** todo botão de texto (`primary-button` / `secondary-button`) tem o mesmo tamanho fixo (altura 40px, largura mínima 112px). Não defina `width`, `height`, `padding` ou cores inline nesses botões.
+- **Cores:** ação principal (Salvar, Confirmar, Incluir, Sim, OK) usa `primary-button` — cor oposta ao tema (preta no claro, clara no escuro). Cancelar, Fechar, Voltar e Não usam `secondary-button` — cor do próprio tema.
+- **Ações destrutivas:** `primary-button primary-button--danger` (ex.: "Sim, excluir"); de atenção: `primary-button--warning`.
+- **Botões de ícone:** lixeira e sair usam `icon-button icon-button--danger` (ficam vermelhos ao passar o mouse). Os demais usam só `icon-button`.
+- **Status:** use o componente `StatusBadge`:
+
+```tsx
+import { StatusBadge } from '../../../components/StatusBadge';
+
+<StatusBadge label={situacao} />                 // cor escolhida pelo texto (Ativo, Pendente, Cancelada…)
+<StatusBadge tone="success">Concluído</StatusBadge> // ou tom explícito: success, warning, orange, danger, info, accent, teal, neutral
+```
+
+### Cores e efeitos
+
+- Use as variáveis de tema (`var(--color-*)`) e, para status, `var(--status-success)`, `var(--status-warning)`, `var(--status-danger)` e `var(--status-info)`. Não use cores fixas (`#...`).
+- Botão de ação principal: `primary-button`; demais: `secondary-button`; botões de ícone: `icon-button`.
+- Todos os ajustes visuais globais (fonte, menu, telas, tabelas, popups) ficam em `src/styles/theme.css`.
+
+### Campos obrigatórios nos formulários
+
+Padrão: ao abrir o formulário nada fica destacado; ao clicar em Salvar/Confirmar com campo obrigatório vazio, o campo fica vermelho e aparece "Campo obrigatório" embaixo dele. Use o hook `useRequiredFields`:
+
+```tsx
+import { REQUIRED_FIELDS_MESSAGE, useRequiredFields } from '../../../hooks/useRequiredFields';
+
+const obrig = useRequiredFields();
+
+// ao abrir o formulário
+obrig.reset();
+
+// ao salvar
+if (!obrig.validate([descricao, dataInicio])) {
+  showToast(REQUIRED_FIELDS_MESSAGE, 'error');
+  return;
+}
+
+// no campo (rótulo com " *")
+<span>Descrição *</span>
+<input className={obrig.inputClass(descricao)} value={descricao} ... />
+{obrig.error(descricao)}
+
+// componentes com "casca" (CustomDatePicker, SearchableSelect, CustomTimePicker)
+<CustomDatePicker className={obrig.wrapperClass(dataInicio)} ... />
+```
+
+Não use o atributo `required` do HTML (ele mostra o balão do navegador); use `noValidate` no `<form>`.
+
+### Celular
+
+- Popups ocupam a largura da tela e os botões do rodapé dividem a linha; grades de formulário (`form-grid-2/3/4`) viram uma coluna abaixo de 640px.
+- Itens de lista com 3 ou mais ações levam os botões para baixo do texto.
+- Evite larguras fixas (`width: 520px`, `min-width` grandes) e `white-space: nowrap` em textos longos; prefira `minmax(0, 1fr)` nas grades.
+- Ajustes de celular ficam na seção 17 de `src/styles/theme.css`.
+
+### Idiomas (Português, Inglês, Espanhol e Japonês)
+
+O sistema é escrito em português e é traduzido na tela pelo módulo `src/i18n/domTranslator.ts`, a partir dos dicionários `src/i18n/locales/en.json`, `es.json` e `ja.json` (chave = texto em português). Não é preciso alterar o código da tela para traduzir: rótulos, botões, títulos, mensagens (toasts), `placeholder`, `title` e `aria-label` são trocados automaticamente.
+
+- Escreva os textos em português normalmente. Prefira frases inteiras num único texto: em vez de `Você tem {n} {n === 1 ? 'item' : 'itens'}` separado em pedaços, use um template string (`{`Você tem ${n} itens`}`), que vira uma chave `"Você tem {0} itens"` no dicionário.
+- Partes variáveis usam `{0}`, `{1}`… na chave e na tradução.
+- Dados do usuário que não devem ser traduzidos: marque o elemento com `data-no-translate`.
+- Para ver o que falta traduzir: `node scripts/i18n-missing.cjs --list`. Acrescente a chave nos três arquivos de `src/i18n/locales`.
+- Datas exibidas por extenso devem usar o idioma atual (`useLanguage().language`).
 
 ---
 
@@ -568,5 +679,8 @@ O layout das tabelas do QSErpx utiliza classes prontas em `app.css` que garantem
 5. [ ] Mapear em `src/pages/HomePage.tsx` (`resolveRouteFromTransaction`).
 6. [ ] Se a transação ainda não estiver na API de permissões, incluir no fallback em `src/hooks/useDynamicMenu.ts`.
 7. [ ] Criar as funções de chamada em `src/services/apiCalls.ts`.
-8. [ ] Rodar `npm run build` no terminal para garantir que não há erros de tipagem TypeScript.
+8. [ ] Popups com `ModalHeaderActions` no cabeçalho e botão Fechar no rodapé (primária à esquerda, Fechar à direita).
+9. [ ] Campos obrigatórios com `useRequiredFields` (vermelho só ao confirmar).
+10. [ ] Conferir a tela no celular (largura 390px) e em outro idioma; traduzir textos novos em `src/i18n/locales`.
+11. [ ] Rodar `npm run build` no terminal para garantir que não há erros de tipagem TypeScript.
 

@@ -6,12 +6,9 @@ import {
   IoCartOutline,
   IoCheckmarkDoneOutline,
   IoCheckmarkOutline,
-  IoCloseOutline,
-  IoContractOutline,
   IoCreateOutline,
   IoCubeOutline,
   IoDocumentTextOutline,
-  IoExpandOutline,
   IoLayersOutline,
   IoLockOpenOutline,
   IoPrintOutline,
@@ -64,13 +61,13 @@ import {
 import {
   compareSortNumber,
   compareSortText,
-  getAriaSort,
-  getSortIndicator,
   nextSortState,
   parseSortTimestamp,
   sortByComparator,
   type SortDirection,
 } from '../../../utils/tableSort';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
 
 const formatToday = () => {
   const now = new Date();
@@ -399,7 +396,6 @@ export function OrdensSeparacaoPage() {
   const [modoNovo, setModoNovo] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [activeTab, setActiveTab] = useState<'geral' | 'itens' | 'obs'>('geral');
-  const [modalMaximizada, setModalMaximizada] = useState(false);
 
   // Cabeçalho da OS
   const [formOS, setFormOS] = useState<Partial<OrdemDetalhe>>({
@@ -822,29 +818,6 @@ export function OrdensSeparacaoPage() {
     setSortField(next.field);
     setSortDirection(next.direction);
   };
-
-  const renderSortHeader = (
-    label: string,
-    field: OrdemSortField,
-    options?: { width?: string; center?: boolean },
-  ) => (
-    <th
-      scope="col"
-      aria-sort={getAriaSort(sortField, sortDirection, field)}
-      style={{
-        ...(options?.width ? { width: options.width } : {}),
-        ...(options?.center ? { textAlign: 'center' } : {}),
-      }}
-    >
-      <button
-        type="button"
-        className={`clientes-table__sort${options?.center ? ' clientes-table__sort--center' : ''}`}
-        onClick={() => handleSort(field)}
-      >
-        {label} <span aria-hidden="true">{getSortIndicator(sortField, sortDirection, field)}</span>
-      </button>
-    </th>
-  );
 
   const ordensFiltradas = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -3095,75 +3068,64 @@ export function OrdensSeparacaoPage() {
         </div>
 
         {/* TABELA PRINCIPAL */}
-        <div className="table-scroll clientes-table-wrap">
-          <table className="clientes-table">
-            <thead>
-              <tr>
-                {renderSortHeader('ORDEM', 'ordem', { width: '112px' })}
-                {renderSortHeader('DATA', 'data', { width: '108px' })}
-                {renderSortHeader('HORA', 'hora', { width: '92px' })}
-                {renderSortHeader('CLIENTE', 'cliente')}
-                {renderSortHeader('PEDIDO(S)', 'pedido', { width: '124px' })}
-                {renderSortHeader('CFOP', 'cfop', { width: '108px' })}
-                {renderSortHeader('NF / SÉRIE', 'nf', { width: '124px' })}
-                {renderSortHeader('USUÁRIO', 'usuario', { width: '120px' })}
-                {renderSortHeader('SITUAÇÃO', 'situacao', { width: '165px', center: true })}
-                <th scope="col" style={{ width: '120px', textAlign: 'center' }}>AÇÕES</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: '30px' }}>
-                    Carregando ordens de separação...
-                  </td>
-                </tr>
-              ) : abaListagem !== 'pendentes' && !abaConsultada ? (
-                <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: '30px' }}>
-                    Informe ao menos um filtro (Período, Nota Fiscal ou Ordem / Cliente / Pedido) e clique em <strong>Filtrar</strong> para consultar.
-                  </td>
-                </tr>
-              ) : ordensFiltradas.length === 0 ? (
-                <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: '30px' }}>
-                    Nenhuma ordem de separação encontrada para os filtros selecionados.
-                  </td>
-                </tr>
-              ) : (
-                ordensFiltradas.map((item) => {
-                  const badge = getSituacaoBadgeInfo(item.situacaoSeparacao, item.itensPendentesLiberacao);
-                  const podeEstornar = item.situacaoSeparacao === 2 || item.situacaoSeparacao === 7;
-                  const podeCancelar = item.situacaoSeparacao !== 9 && item.situacaoSeparacao !== 8;
+        <div className="data-cards-region">
+          <DataListSortBar
+            options={[
+              { field: 'ordem', label: 'Ordem' },
+              { field: 'data', label: 'Data' },
+              { field: 'hora', label: 'Hora' },
+              { field: 'cliente', label: 'Cliente' },
+              { field: 'pedido', label: 'Pedido' },
+              { field: 'cfop', label: 'CFOP' },
+              { field: 'nf', label: 'NF / Série' },
+              { field: 'usuario', label: 'Usuário' },
+              { field: 'situacao', label: 'Situação' },
+            ]}
+            active={sortField}
+            direction={sortDirection}
+            onSort={handleSort}
+          />
+          {loading ? (
+            <p className="module-empty">Carregando ordens de separação...</p>
+          ) : abaListagem !== 'pendentes' && !abaConsultada ? (
+            <p className="module-empty">
+              Informe ao menos um filtro (Período, Nota Fiscal ou Ordem / Cliente / Pedido) e clique em <strong>Filtrar</strong> para consultar.
+            </p>
+          ) : ordensFiltradas.length === 0 ? (
+            <p className="module-empty">Nenhuma ordem de separação encontrada para os filtros selecionados.</p>
+          ) : (
+            <DataList ariaLabel="Ordens de separação">
+              {ordensFiltradas.map((item) => {
+                const badge = getSituacaoBadgeInfo(item.situacaoSeparacao, item.itensPendentesLiberacao);
+                const podeEstornar = item.situacaoSeparacao === 2 || item.situacaoSeparacao === 7;
+                const podeCancelar = item.situacaoSeparacao !== 9 && item.situacaoSeparacao !== 8;
 
-                  return (
-                    <tr
-                      key={item.numSeparacao}
-                      onClick={() => void abrirOrdemDetalhe(item.numSeparacao)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <td>
-                        <strong>{String(item.numSeparacao).padStart(6, '0')}</strong>
-                      </td>
-                      <td>{parseIsoToBrDate(item.dataSeparacao) || '-'}</td>
-                      <td>{parseIsoToTime(item.horaSeparacao) || '-'}</td>
-                      <td>{item.nomeFantasia || '-'}</td>
-                      <td>{item.numPedido || '-'}</td>
-                      <td>{item.codigoCFO || '-'}</td>
-                      <td>
-                        {item.numNotaFiscal
+                return (
+                  <DataListItem
+                    key={item.numSeparacao}
+                    code={String(item.numSeparacao).padStart(6, '0')}
+                    title={item.nomeFantasia || '-'}
+                    details={[
+                      { label: 'Data', value: `${parseIsoToBrDate(item.dataSeparacao) || '-'} ${parseIsoToTime(item.horaSeparacao) || ''}`.trim() },
+                      { label: 'Pedido', value: item.numPedido || '-' },
+                      { label: 'CFOP', value: item.codigoCFO || '-' },
+                      {
+                        label: 'NF',
+                        value: item.numNotaFiscal
                           ? `${item.numNotaFiscal}${item.serNotaFiscal ? `/${item.serNotaFiscal}` : ''}`
-                          : '-'}
-                      </td>
-                      <td>{item.codigoUsuario || '-'}</td>
-                      <td style={{ textAlign: 'center' }}>
-                        <span className={`separacao-status-pill ${badge.cls}`}>{badge.text}</span>
-                      </td>
-                      <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
-                        <div className="table-actions" style={{ justifyContent: 'center' }}>
+                          : '-',
+                      },
+                      { label: 'Usuário', value: item.codigoUsuario || '-' },
+                    ]}
+                    status={<span className={`separacao-status-pill ${badge.cls}`}>{badge.text}</span>}
+                    onOpen={() => void abrirOrdemDetalhe(item.numSeparacao)}
+                    actions={
+                      <>
                           <button
                             type="button"
+                            className="icon-button"
                             title="Consultar / Editar"
+                            aria-label="Consultar / Editar"
                             onClick={() => void abrirOrdemDetalhe(item.numSeparacao)}
                           >
                             <IoCreateOutline size={16} />
@@ -3171,7 +3133,9 @@ export function OrdensSeparacaoPage() {
                           {item.situacaoSeparacao === 1 && (
                             <button
                               type="button"
+                              className="icon-button"
                               title="Liberar Itens Bloqueados"
+                              aria-label="Liberar Itens Bloqueados"
                               onClick={() => void handleLiberarItens(item.numSeparacao)}
                             >
                               <IoLockOpenOutline size={15} />
@@ -3180,7 +3144,9 @@ export function OrdensSeparacaoPage() {
                           {podeEstornar && (
                             <button
                               type="button"
+                              className="icon-button"
                               title="Estornar p/ Em Digitação"
+                              aria-label="Estornar p/ Em Digitação"
                               onClick={() =>
                                 setAcaoStatusOS({
                                   numSeparacao: item.numSeparacao,
@@ -3195,7 +3161,9 @@ export function OrdensSeparacaoPage() {
                           {podeCancelar && (
                             <button
                               type="button"
+                              className="icon-button icon-button--danger"
                               title="Cancelar Ordem"
+                              aria-label="Cancelar Ordem"
                               onClick={() =>
                                 setAcaoStatusOS({
                                   numSeparacao: item.numSeparacao,
@@ -3203,19 +3171,17 @@ export function OrdensSeparacaoPage() {
                                   situacaoDestino: 9,
                                 })
                               }
-                              style={{ color: 'var(--color-danger)' }}
                             >
                               <IoTrashOutline size={16} />
                             </button>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                      </>
+                    }
+                  />
+                );
+              })}
+            </DataList>
+          )}
         </div>
       </section>
 
@@ -3225,7 +3191,7 @@ export function OrdensSeparacaoPage() {
       {modalAberta && (
         <section className="modal-backdrop" onClick={() => setModalAberta(false)}>
           <article
-            className={`modal-card separacao-modal ${modalMaximizada ? 'separacao-modal--maximized' : ''}`}
+            className="modal-card separacao-modal"
             onClick={(e) => e.stopPropagation()}
           >
             <header className="modal-card__header">
@@ -3261,23 +3227,7 @@ export function OrdensSeparacaoPage() {
                     <IoSwapHorizontalOutline size={17} />
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label={modalMaximizada ? 'Restaurar tamanho' : 'Maximizar tela'}
-                  title={modalMaximizada ? 'Restaurar tamanho' : 'Maximizar tela'}
-                  onClick={() => setModalMaximizada((prev) => !prev)}
-                >
-                  {modalMaximizada ? <IoContractOutline size={18} /> : <IoExpandOutline size={18} />}
-                </button>
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label="Fechar"
-                  onClick={() => setModalAberta(false)}
-                >
-                  <IoCloseOutline size={18} />
-                </button>
+                <ModalHeaderActions onClose={() => setModalAberta(false)} />
               </div>
             </header>
 
@@ -3568,7 +3518,6 @@ export function OrdensSeparacaoPage() {
                       <button
                         type="button"
                         className="primary-button separacao-action-btn-compact"
-                        style={{ height: '36px', minHeight: '36px' }}
                         onClick={() => void handleLiberarItens()}
                         disabled={salvando}
                       >
@@ -3963,11 +3912,10 @@ export function OrdensSeparacaoPage() {
                                           <IoLockOpenOutline size={14} />
                                         </button>
                                       )}
-                                      <button
+                                      <button className="icon-button--danger"
                                         type="button"
                                         title="Remover Item"
                                         onClick={() => setItemParaExcluir(item)}
-                                        style={{ color: 'var(--color-danger)' }}
                                       >
                                         <IoTrashOutline size={15} />
                                       </button>
@@ -4132,7 +4080,7 @@ export function OrdensSeparacaoPage() {
 
                 <button
                   type="button"
-                  className="secondary-button"
+                  className="secondary-button modal-card__close"
                   onClick={() => setModalAberta(false)}
                   disabled={salvando}
                 >
@@ -4143,7 +4091,7 @@ export function OrdensSeparacaoPage() {
                   <>
                     <button
                       type="button"
-                      className="secondary-button"
+                      className="primary-button"
                       onClick={() => void salvarCabecalhoAutomatico(undefined, undefined, undefined, true)}
                       disabled={salvando}
                     >
@@ -4189,14 +4137,7 @@ export function OrdensSeparacaoPage() {
                 </h2>
                 <p>Selecione os pedidos para gerar a separação de lotes automaticamente</p>
               </div>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setModalPedidosAberta(false)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setModalPedidosAberta(false)} />
             </header>
 
             <div className="modal-body">
@@ -4338,7 +4279,7 @@ export function OrdensSeparacaoPage() {
             <div className="clientes-modal-actions">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setModalPedidosAberta(false)}
                 disabled={salvando}
               >
@@ -4378,13 +4319,7 @@ export function OrdensSeparacaoPage() {
                 </h2>
                 <p>{itemEditando.descricaoMaterial || 'Ajustar lote, local, quantidade e embalagem'}</p>
               </div>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => setItemEditando(null)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setItemEditando(null)} />
             </header>
 
             <div className="modal-body">
@@ -4470,7 +4405,7 @@ export function OrdensSeparacaoPage() {
             <div className="clientes-modal-actions">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setItemEditando(null)}
                 disabled={salvando}
               >
@@ -4512,13 +4447,7 @@ export function OrdensSeparacaoPage() {
                 </h2>
                 <p>Pallets e Caixas vinculados a este item</p>
               </div>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => setModalDetalhesItem(null)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setModalDetalhesItem(null)} />
             </header>
 
             <div className="modal-body">
@@ -4561,8 +4490,7 @@ export function OrdensSeparacaoPage() {
                             <td style={{ textAlign: 'center' }}>
                               <button
                                 type="button"
-                                className="separacao-cell-btn"
-                                style={{ color: 'var(--color-danger)' }}
+                                className="icon-button--danger separacao-cell-btn"
                                 title="Desvincular Embalagem"
                                 onClick={() => void excluirDetalheEmbalagem(det)}
                               >
@@ -4581,7 +4509,7 @@ export function OrdensSeparacaoPage() {
             <div className="clientes-modal-actions">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setModalDetalhesItem(null)}
               >
                 Fechar
@@ -4615,13 +4543,7 @@ export function OrdensSeparacaoPage() {
                   {Number(modalSeriaisItem.qtdSeparar ?? modalSeriaisItem.qtdSeparada ?? 0)} serial(is)
                 </p>
               </div>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => setModalSeriaisItem(null)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setModalSeriaisItem(null)} />
             </header>
 
             <div className="modal-body">
@@ -4695,7 +4617,7 @@ export function OrdensSeparacaoPage() {
               </span>
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setModalSeriaisItem(null)}
               >
                 Fechar
@@ -4737,13 +4659,7 @@ export function OrdensSeparacaoPage() {
                   <p>Bipe ou digite o QR Code das etiquetas (Prod:...|Lote:...|Qtd:...|NumEtq:...)</p>
                 </div>
               </div>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => setModalQrCodeAberta(false)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setModalQrCodeAberta(false)} />
             </header>
 
             <div className="modal-body">
@@ -4821,8 +4737,7 @@ export function OrdensSeparacaoPage() {
               {formOS.situacaoSeparacao === -1 && (
                 <button
                   type="button"
-                  className="secondary-button"
-                  style={{ marginRight: 'auto', color: 'var(--color-danger)' }}
+                  className="secondary-button secondary-button--danger" style={{ marginRight: 'auto' }}
                   onClick={() => void executarResetQrCode()}
                   disabled={salvando}
                 >
@@ -4831,7 +4746,7 @@ export function OrdensSeparacaoPage() {
               )}
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setModalQrCodeAberta(false)}
               >
                 Cancelar
@@ -4868,13 +4783,7 @@ export function OrdensSeparacaoPage() {
                 <h2>Observações da Separação</h2>
                 <p>{formOS.nomeCliente || 'Observações do pedido e instruções permanentes do cliente'}</p>
               </div>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => setModalObsSeparacaoAberta(false)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setModalObsSeparacaoAberta(false)} />
             </header>
 
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -4905,7 +4814,7 @@ export function OrdensSeparacaoPage() {
             <div className="clientes-modal-actions">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setModalObsSeparacaoAberta(false)}
               >
                 Fechar
@@ -4970,13 +4879,7 @@ export function OrdensSeparacaoPage() {
                   </label>
                 </div>
               </div>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => setModalImprimirAberta(false)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setModalImprimirAberta(false)} />
             </header>
 
             <div className="modal-body separacao-report-frame">
@@ -4997,7 +4900,7 @@ export function OrdensSeparacaoPage() {
             <div className="clientes-modal-actions">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setModalImprimirAberta(false)}
               >
                 Fechar
@@ -5035,13 +4938,7 @@ export function OrdensSeparacaoPage() {
                 <h2>Transportadora da Ordem #{String(formOS.numSeparacao || 0).padStart(6, '0')}</h2>
                 <p>Selecione a transportadora conforme pedidos vinculados ou altere manualmente</p>
               </div>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => setModalTransportadoraAberta(false)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setModalTransportadoraAberta(false)} />
             </header>
 
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -5119,7 +5016,7 @@ export function OrdensSeparacaoPage() {
             <div className="clientes-modal-actions">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setModalTransportadoraAberta(false)}
                 disabled={salvando}
               >
@@ -5171,18 +5068,11 @@ export function OrdensSeparacaoPage() {
                     : 'Selecione um lote em estoque para alocar neste item'}
                 </p>
               </div>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   setModalLotesAberta(false);
                   setItemParaAlterarLote(null);
                   setModoLoteEditModal(false);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <div className="modal-body">
@@ -5270,8 +5160,7 @@ export function OrdensSeparacaoPage() {
               {itemParaAlterarLote && (
                 <button
                   type="button"
-                  className="secondary-button"
-                  style={{ color: 'var(--color-danger)', marginRight: 'auto' }}
+                  className="secondary-button secondary-button--danger" style={{ marginRight: 'auto' }}
                   onClick={() => void selecionarLote(null)}
                   disabled={salvando}
                 >
@@ -5280,7 +5169,7 @@ export function OrdensSeparacaoPage() {
               )}
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => {
                   setModalLotesAberta(false);
                   setItemParaAlterarLote(null);
@@ -5317,13 +5206,7 @@ export function OrdensSeparacaoPage() {
                   <p>Ordem #{String(formOS.numSeparacao || 0).padStart(6, '0')}</p>
                 </div>
               </div>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => setModalConfirmarOSAberta(false)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setModalConfirmarOSAberta(false)} expandable={false} />
             </header>
 
             <div className="modal-body">
@@ -5342,7 +5225,7 @@ export function OrdensSeparacaoPage() {
             <div className="clientes-modal-actions">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setModalConfirmarOSAberta(false)}
                 disabled={salvando}
               >
@@ -5387,13 +5270,7 @@ export function OrdensSeparacaoPage() {
                   <p>Ordem #{String(acaoStatusOS.numSeparacao).padStart(6, '0')}</p>
                 </div>
               </div>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => setAcaoStatusOS(null)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setAcaoStatusOS(null)} />
             </header>
 
             <div className="modal-body">
@@ -5419,7 +5296,7 @@ export function OrdensSeparacaoPage() {
             <div className="clientes-modal-actions">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setAcaoStatusOS(null)}
               >
                 Não
@@ -5465,15 +5342,7 @@ export function OrdensSeparacaoPage() {
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setItemParaExcluir(null)}
-                disabled={salvando}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setItemParaExcluir(null)} disabled={salvando} expandable={false} />
             </header>
 
             <div className="modal-body">
@@ -5486,7 +5355,7 @@ export function OrdensSeparacaoPage() {
             <div className="clientes-modal-actions">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setItemParaExcluir(null)}
                 disabled={salvando}
               >
@@ -5527,13 +5396,7 @@ export function OrdensSeparacaoPage() {
                   {confirmDialog.subtitulo && <p>{confirmDialog.subtitulo}</p>}
                 </div>
               </div>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => setConfirmDialog(null)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setConfirmDialog(null)} expandable={false} />
             </header>
 
             <div className="modal-body">
@@ -5545,7 +5408,7 @@ export function OrdensSeparacaoPage() {
             <div className="clientes-modal-actions">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setConfirmDialog(null)}
               >
                 Cancelar

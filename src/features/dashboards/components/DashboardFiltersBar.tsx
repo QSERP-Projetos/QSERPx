@@ -68,7 +68,7 @@ export function DashboardFiltersBar({
           </button>
 
           <button
-            className="icon-button module-action-button"
+            className="icon-button--danger icon-button module-action-button"
             type="button"
             onClick={onClear}
             title="Limpar filtros"

@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IoAlertCircleOutline, IoCloseOutline, IoEyeOffOutline, IoEyeOutline, IoLogInOutline } from 'react-icons/io5';
+import {
+  IoAlertCircleOutline,
+  IoArrowForwardOutline,
+  IoCloseOutline,
+  IoEyeOffOutline,
+  IoEyeOutline,
+  IoLockClosedOutline,
+  IoPersonOutline,
+  IoSettingsOutline,
+} from 'react-icons/io5';
 import { APP_NAME, APP_VERSION } from '../constants/appInfo';
 import { ROUTES } from '../constants/routes';
 import { GlobalConfig } from '../services/globalConfig';
@@ -13,13 +22,21 @@ import {
 import { completeCompanySession } from '../services/authFlow';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+
+const LOGIN_LANGUAGES = [
+  { value: 'pt', label: 'Português' },
+  { value: 'en', label: 'English' },
+  { value: 'es', label: 'Español' },
+  { value: 'ja', label: '日本語' },
+] as const;
 import { useToast } from '../contexts/ToastContext';
 import { LogoIcon } from '../components/LogoIcon';
+import { ModalHeaderActions } from '../components/ModalHeaderActions';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
   const { showToast } = useToast();
 
   const [email, setEmail] = useState('');
@@ -240,87 +257,148 @@ export function LoginPage() {
   };
 
   return (
-    <main className="auth-screen auth-screen--login">
-      <section className="auth-card auth-card--login">
-        <div className="brand-center brand-center--login">
-          <div className="login-brand-row">
-            <LogoIcon size={40} mode={theme} />
-            <h1>{APP_NAME}</h1>
-          </div>
-          <p className="version">v{versao}</p>
+    <main className="auth-screen auth-screen--login login-split">
+      <aside className="login-split__brand">
+        <div className="login-split__logo">
+          <LogoIcon size={40} mode="dark" />
+          <span>{APP_NAME}</span>
         </div>
 
-        <label className="field-label">Usuario</label>
-        <div className={`login-password-field ${emailError ? 'has-error' : ''}`}>
-          <input
-            className="text-field"
-            type="text"
-            value={email}
-            name="qserpx_manual_user"
-            autoComplete="off"
-            onChange={(event) => {
-              setEmail(event.target.value);
-              if (emailError) setEmailError('');
-            }}
-            placeholder="informe o usuario"
-            autoCapitalize="none"
-          />
-          {email.trim() && (
+        <div className="login-split__headline">
+          <h1>Sua operação, em um só lugar.</h1>
+          <p>Vendas, compras, PCP, serviço, financeiro e qualidade integrados no {APP_NAME}.</p>
+        </div>
+
+        <span className="login-split__version">Versão {versao}</span>
+      </aside>
+
+      <section className="login-split__panel">
+        <form
+          className="login-split__form"
+          autoComplete="off"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleLogin();
+          }}
+        >
+          <div className="login-split__mobile-logo">
+            <LogoIcon size={32} mode={theme} />
+            <span>{APP_NAME}</span>
+          </div>
+
+          <header className="login-split__header">
+            <h2>Acessar conta</h2>
+            <p>Informe suas credenciais para continuar.</p>
+          </header>
+
+          <div className="login-split__field">
+            <label className="field-label" htmlFor="login-usuario">
+              Usuário
+            </label>
+            <div className={`login-split__input ${emailError ? 'has-error' : ''}`}>
+              <IoPersonOutline size={18} aria-hidden="true" />
+              <input
+                id="login-usuario"
+                type="text"
+                value={email}
+                name="qserpx_manual_user"
+                autoComplete="off"
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  if (emailError) setEmailError('');
+                }}
+                placeholder="Informe o usuário"
+                autoCapitalize="none"
+              />
+              {email.trim() && (
+                <button
+                  type="button"
+                  className="login-split__input-action"
+                  tabIndex={-1}
+                  onClick={() => {
+                    setEmail('');
+                    if (emailError) setEmailError('');
+                  }}
+                  aria-label="Limpar usuário"
+                  title="Limpar"
+                >
+                  <IoCloseOutline size={18} />
+                </button>
+              )}
+            </div>
+            {emailError && <small className="field-error">{emailError}</small>}
+          </div>
+
+          <div className="login-split__field">
+            <label className="field-label" htmlFor="login-senha">
+              Senha
+            </label>
+            <div className={`login-split__input ${passwordError ? 'has-error' : ''}`}>
+              <IoLockClosedOutline size={18} aria-hidden="true" />
+              <input
+                id="login-senha"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                name="qserpx_manual_password"
+                autoComplete="new-password"
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  if (passwordError) setPasswordError('');
+                }}
+                placeholder="Informe a senha"
+              />
+              <button
+                type="button"
+                className="login-split__input-action"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                title={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                {showPassword ? <IoEyeOffOutline size={18} /> : <IoEyeOutline size={18} />}
+              </button>
+            </div>
+            {passwordError && <small className="field-error">{passwordError}</small>}
+          </div>
+
+          <button className="primary-button login-split__submit" type="submit" disabled={loading}>
+            {loading ? (
+              'Entrando...'
+            ) : (
+              <>
+                Entrar
+                <IoArrowForwardOutline size={18} />
+              </>
+            )}
+          </button>
+
+          <div className="login-split__footer">
             <button
               type="button"
-              className="login-password-toggle"
-              tabIndex={-1}
-              onClick={() => {
-                setEmail('');
-                if (emailError) setEmailError('');
-              }}
-              aria-label="Limpar usuário"
-              title="Limpar"
+              className="login-split__reset"
+              onClick={() => void handleResetConnection()}
+              disabled={loading}
             >
-              <IoCloseOutline size={18} />
+              <IoSettingsOutline size={14} />
+              Configurar conexão
             </button>
-          )}
-        </div>
-        {emailError && <small className="field-error">{emailError}</small>}
-
-        <label className="field-label">Senha</label>
-        <div className={`login-password-field ${passwordError ? 'has-error' : ''}`}>
-          <input
-            className="text-field"
-            type={showPassword ? 'text' : 'password'}
-            value={password}
-            name="qserpx_manual_password"
-            autoComplete="new-password"
-            onChange={(event) => {
-              setPassword(event.target.value);
-              if (passwordError) setPasswordError('');
-            }}
-            placeholder="informe a senha"
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                void handleLogin();
-              }
-            }}
-          />
-          <button
-            type="button"
-            className="login-password-toggle"
-            onClick={() => setShowPassword((prev) => !prev)}
-            aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-            title={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-          >
-            {showPassword ? <IoEyeOffOutline size={18} /> : <IoEyeOutline size={18} />}
-          </button>
-        </div>
-        {passwordError && <small className="field-error">{passwordError}</small>}
-
-        <button className="primary-button primary-button--login" type="button" onClick={handleLogin} disabled={loading}>
-          {loading ? 'Entrando...' : <IoLogInOutline size={18} />}
-        </button>
-
-        <button className="secondary-button" type="button" onClick={() => void handleResetConnection()} disabled={loading}>
-          Resetar URL e nova conexão
-        </button>
+            <div className="login-split__langs" role="group" aria-label="Idioma" data-no-translate>
+              {LOGIN_LANGUAGES.map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  title={item.label}
+                  className={`login-split__lang${language === item.value ? ' is-active' : ''}`}
+                  aria-pressed={language === item.value}
+                  onClick={() => setLanguage(item.value)}
+                >
+                  {item.value.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <span className="login-split__footer-version">v{versao}</span>
+          </div>
+        </form>
       </section>
 
       {licencaBloqueadaMensagem && (
@@ -328,30 +406,23 @@ export function LoginPage() {
           <article className="modal-card">
             <header
               className="modal-card__header"
-              style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '0.875rem' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-                <IoAlertCircleOutline size={22} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                <h2 style={{ fontSize: '1rem', fontWeight: 600 }}>Sistema Inacessível</h2>
+                <IoAlertCircleOutline size={22} style={{ color: 'var(--status-warning)', flexShrink: 0 }} />
+                <h2>Sistema Inacessível</h2>
               </div>
+              <ModalHeaderActions onClose={() => setLicencaBloqueadaMensagem(null)} expandable={false} />
             </header>
             <div className="modal-card__body" style={{ padding: '1rem 0.25rem 0.5rem' }}>
               <p style={{ lineHeight: '1.7', fontSize: '0.925rem' }}>{licencaBloqueadaMensagem}</p>
             </div>
             <footer
               className="modal-card__footer"
-              style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                borderTop: '1px solid var(--color-border)',
-                paddingTop: '0.875rem',
-              }}
             >
               <button
                 type="button"
                 className="primary-button"
                 onClick={() => setLicencaBloqueadaMensagem(null)}
-                style={{ width: 'auto', minWidth: '80px' }}
               >
                 OK
               </button>
@@ -365,14 +436,7 @@ export function LoginPage() {
           <article className="modal-card">
             <header className="modal-card__header">
               <h2>Licença não encontrada</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setHdSemLicenca(null)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setHdSemLicenca(null)} expandable={false} />
             </header>
             <p>Entre em contato com o suporte e informe o número do HD:</p>
             <strong>{hdSemLicenca}</strong>
@@ -399,7 +463,7 @@ export function LoginPage() {
               >
                 Resetar HD e configurar
               </button>
-              <button className="secondary-button" type="button" onClick={() => setHdSemLicenca(null)}>
+              <button className="secondary-button modal-card__close" type="button" onClick={() => setHdSemLicenca(null)}>
                 Cancelar
               </button>
             </div>

@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IoArrowBack, IoCloseOutline, IoHelpCircleOutline, IoCheckmarkCircle, IoCloseCircle } from 'react-icons/io5';
+import { IoArrowBack, IoHelpCircleOutline, IoCheckmarkCircle, IoCloseCircle } from 'react-icons/io5';
 import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
 import { SearchableSelect, type SearchableSelectOption } from '../../../components/SearchableSelect';
 import apiManager, { ApiCallType } from '../../../services/apiManager';
 import { GlobalConfig } from '../../../services/globalConfig';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { REQUIRED_FIELDS_MESSAGE, useRequiredFields } from '../../../hooks/useRequiredFields';
 
 type ActiveTab = 'nfe' | 'faturamento';
 
@@ -166,6 +168,7 @@ const gnreFornecedorOptions: SearchableSelectOption[] = [
 export function ParametrosGeraisPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const obrigCert = useRequiredFields();
   const [activeTab, setActiveTab] = useState<ActiveTab>('nfe');
   const [isEditing, setIsEditing] = useState(false);
   const [loadingParametros, setLoadingParametros] = useState(false);
@@ -688,6 +691,7 @@ export function ParametrosGeraisPage() {
   };
 
   const handleOpenCertificadoModal = () => {
+    obrigCert.reset();
     if (!isEditing) return;
     setModalCertificadoOpen(true);
   };
@@ -748,13 +752,8 @@ export function ParametrosGeraisPage() {
   const handleImportarCertificado = () => {
     if (!isEditing) return;
 
-    if (!certEndereco) {
-      showToast('Selecione um certificado .pfx para importar.', 'error');
-      return;
-    }
-
-    if (!certSenha) {
-      showToast('Informe a senha do certificado.', 'error');
+    if (!obrigCert.validate([certEndereco, certSenha])) {
+      showToast(REQUIRED_FIELDS_MESSAGE, 'error');
       return;
     }
 
@@ -883,13 +882,13 @@ export function ParametrosGeraisPage() {
                   <button type="button" className="nfe-params-btn" onClick={handleOpenCertificadoModal} disabled={isFormLocked}>Certificado digital</button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <button type="button" className="nfe-params-btn" onClick={handleExecutarServicoApi} disabled={isFormLocked || executingApi}>Executar API&apos;s GOV</button>
-                    {executeApiStatus === 'success' && <IoCheckmarkCircle size={24} style={{ color: '#10b981' }} title="Status OK" />}
-                    {executeApiStatus === 'error' && <IoCloseCircle size={24} style={{ color: '#ef4444' }} title="Status erro" />}
+                    {executeApiStatus === 'success' && <IoCheckmarkCircle size={24} style={{ color: 'var(--status-success)' }} title="Status OK" />}
+                    {executeApiStatus === 'error' && <IoCloseCircle size={24} style={{ color: 'var(--status-danger)' }} title="Status erro" />}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <button type="button" className="nfe-params-btn" onClick={handleVerificarStatusApi} disabled={isFormLocked || verifyingApiStatus}>Verificar Status API&apos;s GOV</button>
-                    {apiStatus === 'success' && <IoCheckmarkCircle size={24} style={{ color: '#10b981' }} title="Status OK" />}
-                    {apiStatus === 'error' && <IoCloseCircle size={24} style={{ color: '#ef4444' }} title="Status erro" />}
+                    {apiStatus === 'success' && <IoCheckmarkCircle size={24} style={{ color: 'var(--status-success)' }} title="Status OK" />}
+                    {apiStatus === 'error' && <IoCloseCircle size={24} style={{ color: 'var(--status-danger)' }} title="Status erro" />}
                   </div>
                 </div>
 
@@ -1530,23 +1529,16 @@ export function ParametrosGeraisPage() {
           <article className="modal-card modal-card--wide">
             <header className="modal-card__header">
               <h2>Certificado Digital</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={handleCloseCertificadoModal}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={handleCloseCertificadoModal} />
             </header>
 
             <section className="module-form">
               <div className="form-grid-3">
                 <label className="form-grid-3__full">
-                  <span>Endereço</span>
+                  <span>Endereço *</span>
                   <div className="clientes-cep-input">
                     <input
-                      className="text-field"
+                      className={obrigCert.inputClass(certEndereco, 'text-field')}
                       value={certEndereco}
                       onChange={(event) => setCertEndereco(event.target.value)}
                       disabled={!isEditing}
@@ -1563,16 +1555,19 @@ export function ParametrosGeraisPage() {
                       <IoHelpCircleOutline size={20} />
                     </button>
                   </div>
+                  {obrigCert.error(certEndereco)}
                 </label>
 
                 <label>
-                  <span>Senha</span>
+                  <span>Senha *</span>
                   <input
                     type="password"
+                    className={obrigCert.inputClass(certSenha)}
                     value={certSenha}
                     onChange={(event) => setCertSenha(event.target.value)}
                     disabled={!isEditing}
                   />
+                  {obrigCert.error(certSenha)}
                 </label>
 
                 <label>
@@ -1590,7 +1585,7 @@ export function ParametrosGeraisPage() {
                 <button type="button" className="secondary-button" onClick={handleLimparCertificado} disabled={!isEditing}>
                   Limpar
                 </button>
-                <button type="button" className="secondary-button" onClick={handleCloseCertificadoModal} disabled={importSaving}>
+                <button type="button" className="secondary-button modal-card__close" onClick={handleCloseCertificadoModal} disabled={importSaving}>
                   Fechar
                 </button>
                 <button type="button" className="primary-button" onClick={handleImportarCertificado} disabled={!isEditing || importSaving}>
@@ -1607,15 +1602,7 @@ export function ParametrosGeraisPage() {
           <article className="modal-card modal-card--confirm">
             <header className="modal-card__header">
               <h2>Confirmar Importação</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setImportConfirmOpen(false)}
-                disabled={importSaving}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setImportConfirmOpen(false)} disabled={importSaving} expandable={false} />
             </header>
             <div className="modal-card__body modal-card__body--confirm">
               <p>Deseja importar o certificado digital?</p>
@@ -1623,7 +1610,7 @@ export function ParametrosGeraisPage() {
             <footer className="nfs-nova-footer">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setImportConfirmOpen(false)}
                 disabled={importSaving}
               >
@@ -1667,13 +1654,13 @@ export function ParametrosGeraisPage() {
                 <>
                   {apiStatus === 'success' ? (
                     <>
-                      <IoCheckmarkCircle size={64} style={{ color: '#10b981', marginBottom: '1rem' }} />
-                      <p style={{ fontSize: '1rem', fontWeight: '500', color: '#10b981' }}>Status OK! API GOV funcionando normalmente.</p>
+                      <IoCheckmarkCircle size={64} style={{ color: 'var(--status-success)', marginBottom: '1rem' }} />
+                      <p style={{ fontSize: '1rem', fontWeight: '500', color: 'var(--status-success)' }}>Status OK! API GOV funcionando normalmente.</p>
                     </>
                   ) : (
                     <>
-                      <IoCloseCircle size={64} style={{ color: '#ef4444', marginBottom: '1rem' }} />
-                      <p style={{ fontSize: '1rem', fontWeight: '500', color: '#ef4444' }}>Erro ao conectar com a API GOV.</p>
+                      <IoCloseCircle size={64} style={{ color: 'var(--status-danger)', marginBottom: '1rem' }} />
+                      <p style={{ fontSize: '1rem', fontWeight: '500', color: 'var(--status-danger)' }}>Erro ao conectar com a API GOV.</p>
                     </>
                   )}
                 </>
@@ -1683,7 +1670,7 @@ export function ParametrosGeraisPage() {
               <footer className="nfs-nova-footer">
                 <button
                   type="button"
-                  className="primary-button"
+                  className="secondary-button modal-card__close"
                   onClick={() => setVerifyApiModalOpen(false)}
                 >
                   Fechar
@@ -1725,13 +1712,13 @@ export function ParametrosGeraisPage() {
                 <>
                   {executeApiStatus === 'success' ? (
                     <>
-                      <IoCheckmarkCircle size={64} style={{ color: '#10b981', marginBottom: '1rem' }} />
-                      <p style={{ fontSize: '1rem', fontWeight: '500', color: '#10b981' }}>API GOV iniciada com sucesso!</p>
+                      <IoCheckmarkCircle size={64} style={{ color: 'var(--status-success)', marginBottom: '1rem' }} />
+                      <p style={{ fontSize: '1rem', fontWeight: '500', color: 'var(--status-success)' }}>API GOV iniciada com sucesso!</p>
                     </>
                   ) : (
                     <>
-                      <IoCloseCircle size={64} style={{ color: '#ef4444', marginBottom: '1rem' }} />
-                      <p style={{ fontSize: '1rem', fontWeight: '500', color: '#ef4444' }}>Erro ao iniciar a API GOV.</p>
+                      <IoCloseCircle size={64} style={{ color: 'var(--status-danger)', marginBottom: '1rem' }} />
+                      <p style={{ fontSize: '1rem', fontWeight: '500', color: 'var(--status-danger)' }}>Erro ao iniciar a API GOV.</p>
                     </>
                   )}
                 </>
@@ -1741,7 +1728,7 @@ export function ParametrosGeraisPage() {
               <footer className="nfs-nova-footer">
                 <button
                   type="button"
-                  className="primary-button"
+                  className="secondary-button modal-card__close"
                   onClick={() => setExecuteApiModalOpen(false)}
                 >
                   Fechar
@@ -1763,15 +1750,7 @@ export function ParametrosGeraisPage() {
           <article className="modal-card modal-card--confirm">
             <header className="modal-card__header">
               <h2>Excluir Certificado Digital</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => setDeleteCertConfirmOpen(false)}
-                disabled={loadingParametros}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setDeleteCertConfirmOpen(false)} disabled={loadingParametros} expandable={false} />
             </header>
             <div className="modal-card__body modal-card__body--confirm">
               <p style={{ marginBottom: '1rem' }}>
@@ -1792,7 +1771,7 @@ export function ParametrosGeraisPage() {
             <footer className="nfs-nova-footer">
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 onClick={() => setDeleteCertConfirmOpen(false)}
                 disabled={loadingParametros}
               >
@@ -1819,14 +1798,7 @@ export function ParametrosGeraisPage() {
           <article className="modal-card">
             <header className="modal-card__header">
               <h2>Caminho do Certificado Digital</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={handleCloseHelpCertModal}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={handleCloseHelpCertModal} expandable={false} />
             </header>
 
             <div className="modal-card__body" style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem' }}>
@@ -1856,6 +1828,9 @@ export function ParametrosGeraisPage() {
             </div>
 
             <footer className="modal-card__footer">
+              <button type="button" className="secondary-button modal-card__close" onClick={handleCloseHelpCertModal}>
+                Fechar
+              </button>
               <button
                 type="button"
                 className="primary-button"

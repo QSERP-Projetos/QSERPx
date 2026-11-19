@@ -4,7 +4,6 @@ import {
   IoAddOutline,
   IoArrowBack,
   IoCloseCircleOutline,
-  IoCloseOutline,
   IoFilterOutline,
   IoRefreshOutline,
   IoTimeOutline,
@@ -28,6 +27,8 @@ import {
 } from '../../../services/apiCalls';
 import { filterListByTerm } from '../../../utils/filterListByTerm';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
 
 const formatToday = () => {
   const now = new Date();
@@ -316,11 +317,6 @@ export function ParadasMaquinaPage() {
 
     setSortField(field);
     setSortDirection('asc');
-  };
-
-  const getSortIndicator = (field: SortField) => {
-    if (sortField !== field) return '▲▼';
-    return sortDirection === 'asc' ? '▲' : '▼';
   };
 
   const carregar = useCallback(async () => {
@@ -754,118 +750,48 @@ export function ParadasMaquinaPage() {
             <p className="module-empty">Nenhuma parada encontrada.</p>
           ) : (
             <>
-              <div className="table-scroll module-table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th className="paradas-maquina-status-col">Status</th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('ordem')}>
-                          Ordem <span>{getSortIndicator('ordem')}</span>
-                        </button>
-                      </th>
-                      <th>
-                        <button className="module-table__sort" type="button" onClick={() => handleSort('maquina')}>
-                          Máquina <span>{getSortIndicator('maquina')}</span>
-                        </button>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <div className="data-cards-region">
+                  <DataListSortBar
+                    options={[
+                      { field: 'ordem', label: 'Ordem' },
+                      { field: 'maquina', label: 'Máquina' },
+                    ]}
+                    active={sortField}
+                    direction={sortDirection}
+                    onSort={handleSort}
+                  />
+                  <DataList ariaLabel="Paradas de máquina">
                     {rowsFiltradas.map((row, index) => {
                       const current = resolveParadaListRow(row);
                       const cronometroAberta = isParadaCronometroAberta(row);
                       const cronometroStatus = getParadaCronometroStatus(row);
 
                       return (
-                        <tr
+                        <DataListItem
                           key={`pm-${index}`}
-                          className={`module-row-clickable${cronometroAberta ? ' paradas-maquina-row--cronometro' : ''}`}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => (cronometroAberta ? abrirFinalizarCronometro(row) : abrirConsulta(row))}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
-                              if (cronometroAberta) {
-                                abrirFinalizarCronometro(row);
-                              } else {
-                                abrirConsulta(row);
-                              }
-                            }
-                          }}
-                        >
-                          <td className="paradas-maquina-status-col">
-                            {cronometroStatus ? (
-                              <IoTimeOutline
-                                size={18}
+                          className={cronometroAberta ? 'paradas-maquina-row--cronometro' : undefined}
+                          code={current.ordem}
+                          title={current.maquina}
+                          status={
+                            cronometroStatus ? (
+                              <span
                                 className={`paradas-maquina-status-icon paradas-maquina-status-icon--${cronometroStatus}`}
                                 title={
                                   cronometroStatus === 'pendente'
                                     ? 'Parada cronômetro pendente de finalização'
                                     : 'Parada cronômetro concluída'
                                 }
-                              />
-                            ) : null}
-                          </td>
-                          <td>{current.ordem}</td>
-                          <td>{current.maquina}</td>
-                        </tr>
+                              >
+                                <IoTimeOutline size={18} aria-hidden="true" />
+                              </span>
+                            ) : null
+                          }
+                          onOpen={() => (cronometroAberta ? abrirFinalizarCronometro(row) : abrirConsulta(row))}
+                        />
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="module-cards">
-                {rowsFiltradas.map((row, index) => {
-                  const current = resolveParadaListRow(row);
-                  const cronometroAberta = isParadaCronometroAberta(row);
-                  const cronometroStatus = getParadaCronometroStatus(row);
-
-                  return (
-                    <article
-                      className={`module-card module-row-clickable${cronometroAberta ? ' paradas-maquina-row--cronometro' : ''}`}
-                      key={`card-pm-${index}`}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => (cronometroAberta ? abrirFinalizarCronometro(row) : abrirConsulta(row))}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          if (cronometroAberta) {
-                            abrirFinalizarCronometro(row);
-                          } else {
-                            abrirConsulta(row);
-                          }
-                        }
-                      }}
-                    >
-                      <div className="module-card__row module-card__row--split">
-                        <div className="module-card__row-stack">
-                          <span>Ordem</span>
-                          <strong>{current.ordem}</strong>
-                        </div>
-                        {cronometroStatus ? (
-                          <IoTimeOutline
-                            size={18}
-                            className={`paradas-maquina-status-icon paradas-maquina-status-icon--${cronometroStatus}`}
-                            title={
-                              cronometroStatus === 'pendente'
-                                ? 'Parada cronômetro pendente de finalização'
-                                : 'Parada cronômetro concluída'
-                            }
-                          />
-                        ) : null}
-                      </div>
-                      <div className="module-card__row">
-                        <span>Máquina</span>
-                        <strong>{current.maquina}</strong>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+                  </DataList>
+                </div>
             </>
           )}
         </section>
@@ -876,17 +802,10 @@ export function ParadasMaquinaPage() {
           <article className="modal-card modal-card--wide paradas-maquina-modal">
             <header className="modal-card__header">
               <h2>Nova parada de máquina ({paradaCronometro ? 'Cronômetro' : 'Normal'})</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   if (saving) return;
                   setModalOpen(false);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <div className="form-grid-3">
@@ -1023,7 +942,7 @@ export function ParadasMaquinaPage() {
             </div>
 
             <div className="form-actions">
-              <button className="secondary-button" type="button" onClick={() => setModalOpen(false)}>
+              <button className="secondary-button modal-card__close" type="button" onClick={() => setModalOpen(false)}>
                 Cancelar
               </button>
               <button className="primary-button" type="button" onClick={() => void handleSalvar()} disabled={saving}>
@@ -1039,17 +958,10 @@ export function ParadasMaquinaPage() {
           <article className="modal-card paradas-maquina-modal">
             <header className="modal-card__header">
               <h2>Finalizar Parada Cronômetro</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   setFinalizarOpen(false);
                   setFinalizarRow(null);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} expandable={false} />
             </header>
 
             <div className="form-grid-3">
@@ -1077,7 +989,7 @@ export function ParadasMaquinaPage() {
 
             <div className="form-actions">
               <button
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 type="button"
                 onClick={() => {
                   setFinalizarOpen(false);
@@ -1099,17 +1011,10 @@ export function ParadasMaquinaPage() {
           <article className="modal-card paradas-maquina-modal">
             <header className="modal-card__header">
               <h2>Consulta de Parada de Máquina</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   setDetalheOpen(false);
                   setDetalheRow(null);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} expandable={false} />
             </header>
 
             <div className="form-grid-3">
@@ -1145,7 +1050,7 @@ export function ParadasMaquinaPage() {
 
             <div className="form-actions">
               <button
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 type="button"
                 onClick={() => {
                   setDetalheOpen(false);

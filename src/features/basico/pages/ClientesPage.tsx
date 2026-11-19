@@ -4,8 +4,8 @@ import {
   IoAddOutline,
   IoArrowBack,
   IoCloseCircleOutline,
-  IoCloseOutline,
   IoHelpCircleOutline,
+  IoLocationOutline,
   IoRefreshOutline,
   IoSearchOutline,
 } from 'react-icons/io5';
@@ -22,6 +22,8 @@ import {
   obterUsuariosTransacoesSistemaAcaoCall,
 } from '../../../services/apiCalls';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
 
 type Cliente = {
   codigo_Cliente?: number;
@@ -268,11 +270,6 @@ export function ClientesPage() {
 
     setSortField(field);
     setSortDirection('asc');
-  };
-
-  const getSortIndicator = (field: SortField) => {
-    if (sortField !== field) return '▲▼';
-    return sortDirection === 'asc' ? '▲' : '▼';
   };
 
   const limparFormulario = () => {
@@ -687,81 +684,44 @@ export function ClientesPage() {
         ) : clientesOrdenados.length === 0 ? (
           <p className="module-empty">Nenhum cliente encontrado.</p>
         ) : (
-          <>
-          <div className="table-scroll clientes-table-wrap">
-            <table className="clientes-table">
-              <thead>
-                <tr>
-                  <th>
-                    <button type="button" className="clientes-table__sort" onClick={() => handleSort('nome')}>
-                      NOME FANTASIA <span>{getSortIndicator('nome')}</span>
-                    </button>
-                  </th>
-                  <th>Razão social</th>
-                  <th>
-                    <button type="button" className="clientes-table__sort" onClick={() => handleSort('cidade')}>
-                      CIDADE <span>{getSortIndicator('cidade')}</span>
-                    </button>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {clientesOrdenados.map((item, index) => {
-                  const codigo = asText(item?.codigo_Cliente);
-                  const nome = asText(item?.nome_Fantasia);
-                  const razao = asText(item?.razao_Social);
-                  const cidade = asText(item?.cidade_Entrega);
-                  const uf = asText(item?.estado_Entrega);
+          <div className="data-cards-region">
+            <DataListSortBar
+              options={[
+                { field: 'codigo', label: 'Código' },
+                { field: 'nome', label: 'Nome fantasia' },
+                { field: 'cidade', label: 'Cidade' },
+              ]}
+              active={sortField}
+              direction={sortDirection}
+              onSort={handleSort}
+            />
+            <DataList ariaLabel="Clientes">
+              {clientesOrdenados.map((item, index) => {
+                const codigo = asText(item?.codigo_Cliente);
+                const nome = asText(item?.nome_Fantasia);
+                const razao = asText(item?.razao_Social);
+                const cidade = asText(item?.cidade_Entrega);
+                const uf = asText(item?.estado_Entrega);
+                const local = [cidade, uf].filter(Boolean).join(' / ');
 
-                  return (
-                    <tr
-                      key={`${codigo || 'cliente'}-${index}`}
-                      onClick={() => void abrirConsulta(item)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          void abrirConsulta(item);
-                        }
-                      }}
-                      tabIndex={0}
-                    >
-                      <td>{nome || '-'}</td>
-                      <td>{razao || '-'}</td>
-                      <td>{[cidade, uf].filter(Boolean).join(' / ') || '-'}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="clientes-cards">
-            {clientesOrdenados.map((item, index) => {
-              const codigo = asText(item?.codigo_Cliente);
-              const razao = asText(item?.razao_Social);
-
-              return (
-                <article
-                  key={`card-${codigo || 'cliente'}-${index}`}
-                  className="clientes-card"
-                  onClick={() => void abrirConsulta(item)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      void abrirConsulta(item);
+                return (
+                  <DataListItem
+                    key={`${codigo || 'cliente'}-${index}`}
+                    code={codigo ? `#${codigo}` : '-'}
+                    title={nome || razao || '-'}
+                    subtitle={razao && razao !== nome ? razao : undefined}
+                    aside={
+                      <span className="data-list__meta">
+                        <IoLocationOutline size={13} aria-hidden="true" />
+                        {local || 'Sem cidade'}
+                      </span>
                     }
-                  }}
-                  tabIndex={0}
-                >
-                  <div className="clientes-card__row">
-                    <span>RAZAO SOCIAL</span>
-                    <strong>{razao || '-'}</strong>
-                  </div>
-                </article>
-              );
-            })}
+                    onOpen={() => void abrirConsulta(item)}
+                  />
+                );
+              })}
+            </DataList>
           </div>
-          </>
         )}
       </section>
 
@@ -770,15 +730,18 @@ export function ClientesPage() {
           <article className="modal-card">
             <header className="modal-card__header">
               <h2>Aviso</h2>
-              <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setAvisoOpen(false)}>
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setAvisoOpen(false)} expandable={false} />
             </header>
 
             <p className="module-empty">
               Os clientes cadastrados aqui devem ser confirmados no sistema Q4 em VENDAS &gt; FUNCOES &gt; CLIENTES
               PENDENTES.
             </p>
+            <footer className="modal-card__footer">
+              <button type="button" className="secondary-button modal-card__close" onClick={() => setAvisoOpen(false)}>
+                Fechar
+              </button>
+            </footer>
           </article>
         </section>
       )}
@@ -788,17 +751,10 @@ export function ClientesPage() {
           <article className="modal-card modal-card--wide">
             <header className="modal-card__header">
               <h2>{modoConsulta ? 'Consulta cliente' : 'Incluir cliente'}</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   if (saving) return;
                   setClienteOpen(false);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <section className="module-form">
@@ -1064,7 +1020,7 @@ export function ClientesPage() {
 
               <div className="form-actions clientes-modal-actions">
                 <button
-                  className="secondary-button"
+                  className="secondary-button modal-card__close"
                   type="button"
                   onClick={() => setClienteOpen(false)}
                   disabled={saving || buscandoDocumento}

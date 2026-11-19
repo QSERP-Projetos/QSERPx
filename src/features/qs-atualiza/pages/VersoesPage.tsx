@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IoArrowBack, IoAlertCircleOutline, IoCloseOutline, IoHelpCircleOutline, IoWarningOutline, IoInformationCircleOutline, IoCheckmarkCircle, IoCloseCircle } from 'react-icons/io5';
+import { IoArrowBack, IoAlertCircleOutline, IoHelpCircleOutline, IoWarningOutline, IoInformationCircleOutline, IoCheckmarkCircle, IoCloseCircle } from 'react-icons/io5';
 import { ROUTES } from '../../../constants/routes';
 import { GlobalConfig } from '../../../services/globalConfig';
 import { SearchableSelect, type SearchableSelectOption } from '../../../components/SearchableSelect';
 import { buscarVersoesPorSistema, type SistemaVersao } from '../../../services/supabaseQueries';
 import apiManager, { ApiCallType } from '../../../services/apiManager';
 import { useToast } from '../../../contexts/ToastContext';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
 
 type ActiveTab = 'qserp' | 'qsapi' | 'qserpx';
 type ActiveEnv = 'producao' | 'teste';
@@ -930,15 +931,15 @@ export function VersoesPage() {
     (!precisaScript || sessoesDerrubadas);
   const btnAtualizarStyle: React.CSSProperties =
     !hasConfig
-      ? { backgroundColor: '#ef4444', color: '#fff', border: 'none', cursor: 'not-allowed' }
+      ? { backgroundColor: 'var(--status-danger)', color: '#fff', border: 'none', cursor: 'not-allowed' }
       : depOk === false
-        ? { backgroundColor: '#ef4444', color: '#fff', border: 'none', cursor: 'not-allowed', opacity: 0.85 }
+        ? { backgroundColor: 'var(--status-danger)', color: '#fff', border: 'none', cursor: 'not-allowed', opacity: 0.85 }
         : iisSiteRequired
-          ? { backgroundColor: '#ef4444', color: '#fff', border: 'none', cursor: 'not-allowed' }
+          ? { backgroundColor: 'var(--status-danger)', color: '#fff', border: 'none', cursor: 'not-allowed' }
           : precisaScript && !sessoesDerrubadas
-            ? { backgroundColor: '#ef4444', color: '#fff', border: 'none', cursor: 'not-allowed', opacity: 0.85 }
+            ? { backgroundColor: 'var(--status-danger)', color: '#fff', border: 'none', cursor: 'not-allowed', opacity: 0.85 }
             : readyToUpdate
-              ? { backgroundColor: '#10b981', color: '#fff', border: 'none' }
+              ? { backgroundColor: 'var(--status-success)', color: '#fff', border: 'none' }
               : {};
 
   const iisOptions: SearchableSelectOption[] = useMemo(() => {
@@ -1074,7 +1075,7 @@ export function VersoesPage() {
                         onChange={(e) => { setCaminhoExtracao(e.target.value); if (camposErro['caminhoExtracao']) setCamposErro(p => ({ ...p, caminhoExtracao: false })); }}
                         placeholder="Ex: \\servidor\extracao"
                         disabled={!isEditing}
-                        style={camposErro['caminhoExtracao'] ? { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68,0.2)' } : undefined}
+                        style={camposErro['caminhoExtracao'] ? { borderColor: 'var(--status-danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.2)' } : undefined}
                       />
                       <button
                         type="button"
@@ -1097,7 +1098,7 @@ export function VersoesPage() {
                         onChange={(e) => { setCaminhoDestino(e.target.value); if (camposErro['caminhoDestino']) setCamposErro(p => ({ ...p, caminhoDestino: false })); }}
                         placeholder="Ex: \\servidor\qserp"
                         disabled={!isEditing}
-                        style={camposErro['caminhoDestino'] ? { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68,0.2)' } : undefined}
+                        style={camposErro['caminhoDestino'] ? { borderColor: 'var(--status-danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.2)' } : undefined}
                       />
                       <button
                         type="button"
@@ -1122,7 +1123,7 @@ export function VersoesPage() {
                         onChange={(e) => { setCaminhoBackup(e.target.value); if (camposErro['caminhoBackup']) setCamposErro(p => ({ ...p, caminhoBackup: false })); }}
                         placeholder="Ex: \\servidor\backup"
                         disabled={!isEditing}
-                        style={camposErro['caminhoBackup'] ? { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68,0.2)' } : undefined}
+                        style={camposErro['caminhoBackup'] ? { borderColor: 'var(--status-danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.2)' } : undefined}
                       />
                       <button
                         type="button"
@@ -1145,7 +1146,7 @@ export function VersoesPage() {
                         onChange={(e) => { setCaminhoLog(e.target.value); if (camposErro['caminhoLog']) setCamposErro(p => ({ ...p, caminhoLog: false })); }}
                         placeholder="Ex: \\servidor\logs"
                         disabled={!isEditing}
-                        style={camposErro['caminhoLog'] ? { borderColor: '#ef4444', boxShadow: '0 0 0 2px rgba(239,68,68,0.2)' } : undefined}
+                        style={camposErro['caminhoLog'] ? { borderColor: 'var(--status-danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.2)' } : undefined}
                       />
                       <button
                         type="button"
@@ -1199,12 +1200,12 @@ export function VersoesPage() {
                           <span className="icon-button module-action-button clientes-cep-search" style={{ color: 'var(--color-muted)', fontSize: '0.7rem', width: 'auto', padding: '0 6px' }}>...</span>
                         )}
                         {urlApiStatus === 'ok' && (
-                          <span className="icon-button module-action-button clientes-cep-search" title="URL acessível" style={{ color: '#10b981', cursor: 'default' }}>
+                          <span className="icon-button module-action-button clientes-cep-search" title="URL acessível" style={{ color: 'var(--status-success)', cursor: 'default' }}>
                             <IoCheckmarkCircle size={20} />
                           </span>
                         )}
                         {urlApiStatus === 'erro' && (
-                          <span className="icon-button module-action-button clientes-cep-search" title="URL inacessível" style={{ color: '#ef4444', cursor: 'default' }}>
+                          <span className="icon-button module-action-button clientes-cep-search" title="URL inacessível" style={{ color: 'var(--status-danger)', cursor: 'default' }}>
                             <IoCloseCircle size={20} />
                           </span>
                         )}
@@ -1260,7 +1261,6 @@ export function VersoesPage() {
                     className="primary-button"
                     onClick={() => (isEditing ? void salvarConfiguracoes(ID_SISTEMA_MAP[activeTab], TIPO_AMBIENTE_MAP[activeEnv]) : setIsEditing(true))}
                     disabled={btnDisabled}
-                    style={{ width: 'auto' }}
                   >
                     {savingConfig ? 'Salvando...' : isEditing ? 'Salvar' : 'Editar'}
                   </button>
@@ -1269,7 +1269,6 @@ export function VersoesPage() {
                     className="secondary-button"
                     onClick={handleCancelar}
                     disabled={btnDisabled || !isEditing}
-                    style={{ width: 'auto' }}
                   >
                     Cancelar
                   </button>
@@ -1278,10 +1277,10 @@ export function VersoesPage() {
 
               {/* Bloco de aviso: sistema bloqueado (visível apenas quando não está atualizando e a licença está bloqueada) */}
               {!loadingAtualizar && licencaBloqueada && (
-                <div className="nfe-params-fieldset" style={{ borderColor: '#f59e0b', marginTop: '1.5rem' }}>
+                <div className="nfe-params-fieldset" style={{ borderColor: 'var(--status-warning)', marginTop: '1.5rem' }}>
                   <span className="nfe-params-fieldset__legend" style={{ color: '#92400e' }}>Sistemas Bloqueados</span>
                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <IoWarningOutline size={20} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
+                    <IoWarningOutline size={20} style={{ color: 'var(--status-warning)', flexShrink: 0, marginTop: '2px' }} />
                     <div>
                       <p style={{ margin: 0, fontWeight: 600, color: 'var(--color-text)' }}>
                         A licença está bloqueada para acesso dos demais usuários.
@@ -1296,8 +1295,7 @@ export function VersoesPage() {
                   <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <button
                       type="button"
-                      className="primary-button"
-                      style={{ width: 'auto', backgroundColor: '#d97706', borderColor: '#d97706' }}
+                      className="primary-button primary-button--warning"
                       disabled={loadingDesbloquearManual}
                       onClick={() => void desbloquearManual()}
                     >
@@ -1360,7 +1358,7 @@ export function VersoesPage() {
                       </div>
                     )}
                     {iisSiteRequired && (
-                      <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.25rem', marginBottom: 0 }}>
+                      <p style={{ color: 'var(--status-danger)', fontSize: '0.8rem', marginTop: '0.25rem', marginBottom: 0 }}>
                         Selecione um site IIS para continuar
                       </p>
                     )}
@@ -1413,8 +1411,7 @@ export function VersoesPage() {
 
                       <button
                         type="button"
-                        className="primary-button"
-                        style={{ ...btnAtualizarStyle, whiteSpace: 'nowrap', marginTop: '0.75rem' }}
+                        className="primary-button" style={{ ...btnAtualizarStyle, whiteSpace: 'nowrap', marginTop: '0.75rem' }}
                         disabled={btnAtualizarDisabled}
                         onClick={() => setModalConfirmAtualizarOpen(true)}
                       >
@@ -1423,7 +1420,7 @@ export function VersoesPage() {
 
                       {ultimaVersao && (
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', marginTop: '0.5rem', backgroundColor: 'var(--color-primary-soft, #eff6ff)', border: '1px solid var(--color-primary-border, #93c5fd)', borderRadius: '6px', fontSize: '0.82rem' }}>
-                          <IoCheckmarkCircle size={15} style={{ color: '#10b981', flexShrink: 0 }} />
+                          <IoCheckmarkCircle size={15} style={{ color: 'var(--status-success)', flexShrink: 0 }} />
                           <span style={{ color: 'var(--color-text)' }}>
                             Última atualização:{' '}
                             <strong style={{ fontFamily: 'monospace' }}>{ultimaVersao}</strong>
@@ -1444,7 +1441,7 @@ export function VersoesPage() {
                               gap: '0.75rem',
                               alignItems: 'flex-start',
                             }}>
-                              <IoWarningOutline size={20} style={{ color: '#d97706', flexShrink: 0, marginTop: '1px' }} />
+                              <IoWarningOutline size={20} style={{ color: 'var(--status-warning)', flexShrink: 0, marginTop: '1px' }} />
                               <div>
                                 <p style={{ fontWeight: 600, color: '#92400e', marginBottom: '0.25rem' }}>
                                   Atenção: esta versão possui script de banco de dados
@@ -1456,15 +1453,14 @@ export function VersoesPage() {
                                 {!loadingAtualizar && !sessoesDerrubadas && (
                                   <button
                                     type="button"
-                                    className="secondary-button"
-                                    style={{ width: 'auto', marginTop: '0.75rem', backgroundColor: '#d97706', borderColor: '#d97706', color: '#fff' }}
+                                    className="secondary-button secondary-button--warning" style={{ marginTop: '0.75rem' }}
                                     onClick={() => setBloquearStep('confirmar')}
                                   >
                                     Bloquear / Derrubar Sessões
                                   </button>
                                 )}
                                 {!loadingAtualizar && sessoesDerrubadas && (
-                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', color: '#16a34a', fontWeight: 600, fontSize: '0.9rem' }}>
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', color: 'var(--status-success)', fontWeight: 600, fontSize: '0.9rem' }}>
                                     <IoCheckmarkCircle size={16} style={{ flexShrink: 0 }} />
                                     Sessões derrubadas — Atualização liberada
                                   </div>
@@ -1514,16 +1510,16 @@ export function VersoesPage() {
                                     Versão atual:{' '}
                                     <strong style={{ fontFamily: 'monospace' }}>{versaoApiQsApi}</strong>
                                     {depOk === true && (
-                                      <span style={{ marginLeft: '0.5rem', color: '#16a34a' }}>— dependência satisfeita ✓</span>
+                                      <span style={{ marginLeft: '0.5rem', color: 'var(--status-success)' }}>— dependência satisfeita ✓</span>
                                     )}
                                     {depOk === false && (
-                                      <span style={{ marginLeft: '0.5rem', color: '#dc2626' }}>— versão insuficiente ✗</span>
+                                      <span style={{ marginLeft: '0.5rem', color: 'var(--status-danger)' }}>— versão insuficiente ✗</span>
                                     )}
                                   </p>
                                 )}
 
                                 {!loadingVerificacao && depOk === false && (
-                                  <p style={{ color: '#b91c1c', fontSize: '0.875rem', lineHeight: '1.5' }}>
+                                  <p style={{ color: 'var(--status-danger)', fontSize: '0.875rem', lineHeight: '1.5' }}>
                                     Atualize a QSAPI para a versão <strong>{dependencia}</strong> ou superior antes de continuar.
                                   </p>
                                 )}
@@ -1556,7 +1552,7 @@ export function VersoesPage() {
                         gap: '0.75rem',
                         alignItems: 'flex-start',
                       }}>
-                        <IoWarningOutline size={20} style={{ color: '#d97706', flexShrink: 0, marginTop: '1px' }} />
+                        <IoWarningOutline size={20} style={{ color: 'var(--status-warning)', flexShrink: 0, marginTop: '1px' }} />
                         <div>
                           <p style={{ fontWeight: 600, color: '#92400e', marginBottom: '0.25rem' }}>
                             Atenção: esta versão possui script de banco de dados
@@ -1568,15 +1564,14 @@ export function VersoesPage() {
                           {!loadingAtualizar && !sessoesDerrubadas && (
                             <button
                               type="button"
-                              className="secondary-button"
-                              style={{ width: 'auto', marginTop: '0.75rem', backgroundColor: '#d97706', borderColor: '#d97706', color: '#fff' }}
+                              className="secondary-button secondary-button--warning" style={{ marginTop: '0.75rem' }}
                               onClick={() => setBloquearStep('confirmar')}
                             >
                               Bloquear / Derrubar Sessões
                             </button>
                           )}
                           {!loadingAtualizar && sessoesDerrubadas && (
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', color: '#16a34a', fontWeight: 600, fontSize: '0.9rem' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', color: 'var(--status-success)', fontWeight: 600, fontSize: '0.9rem' }}>
                               <IoCheckmarkCircle size={16} style={{ flexShrink: 0 }} />
                               Sessões derrubadas — Atualização liberada
                             </div>
@@ -1626,16 +1621,16 @@ export function VersoesPage() {
                               Versão atual:{' '}
                               <strong style={{ fontFamily: 'monospace' }}>{versaoApiQsApi}</strong>
                               {depOk === true && (
-                                <span style={{ marginLeft: '0.5rem', color: '#16a34a' }}>— dependência satisfeita ✓</span>
+                                <span style={{ marginLeft: '0.5rem', color: 'var(--status-success)' }}>— dependência satisfeita ✓</span>
                               )}
                               {depOk === false && (
-                                <span style={{ marginLeft: '0.5rem', color: '#dc2626' }}>— versão insuficiente ✗</span>
+                                <span style={{ marginLeft: '0.5rem', color: 'var(--status-danger)' }}>— versão insuficiente ✗</span>
                               )}
                             </p>
                           )}
 
                           {!loadingVerificacao && depOk === false && (
-                            <p style={{ color: '#b91c1c', fontSize: '0.875rem', lineHeight: '1.5' }}>
+                            <p style={{ color: 'var(--status-danger)', fontSize: '0.875rem', lineHeight: '1.5' }}>
                               Atualize a QSAPI para a versão <strong>{dependencia}</strong> ou superior antes de continuar.
                             </p>
                           )}
@@ -1665,9 +1660,7 @@ export function VersoesPage() {
           <article className="modal-card">
             <header className="modal-card__header">
               <h2>Atualiza QSERP</h2>
-              <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setModalAtualizaQserpOpen(false)}>
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setModalAtualizaQserpOpen(false)} expandable={false} />
             </header>
             <div className="modal-card__body" style={{ padding: '1.5rem 2rem' }}>
               <p style={{ marginBottom: '1rem', lineHeight: '1.6' }}>
@@ -1682,6 +1675,9 @@ export function VersoesPage() {
               </p>
             </div>
             <footer className="modal-card__footer">
+              <button type="button" className="secondary-button modal-card__close" onClick={() => setModalAtualizaQserpOpen(false)}>
+                Fechar
+              </button>
               <button type="button" className="primary-button" onClick={() => setModalAtualizaQserpOpen(false)}>Entendido</button>
             </footer>
           </article>
@@ -1694,9 +1690,7 @@ export function VersoesPage() {
           <article className="modal-card">
             <header className="modal-card__header">
               <h2>Caminho de destino</h2>
-              <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setModalCaminhoOpen(null)}>
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setModalCaminhoOpen(null)} />
             </header>
             <div className="modal-card__body" style={{ padding: '1.5rem 2rem' }}>
               {activeTab === 'qserp' ? (
@@ -1712,7 +1706,7 @@ export function VersoesPage() {
                     <li><code>\\192.168.1.100\sistemas\qserp</code></li>
                     <li><code>\\SERVIDOR01\Compartilhado\QsErp</code></li>
                   </ul>
-                  <p style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#dc2626' }}>❌ Exemplos inválidos (local):</p>
+                  <p style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--status-danger)' }}>❌ Exemplos inválidos (local):</p>
                   <ul style={{ marginLeft: '1.5rem', lineHeight: '2', fontSize: '0.9rem', backgroundColor: 'var(--color-surface-alt, #f5f5f5)', padding: '0.75rem 1rem', borderRadius: '4px' }}>
                     <li><code>C:\QsErp</code></li>
                     <li><code>D:\Sistemas\QsErp</code></li>
@@ -1739,6 +1733,9 @@ export function VersoesPage() {
               )}
             </div>
             <footer className="modal-card__footer">
+              <button type="button" className="secondary-button modal-card__close" onClick={() => setModalCaminhoOpen(null)}>
+                Fechar
+              </button>
               <button type="button" className="primary-button" onClick={() => setModalCaminhoOpen(null)}>Entendido</button>
             </footer>
           </article>
@@ -1751,9 +1748,7 @@ export function VersoesPage() {
           <article className="modal-card" style={{ width: 'min(500px, 96vw)' }}>
             <header className="modal-card__header">
               <h2>Preencher caminho de destino?</h2>
-              <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setModalCaminhoFisicoOpen(false)}>
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setModalCaminhoFisicoOpen(false)} expandable={false} />
             </header>
             <div className="modal-card__body" style={{ padding: '1.5rem 2rem' }}>
               <p style={{ lineHeight: '1.6', marginBottom: '1rem' }}>
@@ -1763,12 +1758,11 @@ export function VersoesPage() {
                 {caminhoFisicoSugerido}
               </code>
             </div>
-            <footer className="modal-card__footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-              <button type="button" className="secondary-button" style={{ width: 'auto' }} onClick={() => setModalCaminhoFisicoOpen(false)}>Não</button>
+            <footer className="modal-card__footer">
+              <button type="button" className="secondary-button modal-card__close" onClick={() => setModalCaminhoFisicoOpen(false)}>Não</button>
               <button
                 type="button"
                 className="primary-button"
-                style={{ width: 'auto' }}
                 onClick={() => {
                   setCaminhoDestino(caminhoFisicoSugerido);
                   setModalCaminhoFisicoOpen(false);
@@ -1788,9 +1782,7 @@ export function VersoesPage() {
           <article className="modal-card">
             <header className="modal-card__header">
               <h2>Caminho de backup</h2>
-              <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setModalCaminhoOpen(null)}>
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setModalCaminhoOpen(null)} expandable={false} />
             </header>
             <div className="modal-card__body" style={{ padding: '1.5rem 2rem' }}>
               <p style={{ marginBottom: '1rem', lineHeight: '1.6' }}>
@@ -1806,13 +1798,16 @@ export function VersoesPage() {
                 <li><code>\\SERVIDOR-BD\Backup\Diario</code></li>
               </ul>
 
-              <p style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#dc2626' }}>❌ Exemplos inválidos (local):</p>
+              <p style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--status-danger)' }}>❌ Exemplos inválidos (local):</p>
               <ul style={{ marginLeft: '1.5rem', lineHeight: '2', fontSize: '0.9rem', backgroundColor: 'var(--color-surface-alt, #f5f5f5)', padding: '0.75rem 1rem', borderRadius: '4px' }}>
                 <li><code>C:\Backup</code></li>
                 <li><code>D:\Backup\QsErp</code></li>
               </ul>
             </div>
             <footer className="modal-card__footer">
+              <button type="button" className="secondary-button modal-card__close" onClick={() => setModalCaminhoOpen(null)}>
+                Fechar
+              </button>
               <button type="button" className="primary-button" onClick={() => setModalCaminhoOpen(null)}>Entendido</button>
             </footer>
           </article>
@@ -1825,9 +1820,7 @@ export function VersoesPage() {
           <article className="modal-card">
             <header className="modal-card__header">
               <h2>Confirmar atualização</h2>
-              <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setModalConfirmAtualizarOpen(false)}>
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setModalConfirmAtualizarOpen(false)} expandable={false} />
             </header>
             <div className="modal-card__body" style={{ padding: '1.5rem 2rem' }}>
               <p style={{ lineHeight: '1.6' }}>
@@ -1842,8 +1835,8 @@ export function VersoesPage() {
                 </div>
               )}
             </div>
-            <footer className="modal-card__footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-              <button type="button" className="secondary-button" onClick={() => setModalConfirmAtualizarOpen(false)} disabled={loadingAtualizar} style={{ width: 'auto' }}>
+            <footer className="modal-card__footer">
+              <button type="button" className="secondary-button modal-card__close" onClick={() => setModalConfirmAtualizarOpen(false)} disabled={loadingAtualizar}>
                 Não
               </button>
               <button type="button" className="primary-button" onClick={() => {
@@ -1858,7 +1851,7 @@ export function VersoesPage() {
                 } else {
                   void executarAtualizacao();
                 }
-              }} disabled={loadingAtualizar} style={{ width: 'auto' }}>
+              }} disabled={loadingAtualizar}>
                 {loadingAtualizar ? 'Atualizando...' : 'Sim, atualizar'}
               </button>
             </footer>
@@ -1872,9 +1865,7 @@ export function VersoesPage() {
           <article className="modal-card" style={{ width: 'min(460px, 96vw)' }}>
             <header className="modal-card__header">
               <h2>Configurar URL do QS Atualiza</h2>
-              <button type="button" className="icon-button" aria-label="Fechar" onClick={() => { setModalConfigUrlAtualizaOpen(false); setConfigApiStatus(null); }}>
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => { setModalConfigUrlAtualizaOpen(false); setConfigApiStatus(null); }} />
             </header>
             <div className="modal-card__body" style={{ padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <p style={{ lineHeight: '1.6', fontSize: '0.9rem', color: 'var(--color-text-muted)', margin: 0 }}>
@@ -1913,12 +1904,12 @@ export function VersoesPage() {
                       <span style={{ fontSize: '0.7rem', color: 'var(--color-muted)', padding: '0 6px' }}>...</span>
                     )}
                     {configApiStatus === 'success' && (
-                      <span title="URL acessível" style={{ color: '#10b981', display: 'flex', alignItems: 'center' }}>
+                      <span title="URL acessível" style={{ color: 'var(--status-success)', display: 'flex', alignItems: 'center' }}>
                         <IoCheckmarkCircle size={20} />
                       </span>
                     )}
                     {configApiStatus === 'error' && (
-                      <span title="URL inacessível" style={{ color: '#ef4444', display: 'flex', alignItems: 'center' }}>
+                      <span title="URL inacessível" style={{ color: 'var(--status-danger)', display: 'flex', alignItems: 'center' }}>
                         <IoCloseCircle size={20} />
                       </span>
                     )}
@@ -1942,15 +1933,14 @@ export function VersoesPage() {
                 </div>
               )}
             </div>
-            <footer className="modal-card__footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-              <button type="button" className="secondary-button" onClick={() => { setModalConfigUrlAtualizaOpen(false); setConfigApiStatus(null); }} style={{ width: 'auto' }}>
+            <footer className="modal-card__footer">
+              <button type="button" className="secondary-button modal-card__close" onClick={() => { setModalConfigUrlAtualizaOpen(false); setConfigApiStatus(null); }}>
                 Cancelar
               </button>
               <button
                 type="button"
                 className="primary-button"
                 disabled={configApiStatus !== 'success'}
-                style={{ width: 'auto' }}
                 onClick={() => {
                   GlobalConfig.setBaseUrlQSAtualiza(`${configUrlProtocol}://${configUrlHost.trim()}`);
                   setModalConfigUrlAtualizaOpen(false);
@@ -1969,15 +1959,15 @@ export function VersoesPage() {
       {progressModalOpen && (
         <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Progresso da atualização">
           <article className="modal-card" style={{ width: 'min(680px, 96vw)', display: 'flex', flexDirection: 'column' }}>
-            <header className="modal-card__header" style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '0.875rem' }}>
+            <header className="modal-card__header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
                 {progressStatus === 'running' && (
                   <span className="loading-spinner" style={{ width: 18, height: 18, border: '2.5px solid var(--color-border)', borderTopColor: '#d97706', flexShrink: 0, margin: 0 }} />
                 )}
-                {progressStatus === 'success' && <IoCheckmarkCircle size={20} style={{ color: '#10b981', flexShrink: 0 }} />}
-                {progressStatus === 'error' && <IoCloseCircle size={20} style={{ color: '#ef4444', flexShrink: 0 }} />}
+                {progressStatus === 'success' && <IoCheckmarkCircle size={20} style={{ color: 'var(--status-success)', flexShrink: 0 }} />}
+                {progressStatus === 'error' && <IoCloseCircle size={20} style={{ color: 'var(--status-danger)', flexShrink: 0 }} />}
                 <div style={{ minWidth: 0 }}>
-                  <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>
+                  <h2>
                     Atualizando {TAB_LABEL[activeTab]}{versaoSelecionada ? ` — v${versaoSelecionada}` : ''}
                   </h2>
                   <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-muted)' }}>
@@ -1989,15 +1979,7 @@ export function VersoesPage() {
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                disabled={progressStatus === 'running'}
-                onClick={() => setProgressModalOpen(false)}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={() => setProgressModalOpen(false)} disabled={progressStatus === 'running'} />
             </header>
 
             <div
@@ -2027,15 +2009,14 @@ export function VersoesPage() {
                 </div>
               ))}
               {progressStatus === 'running' && progressLogs.length > 0 && (
-                <span style={{ color: '#d97706' }}>&#9607;</span>
+                <span style={{ color: 'var(--status-warning)' }}>&#9607;</span>
               )}
             </div>
 
-            <footer className="modal-card__footer" style={{ borderTop: '1px solid var(--color-border)', paddingTop: '0.875rem', display: 'flex', justifyContent: 'flex-end' }}>
+            <footer className="modal-card__footer">
               <button
                 type="button"
-                className="primary-button"
-                style={{ width: 'auto' }}
+                className="secondary-button modal-card__close"
                 disabled={progressStatus === 'running'}
                 onClick={() => setProgressModalOpen(false)}
               >
@@ -2050,20 +2031,21 @@ export function VersoesPage() {
       {bloquearStep === 'confirmar' && (
         <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Bloquear sistema">
           <article className="modal-card">
-            <header className="modal-card__header" style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '0.875rem' }}>
+            <header className="modal-card__header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-                <IoAlertCircleOutline size={22} style={{ color: '#dc2626', flexShrink: 0 }} />
-                <h2 style={{ fontSize: '1rem', fontWeight: 600 }}>Bloquear sistema</h2>
+                <IoAlertCircleOutline size={22} style={{ color: 'var(--status-danger)', flexShrink: 0 }} />
+                <h2>Bloquear sistema</h2>
               </div>
+              <ModalHeaderActions onClose={() => setBloquearStep(null)} expandable={false} />
             </header>
             <div className="modal-card__body" style={{ padding: '1rem 0.25rem 0.5rem' }}>
               <p style={{ lineHeight: '1.7', fontSize: '0.925rem' }}>
                 Deseja realmente <strong>derrubar os usuários e bloquear o sistema</strong> antes da atualização?
               </p>
             </div>
-            <footer className="modal-card__footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid var(--color-border)', paddingTop: '0.875rem' }}>
-              <button type="button" className="secondary-button" onClick={() => setBloquearStep(null)} style={{ width: 'auto' }}>Não</button>
-              <button type="button" className="primary-button" onClick={() => setBloquearStep('mensagem')} style={{ width: 'auto' }}>Sim</button>
+            <footer className="modal-card__footer">
+              <button type="button" className="secondary-button modal-card__close" onClick={() => setBloquearStep(null)}>Não</button>
+              <button type="button" className="primary-button" onClick={() => setBloquearStep('mensagem')}>Sim</button>
             </footer>
           </article>
         </section>
@@ -2073,8 +2055,9 @@ export function VersoesPage() {
       {bloquearStep === 'mensagem' && (
         <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Mensagem de bloqueio">
           <article className="modal-card" style={{ width: 'min(520px, 100%)' }}>
-            <header className="modal-card__header" style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '0.875rem' }}>
-              <h2 style={{ fontSize: '1rem', fontWeight: 600 }}>Mensagem de bloqueio</h2>
+            <header className="modal-card__header">
+              <h2>Mensagem de bloqueio</h2>
+              <ModalHeaderActions onClose={() => setBloquearStep(null)} disabled={loadingBloquear} />
             </header>
             <div className="modal-card__body" style={{ padding: '1rem 0.25rem 0.5rem' }}>
               <label className="nfe-params-field">
@@ -2088,9 +2071,9 @@ export function VersoesPage() {
                 />
               </label>
             </div>
-            <footer className="modal-card__footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid var(--color-border)', paddingTop: '0.875rem' }}>
-              <button type="button" className="secondary-button" onClick={() => setBloquearStep(null)} disabled={loadingBloquear} style={{ width: 'auto' }}>Cancelar</button>
-              <button type="button" className="primary-button" onClick={() => void executarBloqueio()} disabled={loadingBloquear} style={{ width: 'auto' }}>
+            <footer className="modal-card__footer">
+              <button type="button" className="secondary-button modal-card__close" onClick={() => setBloquearStep(null)} disabled={loadingBloquear}>Cancelar</button>
+              <button type="button" className="primary-button" onClick={() => void executarBloqueio()} disabled={loadingBloquear}>
                 {loadingBloquear ? 'Bloqueando...' : 'Confirmar'}
               </button>
             </footer>
@@ -2102,20 +2085,21 @@ export function VersoesPage() {
       {bloquearStep === 'confirmarDerrubar' && (
         <section className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Derrubar sessões">
           <article className="modal-card">
-            <header className="modal-card__header" style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '0.875rem' }}>
+            <header className="modal-card__header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-                <IoAlertCircleOutline size={22} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                <h2 style={{ fontSize: '1rem', fontWeight: 600 }}>Derrubar sessões</h2>
+                <IoAlertCircleOutline size={22} style={{ color: 'var(--status-warning)', flexShrink: 0 }} />
+                <h2>Derrubar sessões</h2>
               </div>
+              <ModalHeaderActions onClose={() => setBloquearStep(null)} disabled={loadingBloquear} expandable={false} />
             </header>
             <div className="modal-card__body" style={{ padding: '1rem 0.25rem 0.5rem' }}>
               <p style={{ lineHeight: '1.7', fontSize: '0.925rem' }}>
                 Sistema bloqueado com sucesso. Deseja <strong>derrubar todos os usuários de todos os sistemas</strong>?
               </p>
             </div>
-            <footer className="modal-card__footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid var(--color-border)', paddingTop: '0.875rem' }}>
-              <button type="button" className="secondary-button" onClick={() => setBloquearStep(null)} disabled={loadingBloquear} style={{ width: 'auto' }}>Não</button>
-              <button type="button" className="primary-button" onClick={() => void executarDerrubarSessoes()} disabled={loadingBloquear} style={{ width: 'auto' }}>
+            <footer className="modal-card__footer">
+              <button type="button" className="secondary-button modal-card__close" onClick={() => setBloquearStep(null)} disabled={loadingBloquear}>Não</button>
+              <button type="button" className="primary-button" onClick={() => void executarDerrubarSessoes()} disabled={loadingBloquear}>
                 {loadingBloquear ? 'Derrubando...' : 'Sim, derrubar'}
               </button>
             </footer>

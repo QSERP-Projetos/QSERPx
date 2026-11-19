@@ -2,10 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   IoAddOutline,
-  IoBookmarkOutline,
   IoChevronDownOutline,
   IoChevronUpOutline,
-  IoCloseOutline,
+  IoCloseCircle,
   IoNotificationsOutline,
   IoSearchOutline,
   IoTimeOutline,
@@ -14,10 +13,13 @@ import {
 import { CustomDatePicker } from '../components/CustomDatePicker';
 import { ROUTES } from '../constants/routes';
 import { useToast } from '../contexts/ToastContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { GlobalConfig } from '../services/globalConfig';
 import { buscarLembretesQS, buscarNotificacoesQS, criarLembrete, deleteLembrete } from '../services/supabaseQueries';
 import { listNotificacoesCall } from '../services/apiCalls';
 import { useDynamicMenu } from '../hooks/useDynamicMenu';
+import { ModalHeaderActions } from '../components/ModalHeaderActions';
+import { REQUIRED_FIELDS_MESSAGE, useRequiredFields } from '../hooks/useRequiredFields';
 
 const REMINDER_COLORS = ['#4A90E2', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6'];
 const HOME_AUTO_REFRESH_INTERVAL_MS = 120000;
@@ -188,9 +190,51 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
   return dashboardRouteByTitle || routeByCode || routeByTitle;
 };
 
+type HomeFeedTab = 'todos' | 'lembretes' | 'qs' | 'sistema';
+
+type HomeFeedItem = {
+  key: string;
+  kind: Exclude<HomeFeedTab, 'todos'>;
+  kindLabel: string;
+  color: string;
+  title: string;
+  description: string;
+  date: string;
+  onOpen?: () => void;
+};
+
+const HOME_FEED_PAGE_SIZE = 8;
+const HOME_FEED_COLOR_SISTEMA = '#6f73ff';
+const HOME_FEED_COLOR_QS = '#1dd18d';
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Bom dia';
+  if (hour < 18) return 'Boa tarde';
+  return 'Boa noite';
+};
+
+const getDisplayFirstName = (usuario: string) => {
+  const first = String(usuario || '')
+    .trim()
+    .split(/[\s._-]+/)
+    .filter(Boolean)[0];
+  if (!first) return '';
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+};
+
+const DATE_LOCALES: Record<string, string> = { pt: 'pt-BR', en: 'en-US', es: 'es-ES', ja: 'ja-JP' };
+
+const formatTodayLabel = (language: string) => {
+  const label = new Date().toLocaleDateString(DATE_LOCALES[language] ?? 'pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+};
+
 export function HomePage() {
   const navigate = useNavigate();
+  const { language } = useLanguage();
   const { showToast } = useToast();
+  const obrig = useRequiredFields();
   const { menus, loading: loadingMenus } = useDynamicMenu();
   const refreshInProgressRef = useRef(false);
   const [menuSimplificadoPreferencia, setMenuSimplificadoPreferencia] = useState(() => GlobalConfig.isMenuSimplificado());
@@ -215,20 +259,14 @@ export function HomePage() {
   const [lembreteDescription, setLembreteDescription] = useState('');
   const [lembreteDate, setLembreteDate] = useState('');
   const [selectedColor, setSelectedColor] = useState('#4A90E2');
-  const [lembretesCollapsed, setLembretesCollapsed] = useState(false);
-  const [lembretesExpanded, setLembretesExpanded] = useState(false);
-  const [lembreteSearch, setLembreteSearch] = useState('');
+  const [feedTab, setFeedTab] = useState<HomeFeedTab>('todos');
+  const [feedSearch, setFeedSearch] = useState('');
+  const [feedExpanded, setFeedExpanded] = useState(false);
   const [selectedReminder, setSelectedReminder] = useState<any | null>(null);
   const [selectedReminderColor, setSelectedReminderColor] = useState('#4A90E2');
   const [viewReminderOpen, setViewReminderOpen] = useState(false);
   const [deletingReminder, setDeletingReminder] = useState(false);
-  const [notificacoesQsCollapsed, setNotificacoesQsCollapsed] = useState(false);
-  const [notificacoesSistemaCollapsed, setNotificacoesSistemaCollapsed] = useState(false);
-  const [notificacoesQsExpanded, setNotificacoesQsExpanded] = useState(false);
-  const [notificacoesSistemaExpanded, setNotificacoesSistemaExpanded] = useState(false);
   const [expandedSimplifiedModules, setExpandedSimplifiedModules] = useState<Set<string>>(new Set());
-  const [notificacaoQsSearch, setNotificacaoQsSearch] = useState('');
-  const [notificacaoSistemaSearch, setNotificacaoSistemaSearch] = useState('');
   // Preferencia de menu simplificado vale para qualquer tamanho de tela, nao apenas mobile.
   const menuSimplificado = menuSimplificadoPreferencia;
 
@@ -333,8 +371,8 @@ export function HomePage() {
     const cnpj = GlobalConfig.getCnpj();
     const usuario = GlobalConfig.getUsuario();
 
-    if (!lembreteTitle.trim() || !lembreteDescription.trim() || !lembreteDate.trim()) {
-      showToast('Por favor, preencha título, descrição e data do lembrete.', 'error');
+    if (!obrig.validate([lembreteTitle, lembreteDescription, lembreteDate])) {
+      showToast(REQUIRED_FIELDS_MESSAGE, 'error');
       return;
     }
 
@@ -441,59 +479,95 @@ export function HomePage() {
     return () => mediaQuery.removeEventListener('change', syncViewport);
   }, []);
 
-  const lembretesFiltrados = useMemo(() => {
-    const term = lembreteSearch.trim().toLowerCase();
-    if (!term) return lembretes;
+  const feedItems = useMemo<HomeFeedItem[]>(() => {
+    const items: HomeFeedItem[] = [];
 
-    return lembretes.filter((item, index) => {
-      const titulo = getReminderTitle(item, index).toLowerCase();
-      const descricao = getReminderDescription(item).toLowerCase();
-      const dataLabel = formatDateLabel(item?.data).toLowerCase();
-      return titulo.includes(term) || descricao.includes(term) || dataLabel.includes(term);
+    lembretes.forEach((item, index) => {
+      items.push({
+        key: `lembrete-${String(item?.id ?? index)}`,
+        kind: 'lembretes',
+        kindLabel: 'Lembrete',
+        color: getReminderColor(item, index),
+        title: getReminderTitle(item, index),
+        description: getReminderDescription(item),
+        date: formatDateLabel(item?.data),
+        onOpen: menuSimplificado ? undefined : () => openReminderViewModal(item, index),
+      });
     });
-  }, [lembretes, lembreteSearch]);
 
-  const lembretesVisiveis = useMemo(() => {
-    if (lembretesExpanded) return lembretesFiltrados;
-    return lembretesFiltrados.slice(0, 6);
-  }, [lembretesExpanded, lembretesFiltrados]);
-
-  const canExpandLembretes = lembretesFiltrados.length > 6;
-
-  const notificacoesQsFiltradas = useMemo(() => {
-    const term = notificacaoQsSearch.trim().toLowerCase();
-    if (!term) return notificacoesQs;
-
-    return notificacoesQs.filter((item, index) => {
-      const text = getItemText(item, `Notificação QS ${index + 1}`).toLowerCase();
-      const data = formatDateLabel(item?.data_notificacao ?? item?.data).toLowerCase();
-      return text.includes(term) || data.includes(term);
+    notificacoesSistema.forEach((item, index) => {
+      items.push({
+        key: `sistema-${index}`,
+        kind: 'sistema',
+        kindLabel: 'Sistema',
+        color: HOME_FEED_COLOR_SISTEMA,
+        title: getItemText(item, `Notificação ${index + 1}`),
+        description: '',
+        date: formatDateLabel(item?.data_Hora ?? item?.data_hora ?? item?.data),
+      });
     });
-  }, [notificacaoQsSearch, notificacoesQs]);
 
-  const notificacoesSistemaFiltradas = useMemo(() => {
-    const term = notificacaoSistemaSearch.trim().toLowerCase();
-    if (!term) return notificacoesSistema;
-
-    return notificacoesSistema.filter((item, index) => {
-      const text = getItemText(item, `Notificação Sistema ${index + 1}`).toLowerCase();
-      const data = formatDateLabel(item?.data_Hora ?? item?.data_hora ?? item?.data).toLowerCase();
-      return text.includes(term) || data.includes(term);
+    notificacoesQs.forEach((item, index) => {
+      items.push({
+        key: `qs-${index}`,
+        kind: 'qs',
+        kindLabel: 'Notificação QS',
+        color: HOME_FEED_COLOR_QS,
+        title: getItemText(item, `Notificação QS ${index + 1}`),
+        description: '',
+        date: formatDateLabel(item?.data_notificacao ?? item?.data),
+      });
     });
-  }, [notificacaoSistemaSearch, notificacoesSistema]);
 
-  const notificacoesQsVisiveis = useMemo(() => {
-    if (notificacoesQsExpanded) return notificacoesQsFiltradas;
-    return notificacoesQsFiltradas.slice(0, 6);
-  }, [notificacoesQsExpanded, notificacoesQsFiltradas]);
+    return items;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lembretes, notificacoesSistema, notificacoesQs, menuSimplificado]);
 
-  const notificacoesSistemaVisiveis = useMemo(() => {
-    if (notificacoesSistemaExpanded) return notificacoesSistemaFiltradas;
-    return notificacoesSistemaFiltradas.slice(0, 6);
-  }, [notificacoesSistemaExpanded, notificacoesSistemaFiltradas]);
+  const feedCounts = useMemo(
+    () => ({
+      todos: feedItems.length,
+      lembretes: lembretes.length,
+      qs: notificacoesQs.length,
+      sistema: notificacoesSistema.length,
+    }),
+    [feedItems.length, lembretes.length, notificacoesQs.length, notificacoesSistema.length],
+  );
 
-  const canExpandNotificacoesQs = notificacoesQsFiltradas.length > 6;
-  const canExpandNotificacoesSistema = notificacoesSistemaFiltradas.length > 6;
+  const feedFiltrado = useMemo(() => {
+    const term = feedSearch.trim().toLowerCase();
+    return feedItems.filter((item) => {
+      if (feedTab !== 'todos' && item.kind !== feedTab) return false;
+      if (!term) return true;
+      return (
+        item.title.toLowerCase().includes(term) ||
+        item.description.toLowerCase().includes(term) ||
+        item.date.toLowerCase().includes(term)
+      );
+    });
+  }, [feedItems, feedTab, feedSearch]);
+
+  const feedVisivel = feedExpanded ? feedFiltrado : feedFiltrado.slice(0, HOME_FEED_PAGE_SIZE);
+  const canExpandFeed = feedFiltrado.length > HOME_FEED_PAGE_SIZE;
+
+  const feedTabs: Array<{ id: HomeFeedTab; label: string }> = [
+    { id: 'todos', label: 'Tudo' },
+    { id: 'lembretes', label: 'Lembretes' },
+    { id: 'qs', label: 'Notificações QS' },
+    { id: 'sistema', label: 'Sistema' },
+  ];
+
+  const primeiroNome = getDisplayFirstName(GlobalConfig.getUsuario() || '');
+  const totalNotificacoes = notificacoesQs.length + notificacoesSistema.length;
+
+  const feedEmptyMessage = loadingDashboard
+    ? 'Carregando...'
+    : feedSearch.trim()
+      ? 'Nada encontrado para a pesquisa.'
+      : feedTab === 'lembretes'
+        ? 'Nenhum lembrete cadastrado.'
+        : feedTab === 'todos'
+          ? 'Nada por aqui no momento.'
+          : 'Sem notificações.';
 
   const simplifiedModules = useMemo(() => {
     return menus.map((menu, menuIndex) => ({
@@ -530,20 +604,27 @@ export function HomePage() {
 
   return (
     <section className="home-dashboard">
-      <header className="home-dashboard__header">
-        <div className="home-dashboard__title-group">
-          <h1>Painel Principal</h1>
-          {!menuSimplificado ? <p>Resumo das suas atividades e notificações.</p> : null}
+      <header className="home-hero">
+        <div className="home-hero__text">
+          <span className="home-hero__date">{formatTodayLabel(language)}</span>
+          <h1>
+            {getGreeting()}
+            {primeiroNome ? `, ${primeiroNome}` : ''}
+          </h1>
+          <p>
+            {`Você tem ${lembretes.length} ${lembretes.length === 1 ? 'lembrete' : 'lembretes'} e ${totalNotificacoes} ${
+              totalNotificacoes === 1 ? 'notificação' : 'notificações'
+            }.`}
+          </p>
         </div>
 
         {!menuSimplificado ? (
-          <button
-            className="home-dashboard__new-button"
-            type="button"
-            onClick={() => setCreateReminderOpen(true)}
-          >
+          <button className="home-hero__new-button" type="button" onClick={() => {
+              obrig.reset();
+              setCreateReminderOpen(true);
+            }}>
             <IoAddOutline size={18} />
-            Novo Lembrete
+            Novo lembrete
           </button>
         ) : null}
       </header>
@@ -620,287 +701,85 @@ export function HomePage() {
       ) : null}
 
       {!(menuSimplificado && isMobileViewport) ? (
-        <section className="home-dashboard__grid" aria-label="Resumo principal">
-          <article className={`home-dashboard-card home-dashboard-card--full${lembretesCollapsed ? ' is-line' : ''}`}>
-            <header className="home-dashboard-card__header">
-              <div className="home-dashboard-card__title-wrap">
-                <span className="home-dashboard-card__accent home-dashboard-card__accent--blue" aria-hidden="true" />
-                <h2>Lembretes</h2>
-              </div>
-
-              <div className="home-dashboard-card__header-actions">
-                <span className="home-dashboard-card__badge home-dashboard-card__badge--blue">{lembretes.length}</span>
+        <section className="home-feed" aria-label="Lembretes e notificações">
+          <div className="home-feed__toolbar">
+            <div className="home-feed__tabs" role="tablist" aria-label="Filtrar por tipo">
+              {feedTabs.map((tab) => (
                 <button
+                  key={tab.id}
                   type="button"
-                  className="home-dashboard-card__collapse"
-                  onClick={() => setLembretesCollapsed((prev) => !prev)}
-                  aria-label={lembretesCollapsed ? 'Expandir lembretes' : 'Encolher lembretes'}
-                  title={lembretesCollapsed ? 'Expandir lembretes' : 'Encolher lembretes'}
+                  role="tab"
+                  aria-selected={feedTab === tab.id}
+                  className={`home-feed__tab${feedTab === tab.id ? ' is-active' : ''}`}
+                  onClick={() => {
+                    setFeedTab(tab.id);
+                    setFeedExpanded(false);
+                  }}
                 >
-                  {lembretesCollapsed ? <IoChevronDownOutline size={18} /> : <IoChevronUpOutline size={18} />}
+                  {tab.label}
+                  <span className="home-feed__tab-count">{feedCounts[tab.id]}</span>
                 </button>
-              </div>
-            </header>
+              ))}
+            </div>
 
-            {!lembretesCollapsed ? (
-              <div className="home-dashboard-card__content">
-                <div className="home-dashboard-reminder-tools">
-                  <label className="home-dashboard-search" aria-label="Pesquisar lembretes">
-                    <IoSearchOutline size={16} />
-                    <input
-                      value={lembreteSearch}
-                      onChange={(event) => setLembreteSearch(event.target.value)}
-                      placeholder="Pesquisar lembretes"
-                    />
-                  </label>
-
-                  {canExpandLembretes ? (
-                    <button
-                      type="button"
-                      className="home-dashboard-reminder-expand"
-                      onClick={() => setLembretesExpanded((prev) => !prev)}
-                    >
-                      {lembretesExpanded ? 'Encolher cards' : 'Expandir cards'}
-                    </button>
-                  ) : null}
-                </div>
-
-                {lembretesFiltrados.length === 0 ? (
-                  <div className="home-dashboard-empty">
-                    <IoBookmarkOutline size={42} />
-                    <p>
-                      {loadingDashboard
-                        ? 'Carregando lembretes...'
-                        : lembreteSearch.trim()
-                          ? 'Nenhum lembrete encontrado para a pesquisa'
-                          : 'Nenhum lembrete cadastrado'}
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <ul className="home-dashboard-reminder-list">
-                      {lembretesVisiveis.map((item, index) => {
-                        const title = getReminderTitle(item, index);
-                        const description = getReminderDescription(item);
-                        const color = getReminderColor(item, index);
-                        const dateLabel = formatDateLabel(item?.data);
-
-                        return (
-                          <li
-                            key={`lembrete-${index}`}
-                            className={`home-dashboard-reminder-card${menuSimplificado ? ' home-dashboard-reminder-card--readonly' : ''}`}
-                            style={{ borderLeftColor: color }}
-                            role={menuSimplificado ? undefined : 'button'}
-                            tabIndex={menuSimplificado ? -1 : 0}
-                            onClick={menuSimplificado ? undefined : () => openReminderViewModal(item, index)}
-                            onKeyDown={(event) => {
-                              if (menuSimplificado) return;
-                              if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                openReminderViewModal(item, index);
-                              }
-                            }}
-                          >
-                            <div className="home-dashboard-reminder-card__title-row">
-                              <span
-                                className="home-dashboard-reminder-card__dot"
-                                style={{ backgroundColor: color }}
-                                aria-hidden="true"
-                              />
-                              <strong>{title}</strong>
-                            </div>
-
-                            {description ? <p>{description}</p> : null}
-
-                            {dateLabel ? (
-                              <div className="home-dashboard-reminder-card__date">
-                                <IoTimeOutline size={13} />
-                                <span>{dateLabel}</span>
-                              </div>
-                            ) : null}
-                          </li>
-                        );
-                      })}
-                    </ul>
-
-                    {canExpandLembretes ? (
-                      <button
-                        type="button"
-                        className="home-dashboard-reminder-expand home-dashboard-reminder-expand--bottom"
-                        onClick={() => setLembretesExpanded((prev) => !prev)}
-                      >
-                        {lembretesExpanded
-                          ? 'Mostrar menos lembretes'
-                          : `Mostrar todos os lembretes (${lembretesFiltrados.length})`}
-                      </button>
-                    ) : null}
-                  </>
-                )}
-              </div>
-            ) : null}
-          </article>
-
-          <article className={`home-dashboard-card${notificacoesQsCollapsed ? ' is-line' : ''}`}>
-            <header className="home-dashboard-card__header">
-              <div className="home-dashboard-card__title-wrap">
-                <span className="home-dashboard-card__accent home-dashboard-card__accent--green" aria-hidden="true" />
-                <h2>Notificações QS</h2>
-              </div>
-
-              <div className="home-dashboard-card__header-actions">
-                <span className="home-dashboard-card__badge home-dashboard-card__badge--green">{notificacoesQs.length}</span>
-                <button
-                  type="button"
-                  className="home-dashboard-card__collapse"
-                  onClick={() => setNotificacoesQsCollapsed((prev) => !prev)}
-                  aria-label={notificacoesQsCollapsed ? 'Expandir notificações QS' : 'Encolher notificações QS'}
-                  title={notificacoesQsCollapsed ? 'Expandir notificações QS' : 'Encolher notificações QS'}
-                >
-                  {notificacoesQsCollapsed ? <IoChevronDownOutline size={18} /> : <IoChevronUpOutline size={18} />}
+            <label className="home-feed__search" aria-label="Pesquisar">
+              <IoSearchOutline size={16} aria-hidden="true" />
+              <input value={feedSearch} onChange={(event) => setFeedSearch(event.target.value)} placeholder="Pesquisar" />
+              {feedSearch ? (
+                <button type="button" className="home-feed__search-clear" onClick={() => setFeedSearch('')} aria-label="Limpar pesquisa">
+                  <IoCloseCircle size={16} />
                 </button>
+              ) : null}
+            </label>
+          </div>
+
+          <div className="home-feed__card">
+            {feedFiltrado.length === 0 ? (
+              <div className="home-feed__empty">
+                <IoNotificationsOutline size={36} aria-hidden="true" />
+                <p>{feedEmptyMessage}</p>
               </div>
-            </header>
+            ) : (
+              <ul className="home-feed__list">
+                {feedVisivel.map((item) => {
+                  const content = (
+                    <>
+                      <span className="home-feed__kind">{item.kindLabel}</span>
+                      <span className="home-feed__dot" style={{ background: item.color }} aria-hidden="true" />
+                      <span className="home-feed__body">
+                        <strong>{item.title}</strong>
+                        {item.description ? <span>{item.description}</span> : null}
+                      </span>
+                      {item.date ? (
+                        <span className="home-feed__date">
+                          <IoTimeOutline size={13} aria-hidden="true" />
+                          {item.date}
+                        </span>
+                      ) : null}
+                    </>
+                  );
 
-            {!notificacoesQsCollapsed ? (
-              <div className="home-dashboard-card__content home-dashboard-card__content--scroll">
-                <div className="home-dashboard-reminder-tools home-dashboard-reminder-tools--compact">
-                  <label className="home-dashboard-search" aria-label="Pesquisar notificações QS">
-                    <IoSearchOutline size={16} />
-                    <input
-                      value={notificacaoQsSearch}
-                      onChange={(event) => setNotificacaoQsSearch(event.target.value)}
-                      placeholder="Pesquisar notificações QS"
-                    />
-                  </label>
+                  return (
+                    <li key={item.key}>
+                      {item.onOpen ? (
+                        <button type="button" className="home-feed__item home-feed__item--action" onClick={item.onOpen}>
+                          {content}
+                        </button>
+                      ) : (
+                        <div className="home-feed__item">{content}</div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
 
-                  {canExpandNotificacoesQs ? (
-                    <button
-                      type="button"
-                      className="home-dashboard-reminder-expand"
-                      onClick={() => setNotificacoesQsExpanded((prev) => !prev)}
-                    >
-                      {notificacoesQsExpanded ? 'Encolher cards' : 'Expandir cards'}
-                    </button>
-                  ) : null}
-                </div>
-
-                {notificacoesQsFiltradas.length === 0 ? (
-                  <div className="home-dashboard-empty">
-                    <IoNotificationsOutline size={42} />
-                    <p>
-                      {loadingDashboard
-                        ? 'Carregando notificações QS...'
-                        : notificacaoQsSearch.trim()
-                          ? 'Nenhuma notificação QS encontrada para a pesquisa'
-                          : 'Sem notificações QS'}
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <ul className="home-dashboard-list">
-                      {notificacoesQsVisiveis.map((item, index) => (
-                        <li key={`not-qs-${index}`}>{getItemText(item, `Notificação QS ${index + 1}`)}</li>
-                      ))}
-                    </ul>
-
-                    {canExpandNotificacoesQs ? (
-                      <button
-                        type="button"
-                        className="home-dashboard-reminder-expand home-dashboard-reminder-expand--bottom"
-                        onClick={() => setNotificacoesQsExpanded((prev) => !prev)}
-                      >
-                        {notificacoesQsExpanded
-                          ? 'Mostrar menos notificações'
-                          : `Mostrar todas as notificações (${notificacoesQsFiltradas.length})`}
-                      </button>
-                    ) : null}
-                  </>
-                )}
-              </div>
+            {canExpandFeed ? (
+              <button type="button" className="home-feed__more" onClick={() => setFeedExpanded((prev) => !prev)}>
+                {feedExpanded ? 'Mostrar menos' : `Mostrar todos (${feedFiltrado.length})`}
+              </button>
             ) : null}
-          </article>
-
-          <article className={`home-dashboard-card${notificacoesSistemaCollapsed ? ' is-line' : ''}`}>
-            <header className="home-dashboard-card__header">
-              <div className="home-dashboard-card__title-wrap">
-                <span className="home-dashboard-card__accent home-dashboard-card__accent--violet" aria-hidden="true" />
-                <h2>Notificações Sistema</h2>
-              </div>
-
-              <div className="home-dashboard-card__header-actions">
-                <span className="home-dashboard-card__badge home-dashboard-card__badge--violet">
-                  {notificacoesSistema.length}
-                </span>
-                <button
-                  type="button"
-                  className="home-dashboard-card__collapse"
-                  onClick={() => setNotificacoesSistemaCollapsed((prev) => !prev)}
-                  aria-label={notificacoesSistemaCollapsed ? 'Expandir notificações do sistema' : 'Encolher notificações do sistema'}
-                  title={notificacoesSistemaCollapsed ? 'Expandir notificações do sistema' : 'Encolher notificações do sistema'}
-                >
-                  {notificacoesSistemaCollapsed ? <IoChevronDownOutline size={18} /> : <IoChevronUpOutline size={18} />}
-                </button>
-              </div>
-            </header>
-
-            {!notificacoesSistemaCollapsed ? (
-              <div className="home-dashboard-card__content home-dashboard-card__content--scroll">
-                <div className="home-dashboard-reminder-tools home-dashboard-reminder-tools--compact">
-                  <label className="home-dashboard-search" aria-label="Pesquisar notificações do sistema">
-                    <IoSearchOutline size={16} />
-                    <input
-                      value={notificacaoSistemaSearch}
-                      onChange={(event) => setNotificacaoSistemaSearch(event.target.value)}
-                      placeholder="Pesquisar notificações do sistema"
-                    />
-                  </label>
-
-                  {canExpandNotificacoesSistema ? (
-                    <button
-                      type="button"
-                      className="home-dashboard-reminder-expand"
-                      onClick={() => setNotificacoesSistemaExpanded((prev) => !prev)}
-                    >
-                      {notificacoesSistemaExpanded ? 'Encolher cards' : 'Expandir cards'}
-                    </button>
-                  ) : null}
-                </div>
-
-                {notificacoesSistemaFiltradas.length === 0 ? (
-                  <div className="home-dashboard-empty">
-                    <IoNotificationsOutline size={42} />
-                    <p>
-                      {loadingDashboard
-                        ? 'Carregando notificações...'
-                        : notificacaoSistemaSearch.trim()
-                          ? 'Nenhuma notificação do sistema encontrada para a pesquisa'
-                          : 'Sem notificações'}
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <ul className="home-dashboard-list">
-                      {notificacoesSistemaVisiveis.map((item, index) => (
-                        <li key={`not-sys-${index}`}>{getItemText(item, `Notificação ${index + 1}`)}</li>
-                      ))}
-                    </ul>
-
-                    {canExpandNotificacoesSistema ? (
-                      <button
-                        type="button"
-                        className="home-dashboard-reminder-expand home-dashboard-reminder-expand--bottom"
-                        onClick={() => setNotificacoesSistemaExpanded((prev) => !prev)}
-                      >
-                        {notificacoesSistemaExpanded
-                          ? 'Mostrar menos notificações'
-                          : `Mostrar todas as notificações (${notificacoesSistemaFiltradas.length})`}
-                      </button>
-                    ) : null}
-                  </>
-                )}
-              </div>
-            ) : null}
-          </article>
+          </div>
         </section>
       ) : null}
 
@@ -919,49 +798,45 @@ export function HomePage() {
           <article className="modal-card home-reminder-modal">
             <header className="modal-card__header">
               <h2>Novo Lembrete</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={closeCreateReminderModal}
-                disabled={savingReminder}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={closeCreateReminderModal} disabled={savingReminder} />
             </header>
 
             <section className="module-form home-reminder-form">
               <div className="form-grid-3 home-reminder-form-grid">
                 <label className="form-grid-3__full">
-                  <span>Título</span>
+                  <span>Título *</span>
                   <input
+                    className={obrig.inputClass(lembreteTitle)}
                     value={lembreteTitle}
                     onChange={(event) => setLembreteTitle(event.target.value)}
                     placeholder="Digite o título do lembrete"
                     readOnly={savingReminder}
                   />
+                  {obrig.error(lembreteTitle)}
                 </label>
 
                 <label className="form-grid-3__full">
-                  <span>Descrição</span>
+                  <span>Descrição *</span>
                   <textarea
-                    className="home-reminder-textarea"
+                    className={obrig.inputClass(lembreteDescription, 'home-reminder-textarea')}
                     value={lembreteDescription}
                     onChange={(event) => setLembreteDescription(event.target.value)}
                     placeholder="Digite a descrição do lembrete"
                     readOnly={savingReminder}
                   />
+                  {obrig.error(lembreteDescription)}
                 </label>
 
                 <label className="form-grid-3__full">
-                  <span>Data</span>
+                  <span>Data *</span>
                   <CustomDatePicker
                     value={lembreteDate}
                     onChange={setLembreteDate}
                     placeholder="DD/MM/AAAA"
                     disabled={savingReminder}
-                    className="home-reminder-date"
+                    className={obrig.wrapperClass(lembreteDate, 'home-reminder-date')}
                   />
+                  {obrig.error(lembreteDate)}
                 </label>
 
                 <label className="form-grid-3__full">
@@ -983,7 +858,7 @@ export function HomePage() {
               </div>
 
               <div className="form-actions home-reminder-form-actions">
-                <button className="secondary-button" type="button" onClick={closeCreateReminderModal} disabled={savingReminder}>
+                <button className="secondary-button modal-card__close" type="button" onClick={closeCreateReminderModal} disabled={savingReminder}>
                   Cancelar
                 </button>
                 <button className="primary-button" type="button" onClick={() => void handleCreateReminder()} disabled={savingReminder}>
@@ -1010,15 +885,7 @@ export function HomePage() {
           <article className="modal-card home-reminder-view-modal">
             <header className="modal-card__header">
               <h2>Consultar lembrete</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={closeReminderViewModal}
-                disabled={deletingReminder}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+              <ModalHeaderActions onClose={closeReminderViewModal} disabled={deletingReminder} expandable={false} />
             </header>
 
             <section className="home-reminder-view">
@@ -1045,7 +912,7 @@ export function HomePage() {
 
             <div className="form-actions home-reminder-view-actions">
               <button
-                className="secondary-button"
+                className="secondary-button modal-card__close"
                 type="button"
                 onClick={closeReminderViewModal}
                 disabled={deletingReminder}
@@ -1053,7 +920,7 @@ export function HomePage() {
                 Cancelar
               </button>
               <button
-                className="primary-button home-reminder-delete-button"
+                className="icon-button--danger primary-button home-reminder-delete-button"
                 type="button"
                 onClick={() => void handleDeleteReminder()}
                 disabled={deletingReminder}

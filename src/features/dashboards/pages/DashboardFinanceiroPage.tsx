@@ -366,18 +366,18 @@ const buildFinanceRows = (
 
     const sorted = sortRows(Array.from(grouped.values()), metric === 'comparacao' ? 'saldo' : metric);
 
-    let series: DashboardSeries[] = [{ key: 'saldo', label: 'Saldo', color: '#16a34a', format: 'currency' }];
+    let series: DashboardSeries[] = [{ key: 'saldo', label: 'Saldo', color: 'var(--status-success)', format: 'currency' }];
     if (metric === 'comparacao') {
       series = [
-        { key: 'receitas', label: 'Receitas', color: '#2563eb', format: 'currency' },
-        { key: 'despesas', label: 'Despesas', color: '#ef4444', format: 'currency' },
+        { key: 'receitas', label: 'Receitas', color: 'var(--status-info)', format: 'currency' },
+        { key: 'despesas', label: 'Despesas', color: 'var(--status-danger)', format: 'currency' },
       ];
     }
     if (metric === 'receitas') {
-      series = [{ key: 'receitas', label: 'Receitas', color: '#2563eb', format: 'currency' }];
+      series = [{ key: 'receitas', label: 'Receitas', color: 'var(--status-info)', format: 'currency' }];
     }
     if (metric === 'despesas') {
-      series = [{ key: 'despesas', label: 'Despesas', color: '#ef4444', format: 'currency' }];
+      series = [{ key: 'despesas', label: 'Despesas', color: 'var(--status-danger)', format: 'currency' }];
     }
 
     return {
@@ -422,7 +422,7 @@ const buildFinanceRows = (
     {
       key: metric,
       label: metricOptionsByBase[base].find((item) => item.value === metric)?.label || 'Valor',
-      color: '#2563eb',
+      color: 'var(--status-info)',
       format: metricFormat,
     },
   ];
@@ -719,8 +719,8 @@ export function DashboardFinanceiroPage() {
       .slice(0, 10);
   }, [filteredPayload.FluxoCaixaDespesas]);
 
-  const topReceitasSeries = useMemo<DashboardSeries[]>(() => [{ key: 'valor', label: 'Receitas', color: '#2563eb', format: 'currency' }], []);
-  const topDespesasSeries = useMemo<DashboardSeries[]>(() => [{ key: 'valor', label: 'Despesas', color: '#ef4444', format: 'currency' }], []);
+  const topReceitasSeries = useMemo<DashboardSeries[]>(() => [{ key: 'valor', label: 'Receitas', color: 'var(--status-info)', format: 'currency' }], []);
+  const topDespesasSeries = useMemo<DashboardSeries[]>(() => [{ key: 'valor', label: 'Despesas', color: 'var(--status-danger)', format: 'currency' }], []);
 
   const monthlyComparisonRows = useMemo<DashboardRow[]>(() => {
     const grouped = new Map<string, DashboardRow>();

@@ -3,10 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   IoAddOutline,
   IoArrowBack,
-  IoChevronDownOutline,
-  IoChevronForwardOutline,
   IoCloseCircleOutline,
-  IoCloseOutline,
   IoFilterOutline,
   IoRefreshOutline,
   IoSearchOutline,
@@ -30,6 +27,9 @@ import { AdvancedFiltersPanel } from '../../../components/AdvancedFiltersPanel';
 import { ListSearchField } from '../../../components/ListSearchField';
 import { filterListByTerm } from '../../../utils/filterListByTerm';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
+import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
+import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
+import { StatusBadge } from '../../../components/StatusBadge';
 
 type SelectOption = { value: string; label: string };
 type MaterialItem = { codigo: string; descricao: string };
@@ -146,7 +146,6 @@ export function OrdensServicoPage() {
   const [dataInicio, setDataInicio] = useState(formatToday());
   const [dataFim, setDataFim] = useState(formatToday());
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedOsCards, setExpandedOsCards] = useState<Record<string, boolean>>({});
   const [filtrosOpen, setFiltrosOpen] = useState(false);
   const [filtroErrors, setFiltroErrors] = useState<FiltroErrors>({});
   const [sortField, setSortField] = useState<SortField>('os');
@@ -216,11 +215,6 @@ export function OrdensServicoPage() {
 
     setSortField(field);
     setSortDirection('asc');
-  };
-
-  const getSortIndicator = (field: SortField) => {
-    if (sortField !== field) return '▲▼';
-    return sortDirection === 'asc' ? '▲' : '▼';
   };
 
   const carregarListas = useCallback(async () => {
@@ -693,46 +687,21 @@ export function OrdensServicoPage() {
           <p className="module-empty">Nenhuma ordem de serviço encontrada.</p>
         ) : (
           <>
-            <div className="table-scroll module-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('os')}>
-                        OS <span>{getSortIndicator('os')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('abertura')}>
-                        Abertura <span>{getSortIndicator('abertura')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      Código produto
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('cliente')}>
-                        Cliente <span>{getSortIndicator('cliente')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('tipo')}>
-                        Tipo <span>{getSortIndicator('tipo')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('centroCusto')}>
-                        Centro Custo <span>{getSortIndicator('centroCusto')}</span>
-                      </button>
-                    </th>
-                    <th>
-                      <button className="module-table__sort" type="button" onClick={() => handleSort('situacao')}>
-                        Situação <span>{getSortIndicator('situacao')}</span>
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
+              <div className="data-cards-region">
+                <DataListSortBar
+                  options={[
+                    { field: 'os', label: 'OS' },
+                    { field: 'abertura', label: 'Abertura' },
+                    { field: 'cliente', label: 'Cliente' },
+                    { field: 'tipo', label: 'Tipo' },
+                    { field: 'centroCusto', label: 'Centro de custo' },
+                    { field: 'situacao', label: 'Situação' },
+                  ]}
+                  active={sortField}
+                  direction={sortDirection}
+                  onSort={handleSort}
+                />
+                <DataList ariaLabel="Ordens de serviço">
                   {rowsFiltradas.map((row, index) => {
                     const os = String(row?.num_Ordem ?? row?.numOrdem ?? '-');
                     const aberturaData = String(row?.data_Abertura ?? row?.dataAbertura ?? '-');
@@ -744,93 +713,22 @@ export function OrdensServicoPage() {
                     const situacao = String(row?.situacaoOS ?? row?.situacao_Os ?? row?.situacao ?? '-');
 
                     return (
-                      <tr key={`os-${index}`}>
-                        <td>{os}</td>
-                        <td>
-                          {aberturaData} {aberturaHora}
-                        </td>
-                        <td>{codigoProduto}</td>
-                        <td>{cliente}</td>
-                        <td>{tipo}</td>
-                        <td>{centroCusto}</td>
-                        <td>{situacao}</td>
-                      </tr>
+                      <DataListItem
+                        key={`os-${index}`}
+                        code={`OS ${os}`}
+                        title={cliente}
+                        subtitle={tipo}
+                        details={[
+                          { label: 'Abertura', value: `${aberturaData} ${aberturaHora}`.trim() },
+                          { label: 'Produto', value: codigoProduto },
+                          { label: 'Centro de custo', value: centroCusto },
+                        ]}
+                        status={situacao && situacao !== '-' ? <StatusBadge label={situacao} /> : null}
+                      />
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="module-cards">
-              {rowsFiltradas.map((row, index) => {
-                const os = String(row?.num_Ordem ?? row?.numOrdem ?? '-');
-                const aberturaData = String(row?.data_Abertura ?? row?.dataAbertura ?? '-');
-                const aberturaHora = String(row?.hora_Abertura ?? row?.horaAbertura ?? '');
-                const codigoProduto = String(row?.codigo_Produto ?? row?.codigoProduto ?? row?.cod_Prod ?? row?.codProd ?? '-');
-                const cliente = String(row?.nome_Fantasia ?? row?.nomeFantasia ?? '-');
-                const tipo = String(row?.descricao_Tipo ?? row?.descricaoTipo ?? '-');
-                const centroCusto = String(row?.descricao_CCusto ?? row?.descricaoCCusto ?? '-');
-                const situacao = String(row?.situacaoOS ?? row?.situacao_Os ?? row?.situacao ?? '-');
-                const cardKey = `${os || `idx-${index}`}-${cliente}`;
-                const isExpandedCard = Boolean(expandedOsCards[cardKey]);
-
-                return (
-                  <article className="module-card" key={`card-os-${index}`}>
-                    <div className="module-card__row module-card__row--split">
-                      <div className="module-card__row-stack">
-                        <span>OS</span>
-                        <strong>{os}</strong>
-                      </div>
-                      <button
-                        type="button"
-                        className="module-card__expand-toggle"
-                        onClick={() =>
-                          setExpandedOsCards((prev) => ({
-                            ...prev,
-                            [cardKey]: !prev[cardKey],
-                          }))
-                        }
-                        aria-label={isExpandedCard ? 'Recolher detalhes da OS' : 'Expandir detalhes da OS'}
-                        title={isExpandedCard ? 'Recolher detalhes' : 'Expandir detalhes'}
-                      >
-                        {isExpandedCard ? <IoChevronDownOutline size={16} /> : <IoChevronForwardOutline size={16} />}
-                      </button>
-                    </div>
-
-                    {isExpandedCard ? (
-                      <>
-                        <div className="module-card__row">
-                          <span>Abertura</span>
-                          <strong>
-                            {aberturaData} {aberturaHora}
-                          </strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Código produto</span>
-                          <strong>{codigoProduto}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Cliente</span>
-                          <strong>{cliente}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Tipo</span>
-                          <strong>{tipo}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Centro Custo</span>
-                          <strong>{centroCusto}</strong>
-                        </div>
-                        <div className="module-card__row">
-                          <span>Situação</span>
-                          <strong>{situacao}</strong>
-                        </div>
-                      </>
-                    ) : null}
-                  </article>
-                );
-              })}
-            </div>
+                </DataList>
+              </div>
           </>
         )}
         </section>
@@ -841,17 +739,10 @@ export function OrdensServicoPage() {
           <article className="modal-card modal-card--wide">
             <header className="modal-card__header">
               <h2>Nova ordem de serviço</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   if (saving) return;
                   setModalOpen(false);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <div className="form-grid-3">
@@ -970,7 +861,7 @@ export function OrdensServicoPage() {
             </div>
 
             <div className="form-actions">
-              <button className="secondary-button" type="button" onClick={() => setModalOpen(false)}>
+              <button className="secondary-button modal-card__close" type="button" onClick={() => setModalOpen(false)}>
                 Cancelar
               </button>
               <button className="primary-button" type="button" onClick={() => void handleSalvar()} disabled={saving}>
@@ -986,17 +877,10 @@ export function OrdensServicoPage() {
           <article className="modal-card modal-card--wide ordens-servico-material-modal">
             <header className="modal-card__header">
               <h2>Consulta de materiais</h2>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Fechar"
-                onClick={() => {
+              <ModalHeaderActions onClose={() => {
                   if (loadingMateriais) return;
                   setMaterialModalOpen(false);
-                }}
-              >
-                <IoCloseOutline size={18} />
-              </button>
+                }} />
             </header>
 
             <div className="ordens-servico-material-filters">
@@ -1102,6 +986,14 @@ export function OrdensServicoPage() {
                 </div>
               </>
             )}
+            <footer className="modal-card__footer">
+              <button type="button" className="secondary-button modal-card__close" onClick={() => {
+                  if (loadingMateriais) return;
+                  setMaterialModalOpen(false);
+                }}>
+                Fechar
+              </button>
+            </footer>
           </article>
         </section>
       )}

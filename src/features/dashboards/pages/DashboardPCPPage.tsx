@@ -566,11 +566,11 @@ export function DashboardPCPPage() {
 
                   <div className="dashboard-evolution-legend">
                     <div className="dashboard-evolution-legend-item">
-                      <span style={{ backgroundColor: '#3B82F6' }} />
+                      <span style={{ backgroundColor: 'var(--status-info)' }} />
                       <strong>Disponibilidade</strong>
                     </div>
                     <div className="dashboard-evolution-legend-item">
-                      <span style={{ backgroundColor: '#F59E0B' }} />
+                      <span style={{ backgroundColor: 'var(--status-warning)' }} />
                       <strong>Meta</strong>
                     </div>
                   </div>
@@ -626,11 +626,11 @@ export function DashboardPCPPage() {
 
                       <div className="dashboard-stacked-legend">
                         <div className="dashboard-stacked-legend-item">
-                          <span style={{ backgroundColor: '#10B981' }} />
+                          <span style={{ backgroundColor: 'var(--status-success)' }} />
                           <strong>Quantidades Boas</strong>
                         </div>
                         <div className="dashboard-stacked-legend-item">
-                          <span style={{ backgroundColor: '#EF4444' }} />
+                          <span style={{ backgroundColor: 'var(--status-danger)' }} />
                           <strong>Quantidades Ruins</strong>
                         </div>
                       </div>
@@ -687,15 +687,15 @@ export function DashboardPCPPage() {
 
                       <div className="dashboard-stacked-legend">
                         <div className="dashboard-stacked-legend-item">
-                          <span style={{ backgroundColor: '#3B82F6' }} />
+                          <span style={{ backgroundColor: 'var(--status-info)' }} />
                           <strong>Tempo Produtivo</strong>
                         </div>
                         <div className="dashboard-stacked-legend-item">
-                          <span style={{ backgroundColor: '#F59E0B' }} />
+                          <span style={{ backgroundColor: 'var(--status-warning)' }} />
                           <strong>Não Qualidade</strong>
                         </div>
                         <div className="dashboard-stacked-legend-item">
-                          <span style={{ backgroundColor: '#EF4444' }} />
+                          <span style={{ backgroundColor: 'var(--status-danger)' }} />
                           <strong>Tempo Parado</strong>
                         </div>
                       </div>

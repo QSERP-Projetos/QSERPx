@@ -1,6 +1,6 @@
-:root {
-  --font-main: "Montserrat", "Segoe UI", Arial, sans-serif;
-}
+:root {
+  --font-main: var(--font-sans);
+}
 
 :root[data-theme="dark"] {
   --login-bg: #1b1d23;
