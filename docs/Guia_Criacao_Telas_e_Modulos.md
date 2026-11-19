@@ -1,5 +1,7 @@
 # Guia de Desenvolvimento: Criação de Telas, Módulos, Rotas e APIs no QSErpx
 
+> **Padrão visual obrigatório das telas:** siga `docs/PADRAO_TELAS.md` (página, lista, popups, botões, status, campos obrigatórios, celular e idiomas).
+
 Este documento serve como referência técnica para qualquer desenvolvedor que precise adicionar novos módulos, telas, menus, rotas, tabelas (DataTables) ou integrações de API no projeto **QSErpx**.
 
 ---
