@@ -195,7 +195,8 @@ const toMaquinaOptions = (payload: any): SelectOption[] => {
       if (!value) return null;
       return {
         value,
-        label: descricao ? `${value} - ${descricao}` : value,
+        // Desc_Maquinas já vem da API como "código - descrição"; evita repetir o código.
+        label: !descricao ? value : descricao.startsWith(value) ? descricao : `${value} - ${descricao}`,
       };
     })
     .filter((item): item is SelectOption => Boolean(item));

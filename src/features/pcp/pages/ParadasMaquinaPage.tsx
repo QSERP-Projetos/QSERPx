@@ -29,6 +29,7 @@ import { filterListByTerm } from '../../../utils/filterListByTerm';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
 import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
 import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
+import { StatusBadge } from '../../../components/StatusBadge';
 
 const formatToday = () => {
   const now = new Date();
@@ -364,7 +365,8 @@ export function ParadasMaquinaPage() {
             if (!value) return null;
             return {
               value,
-              label: descricao ? `${value} - ${descricao}` : value,
+              // Desc_Maquinas já vem da API como "código - descrição"; evita repetir o código.
+              label: !descricao ? value : descricao.startsWith(value) ? descricao : `${value} - ${descricao}`,
             };
           })
           .filter((item): item is SelectOption => Boolean(item)),
@@ -536,12 +538,21 @@ export function ParadasMaquinaPage() {
     }
 
     const numOrdem = String(getFirstFilledValue(finalizarRow, ['num_Ordem', 'Num_Ordem', 'numOrdem']) ?? '').trim();
+    const numMaquina = String(getFirstFilledValue(finalizarRow, ['num_Maquina', 'Num_Maquina', 'numMaquina']) ?? '').trim();
+    // Chave da parada: garante que a API finalize exatamente a linha selecionada,
+    // e não a primeira parada em aberto da mesma OF (ex.: várias com OF 00000000).
+    const numApontamentoValue = Number(
+      getFirstFilledValue(finalizarRow, ['num_Apontamento', 'Num_Apontamento', 'numApontamento']) ?? 0,
+    );
+    const numApontamento = Number.isFinite(numApontamentoValue) && numApontamentoValue > 0 ? numApontamentoValue : undefined;
 
     setFinalizando(true);
     try {
       const resp = await alterarParadaMaquinaCronometroCall(baseUrl, token, {
         codigoEmpresa,
         numOrdem,
+        numMaquina,
+        numApontamento,
         usuario: GlobalConfig.getUsuario(),
       });
 
@@ -769,21 +780,22 @@ export function ParadasMaquinaPage() {
                       return (
                         <DataListItem
                           key={`pm-${index}`}
-                          className={cronometroAberta ? 'paradas-maquina-row--cronometro' : undefined}
-                          code={current.ordem}
+                          code={`OF ${current.ordem}`}
                           title={current.maquina}
+                          details={[
+                            { label: 'Motivo', value: current.motivo },
+                            { label: 'Início', value: [current.inicioData, current.inicioHora].filter((v) => v && v !== '-').join(' ') || '-' },
+                            { label: 'Fim', value: [current.fimData, current.fimHora].filter((v) => v && v !== '-').join(' ') || '-' },
+                          ]}
                           status={
                             cronometroStatus ? (
-                              <span
-                                className={`paradas-maquina-status-icon paradas-maquina-status-icon--${cronometroStatus}`}
-                                title={
-                                  cronometroStatus === 'pendente'
-                                    ? 'Parada cronômetro pendente de finalização'
-                                    : 'Parada cronômetro concluída'
-                                }
+                              <StatusBadge
+                                tone={cronometroStatus === 'pendente' ? 'warning' : 'success'}
+                                title={cronometroStatus === 'pendente' ? 'Parada cronômetro pendente de finalização' : 'Parada cronômetro concluída'}
                               >
-                                <IoTimeOutline size={18} aria-hidden="true" />
-                              </span>
+                                <IoTimeOutline size={13} aria-hidden="true" />
+                                {cronometroStatus === 'pendente' ? 'Pendente' : 'Concluído'}
+                              </StatusBadge>
                             ) : null
                           }
                           onOpen={() => (cronometroAberta ? abrirFinalizarCronometro(row) : abrirConsulta(row))}
