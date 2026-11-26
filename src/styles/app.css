@@ -6285,27 +6285,6 @@ select.text-field:focus {
   white-space: nowrap;
 }
 
-.apontamento-producao-row--cronometro {
-  background: rgba(59, 130, 246, 0.06);
-}
-
-.apontamento-producao-status-col {
-  width: 36px;
-  text-align: center;
-}
-
-.apontamento-producao-status-icon {
-  vertical-align: middle;
-}
-
-.apontamento-producao-status-icon--pendente {
-  color: #eab308;
-}
-
-.apontamento-producao-status-icon--concluido {
-  color: #22c55e;
-}
-
 .apontamento-producao-page .module-card {
   position: relative;
 }
@@ -6437,27 +6416,6 @@ select.text-field:focus {
 
 .paradas-maquina-page .module-card {
   position: relative;
-}
-
-.paradas-maquina-row--cronometro {
-  background: rgba(59, 130, 246, 0.06);
-}
-
-.paradas-maquina-status-col {
-  width: 36px;
-  text-align: center;
-}
-
-.paradas-maquina-status-icon {
-  vertical-align: middle;
-}
-
-.paradas-maquina-status-icon--pendente {
-  color: #eab308;
-}
-
-.paradas-maquina-status-icon--concluido {
-  color: #22c55e;
 }
 
 .preparacao-maquina-modal .form-grid-3 {

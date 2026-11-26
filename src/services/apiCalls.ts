@@ -1008,6 +1008,8 @@ export const alterarParadaMaquinaCronometroCall = async (
   payload: {
     codigoEmpresa?: number;
     numOrdem?: string;
+    numMaquina?: string;
+    numApontamento?: number;
     usuario?: string;
   },
 ): Promise<ApiCallResponse> => {
@@ -1020,6 +1022,8 @@ export const alterarParadaMaquinaCronometroCall = async (
     {
       Codigo_Empresa: payload.codigoEmpresa,
       Num_Ordem: payload.numOrdem ?? '',
+      Num_Maquina: payload.numMaquina ?? '',
+      Num_Apontamento: payload.numApontamento,
       Usuario: payload.usuario ?? '',
     },
   );

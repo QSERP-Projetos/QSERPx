@@ -31,6 +31,7 @@ import { filterListByTerm } from '../../../utils/filterListByTerm';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
 import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
 import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
+import { StatusBadge } from '../../../components/StatusBadge';
 
 const formatToday = () => {
   const now = new Date();
@@ -430,7 +431,8 @@ const toMaquinaOptions = (payload: any): SelectOption[] => {
       if (!value) return null;
       return {
         value,
-        label: descricao ? `${value} - ${descricao}` : value,
+        // Desc_Maquinas já vem da API como "código - descrição"; evita repetir o código.
+        label: !descricao ? value : descricao.startsWith(value) ? descricao : `${value} - ${descricao}`,
       };
     })
     .filter((item): item is SelectOption => Boolean(item));
@@ -1283,7 +1285,6 @@ export function ApontamentoProducaoPage() {
                       return (
                         <DataListItem
                           key={`ap-${index}`}
-                          className={cronometroAberto ? 'apontamento-producao-row--cronometro' : undefined}
                           code={`OF ${current.ordem}`}
                           title={current.produto}
                           subtitle={[current.operacao ? `Operação ${current.operacao}` : '', current.maquina].filter(Boolean).join(' · ')}
@@ -1296,16 +1297,13 @@ export function ApontamentoProducaoPage() {
                           ]}
                           status={
                             cronometroStatus ? (
-                              <span
-                                className={`apontamento-producao-status-icon apontamento-producao-status-icon--${cronometroStatus}`}
-                                title={
-                                  cronometroStatus === 'pendente'
-                                    ? 'Apontamento cronômetro pendente de finalização'
-                                    : 'Apontamento cronômetro concluído'
-                                }
+                              <StatusBadge
+                                tone={cronometroStatus === 'pendente' ? 'warning' : 'success'}
+                                title={cronometroStatus === 'pendente' ? 'Apontamento cronômetro pendente de finalização' : 'Apontamento cronômetro concluído'}
                               >
-                                <IoTimeOutline size={18} aria-hidden="true" />
-                              </span>
+                                <IoTimeOutline size={13} aria-hidden="true" />
+                                {cronometroStatus === 'pendente' ? 'Pendente' : 'Concluído'}
+                              </StatusBadge>
                             ) : null
                           }
                           onOpen={() => (cronometroAberto ? abrirFinalizarCronometro(row) : abrirConsulta(row))}
