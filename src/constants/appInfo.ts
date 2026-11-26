@@ -7,3 +7,4 @@ export const APP_IDENTITY = {
 
 export const APP_NAME = APP_IDENTITY.name;
 export const APP_VERSION = APP_IDENTITY.versions.web;
+

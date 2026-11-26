@@ -122,6 +122,7 @@ export const useDynamicMenu = () => {
               { title: 'Tipo de Apontamento', transactionCode: 'SEG002' },
               { title: 'Sessões', transactionCode: 'CFG008' },
               { title: 'Parâmetros Gerais', transactionCode: 'CFG009' },
+              { title: 'Histórico de Alterações', transactionCode: 'CFG007' },
             ],
           };
 

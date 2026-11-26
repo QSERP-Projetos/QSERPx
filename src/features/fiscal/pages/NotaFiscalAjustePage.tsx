@@ -24,7 +24,7 @@ import { SearchableSelect } from '../../../components/SearchableSelect';
 import { APP_VERSION } from '../../../constants/appInfo';
 import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
-import { useTransactionAccess } from '../../../hooks/useTransactionAccess';
+import { useTransactionAccess, verificarAcaoTransacao } from '../../../hooks/useTransactionAccess';
 import { GlobalConfig } from '../../../services/globalConfig';
 import {
   abrirBlobPdf,
@@ -108,6 +108,7 @@ export function NotaFiscalAjustePage() {
 
   // Modais principais
   const [emitirModalOpen, setEmitirModalOpen] = useState(false);
+  const [validandoNovaNota, setValidandoNovaNota] = useState(false);
   const [notaSelecionada, setNotaSelecionada] = useState<NotaAjusteListItem | null>(null);
   const [somenteLeituraModal, setSomenteLeituraModal] = useState(false);
 
@@ -302,6 +303,9 @@ export function NotaFiscalAjustePage() {
 
   const handleAbrirOcorrencias = async (e: React.MouseEvent, row: NotaAjusteListItem) => {
     e.stopPropagation();
+    if (!(await validarAcaoNotaAjuste(38, 'Você não possui permissão para consultar o histórico de ocorrências.'))) {
+      return;
+    }
     setOcorrenciasRow(row);
     setOcorrenciasList([]);
     setOcorrenciasLoading(true);
@@ -382,6 +386,78 @@ export function NotaFiscalAjustePage() {
     } finally {
       setCancelarLoading(false);
     }
+  };
+
+  const validarAcaoNotaAjuste = async (codigoAcao: number, mensagemNegada: string): Promise<boolean> => {
+    if (validandoNovaNota) return false;
+    setValidandoNovaNota(true);
+    try {
+      const { permitido, mensagem } = await verificarAcaoTransacao('DOC001', codigoAcao);
+      if (!permitido) {
+        showToast(mensagem || mensagemNegada, 'error');
+        return false;
+      }
+      return true;
+    } catch (err: any) {
+      showToast(err?.message || 'Erro ao validar permissão na Nota Fiscal de Ajuste.', 'error');
+      return false;
+    } finally {
+      setValidandoNovaNota(false);
+    }
+  };
+
+  const abrirNotaAjusteEdicaoOuConsulta = async (
+    row: NotaAjusteListItem,
+    isSomenteLeitura: boolean,
+    isAutorizada: boolean,
+  ) => {
+    if (!isSomenteLeitura || !isAutorizada) {
+      const msg = !isSomenteLeitura
+        ? 'Você não possui permissão para editar Notas Fiscais de Ajuste.'
+        : 'Você não possui permissão para consultar notas fiscais não autorizadas.';
+      if (!(await validarAcaoNotaAjuste(38, msg))) {
+        return;
+      }
+    }
+    setNotaSelecionada(row);
+    setSomenteLeituraModal(isSomenteLeitura);
+    setEmitirModalOpen(true);
+  };
+
+  const abrirNovaNotaAjuste = async () => {
+    if (!(await validarAcaoNotaAjuste(35, 'Você não possui permissão para incluir Nota Fiscal de Ajuste.'))) {
+      return;
+    }
+    setNotaSelecionada(null);
+    setSomenteLeituraModal(false);
+    setEmitirModalOpen(true);
+  };
+
+  const abrirRetransmitirNotaAjuste = async (row: NotaAjusteListItem) => {
+    if (!(await validarAcaoNotaAjuste(38, 'Você não possui permissão para transmitir ou retransmitir Notas Fiscais de Ajuste.'))) {
+      return;
+    }
+    setRetransmitirRow(row);
+  };
+
+  const abrirExcluirNotaAjuste = async (row: NotaAjusteListItem) => {
+    if (!(await validarAcaoNotaAjuste(38, 'Você não possui permissão para excluir Notas Fiscais de Ajuste.'))) {
+      return;
+    }
+    setCodigoMotivoExcluir(
+      combos?.motivosCancelamento[0] ? String(combos.motivosCancelamento[0].codigoMotivo) : '',
+    );
+    setExcluirRow(row);
+  };
+
+  const abrirCancelarNotaAjuste = async (row: NotaAjusteListItem) => {
+    if (!(await validarAcaoNotaAjuste(38, 'Você não possui permissão para cancelar Notas Fiscais de Ajuste.'))) {
+      return;
+    }
+    setCodigoMotivoCancel(
+      combos?.motivosCancelamento[0] ? String(combos.motivosCancelamento[0].codigoMotivo) : '',
+    );
+    setCancelarRow(row);
   };
 
   const handleConfirmarExclusao = async () => {
@@ -542,11 +618,8 @@ export function NotaFiscalAjustePage() {
             <button
               className="icon-button module-action-button module-action-button--primary"
               type="button"
-              onClick={() => {
-                setNotaSelecionada(null);
-                setSomenteLeituraModal(false);
-                setEmitirModalOpen(true);
-              }}
+              disabled={validandoNovaNota}
+              onClick={() => void abrirNovaNotaAjuste()}
               title="Nova Nota Fiscal de Ajuste"
               aria-label="Nova Nota Fiscal de Ajuste"
             >
@@ -655,11 +728,7 @@ export function NotaFiscalAjustePage() {
                     return (
                       <tr
                         key={`${row.numNotaFiscal}-${row.serNotaFiscal}`}
-                        onClick={() => {
-                          setNotaSelecionada(row);
-                          setSomenteLeituraModal(isSomenteLeitura);
-                          setEmitirModalOpen(true);
-                        }}
+                        onClick={() => void abrirNotaAjusteEdicaoOuConsulta(row, isSomenteLeitura, isAutorizada)}
                         style={{ cursor: 'pointer' }}
                       >
                         <td className="nfa-mono">
@@ -713,11 +782,8 @@ export function NotaFiscalAjustePage() {
                               type="button"
                               title={isSomenteLeitura ? 'Visualizar nota' : 'Editar rascunho / ajustar'}
                               aria-label={isSomenteLeitura ? 'Visualizar nota' : 'Editar rascunho'}
-                              onClick={() => {
-                                setNotaSelecionada(row);
-                                setSomenteLeituraModal(isSomenteLeitura);
-                                setEmitirModalOpen(true);
-                              }}
+                              disabled={validandoNovaNota}
+                              onClick={() => void abrirNotaAjusteEdicaoOuConsulta(row, isSomenteLeitura, isAutorizada)}
                             >
                               {isSomenteLeitura ? <IoEyeOutline size={16} /> : <IoCreateOutline size={16} />}
                             </button>
@@ -752,6 +818,7 @@ export function NotaFiscalAjustePage() {
                               type="button"
                               title="Histórico de ocorrências SEFAZ"
                               aria-label="Histórico de ocorrências"
+                              disabled={validandoNovaNota}
                               onClick={(e) => void handleAbrirOcorrencias(e, row)}
                             >
                               <IoTimeOutline size={16} />
@@ -763,7 +830,8 @@ export function NotaFiscalAjustePage() {
                                   type="button"
                                   title="Transmitir / Retransmitir SEFAZ"
                                   aria-label="Retransmitir SEFAZ"
-                                  onClick={() => setRetransmitirRow(row)}
+                                  disabled={validandoNovaNota}
+                                  onClick={() => void abrirRetransmitirNotaAjuste(row)}
                                 >
                                   <IoPaperPlaneOutline size={16} />
                                 </button>
@@ -773,14 +841,8 @@ export function NotaFiscalAjustePage() {
                                   className="danger"
                                   title="Excluir registro (nota não autorizada)"
                                   aria-label="Excluir Nota Fiscal de Ajuste"
-                                  onClick={() => {
-                                    setCodigoMotivoExcluir(
-                                      combos?.motivosCancelamento[0]
-                                        ? String(combos.motivosCancelamento[0].codigoMotivo)
-                                        : '',
-                                    );
-                                    setExcluirRow(row);
-                                  }}
+                                  disabled={validandoNovaNota}
+                                  onClick={() => void abrirExcluirNotaAjuste(row)}
                                 >
                                   <IoTrashOutline size={16} />
                                 </button>
@@ -793,14 +855,8 @@ export function NotaFiscalAjustePage() {
                                 className="danger"
                                 title="Cancelar NF-e na SEFAZ"
                                 aria-label="Cancelar NF-e"
-                                onClick={() => {
-                                  setCodigoMotivoCancel(
-                                    combos?.motivosCancelamento[0]
-                                      ? String(combos.motivosCancelamento[0].codigoMotivo)
-                                      : '',
-                                  );
-                                  setCancelarRow(row);
-                                }}
+                                disabled={validandoNovaNota}
+                                onClick={() => void abrirCancelarNotaAjuste(row)}
                               >
                                 <IoBanOutline size={16} />
                               </button>

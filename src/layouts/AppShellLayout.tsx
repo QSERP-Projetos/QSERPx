@@ -38,6 +38,7 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
     COM002: ROUTES.comprasPedidoLiberacao,
     SEG001: ROUTES.segurancaUsuarios,
     SEG002: ROUTES.segurancaTipoApontamento,
+    CFG007: ROUTES.segurancaHistoricoAlteracoes,
     CFG009: ROUTES.segurancaParametrosGerais,
     CFG008: ROUTES.segurancaSessoes,
     PCP001: ROUTES.pcpApontamentoProducao,
@@ -45,10 +46,13 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
     PCP003: ROUTES.pcpParadasMaquina,
     PCP004: ROUTES.pcpPreparacaoMaquina,
     PCP008: ROUTES.pcpOrdensSeparacao,
+    PCP009: ROUTES.pcpSolicitacaoNfDiversa,
     SER001: ROUTES.servicoApontamentoMaoObra,
     SER002: ROUTES.servicoOrdens,
     SER003: ROUTES.servicoNotaFiscal,
     DOC001: ROUTES.fiscalNotaAjuste,
+    DOC002: ROUTES.fiscalApuracaoReformaTributaria,
+    DOC003: ROUTES.fiscalFaturamento,
     MAN001: ROUTES.manutencaoOrdens,
     FIN001: ROUTES.financeiroContasReceber,
     QSA001: ROUTES.qsAtualiza,
@@ -88,8 +92,16 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
     ((normalizedTitle.includes('tributacao') || normalizedTitle.includes('tributa')) && normalizedTitle.includes('material')
       ? ROUTES.basicoTributacaoMaterial
       : undefined) ||
+    (normalizedTitle.includes('solicitacao') && normalizedTitle.includes('diversa')
+      ? ROUTES.pcpSolicitacaoNfDiversa
+      : undefined) ||
     (normalizedTitle.includes('nota') && normalizedTitle.includes('ajuste')
       ? ROUTES.fiscalNotaAjuste
+      : undefined) ||
+    (normalizedTitle.includes('faturamento') ? ROUTES.fiscalFaturamento : undefined) ||
+    (normalizedTitle.includes('apuracao') &&
+    (normalizedTitle.includes('reforma') || normalizedTitle.includes('cbs') || normalizedTitle.includes('ibs'))
+      ? ROUTES.fiscalApuracaoReformaTributaria
       : undefined) ||
     (normalizedTitle.includes('nota') && normalizedTitle.includes('fiscal')
       ? ROUTES.servicoNotaFiscal
@@ -98,6 +110,9 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
       ? ROUTES.basicoServicos
       : undefined) ||
     (normalizedTitle.includes('usuario') ? ROUTES.segurancaUsuarios : undefined) ||
+    (normalizedTitle.includes('historico') && normalizedTitle.includes('altera')
+      ? ROUTES.segurancaHistoricoAlteracoes
+      : undefined) ||
     (normalizedTitle.includes('tipo') && normalizedTitle.includes('apont')
       ? ROUTES.segurancaTipoApontamento
       : undefined) ||

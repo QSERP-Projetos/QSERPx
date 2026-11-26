@@ -9,6 +9,7 @@ import {
   IoCreateOutline,
   IoCubeOutline,
   IoDocumentTextOutline,
+  IoFilterOutline,
   IoLayersOutline,
   IoLockOpenOutline,
   IoPrintOutline,
@@ -20,13 +21,14 @@ import {
   IoTrashOutline,
   IoWarningOutline,
 } from 'react-icons/io5';
+import { BetaHelpBadge } from '../../../components/BetaHelpBadge';
 import { CustomDatePicker } from '../../../components/CustomDatePicker';
 import { CustomTimePicker } from '../../../components/CustomTimePicker';
 import { ListSearchField } from '../../../components/ListSearchField';
 import { SearchableSelect, type SearchableSelectOption } from '../../../components/SearchableSelect';
 import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
-import { useTransactionAccess } from '../../../hooks/useTransactionAccess';
+import { useTransactionAccess, verificarAcaoTransacao } from '../../../hooks/useTransactionAccess';
 import { GlobalConfig } from '../../../services/globalConfig';
 import {
   adicionarItemManualSeparacaoCall,
@@ -68,6 +70,7 @@ import {
 } from '../../../utils/tableSort';
 import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
 import { DataList, DataListItem, DataListSortBar } from '../../../components/DataList';
+import { AdvancedFiltersPanel } from '../../../components/AdvancedFiltersPanel';
 
 const formatToday = () => {
   const now = new Date();
@@ -384,6 +387,7 @@ export function OrdensSeparacaoPage() {
   const [ordens, setOrdens] = useState<OrdemMenu[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [filtrosOpen, setFiltrosOpen] = useState(false);
   const [filtroDataInicioBr, setFiltroDataInicioBr] = useState('');
   const [filtroDataFimBr, setFiltroDataFimBr] = useState('');
   const [filtroNumNf, setFiltroNumNf] = useState('');
@@ -527,10 +531,14 @@ export function OrdensSeparacaoPage() {
   // Submodal genérica de confirmação (zero window.confirm)
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
 
+  const isOrdemSomenteLeitura = (situacao?: number | null) => {
+    const sit = situacao ?? 0;
+    return sit === 2 || sit === 7 || sit === 8 || sit === 9;
+  };
+
   const osReadOnly = useMemo(() => {
     if (modoNovo) return false;
-    const sit = formOS.situacaoSeparacao ?? 0;
-    return sit === 2 || sit === 7 || sit === 8 || sit === 9;
+    return isOrdemSomenteLeitura(formOS.situacaoSeparacao);
   }, [modoNovo, formOS.situacaoSeparacao]);
 
   const clienteBloqueado = useMemo(() => {
@@ -691,6 +699,56 @@ export function OrdensSeparacaoPage() {
     }, 250);
   };
 
+  const temFiltrosAtivos = Boolean(
+    filtroDataInicioBr.trim() || filtroDataFimBr.trim() || filtroNumNf.trim() || filtroBusca.trim(),
+  );
+
+  const validarFiltrosListagem = useCallback(
+    (params: {
+      aba: AbaListagem;
+      dataInicio: string;
+      dataFim: string;
+      numNf: string;
+      busca: string;
+      notify?: boolean;
+    }): { dIniIso: string | null; dFimIso: string | null; nfRaw: string; buscaRaw: string } | null => {
+      const dIniRaw = params.dataInicio.trim();
+      const dFimRaw = params.dataFim.trim();
+      const nfRaw = params.numNf.trim();
+      const buscaRaw = params.busca.trim();
+
+      const dIniIso = dIniRaw ? parseBrDateToIso(dIniRaw) : null;
+      if (dIniRaw && !dIniIso) {
+        if (params.notify) showError('Data Inicial inválida. Utilize o formato DD/MM/AAAA.');
+        return null;
+      }
+
+      const dFimIso = dFimRaw ? parseBrDateToIso(dFimRaw) : null;
+      if (dFimRaw && !dFimIso) {
+        if (params.notify) showError('Data Final inválida. Utilize o formato DD/MM/AAAA.');
+        return null;
+      }
+
+      if (dIniIso && dFimIso && dIniIso > dFimIso) {
+        if (params.notify) showError('A Data Inicial não pode ser maior que a Data Final.');
+        return null;
+      }
+
+      const temFiltro = Boolean(dIniIso || dFimIso || nfRaw || buscaRaw);
+      if (params.aba !== 'pendentes' && !temFiltro) {
+        if (params.notify) {
+          setOrdens([]);
+          setAbaConsultada(false);
+          showInfo('Informe ao menos um filtro (Período, Nota Fiscal ou Ordem / Cliente / Pedido) para consultar.');
+        }
+        return null;
+      }
+
+      return { dIniIso, dFimIso, nfRaw, buscaRaw };
+    },
+    [showError, showInfo],
+  );
+
   // Carregar listagem de OS respeitando aba + filtros de data/NF/busca
   const carregarOrdens = useCallback(
     async (opts?: {
@@ -707,51 +765,21 @@ export function OrdensSeparacaoPage() {
       if (!baseUrl || !token) return;
 
       const abaAtual = opts?.aba ?? abaListagem;
-      const dIniRaw = (opts?.dataInicio !== undefined ? opts.dataInicio : filtroDataInicioBr).trim();
-      const dFimRaw = (opts?.dataFim !== undefined ? opts.dataFim : filtroDataFimBr).trim();
-      const nfRaw = (opts?.numNf !== undefined ? opts.numNf : filtroNumNf).trim();
-      const buscaRaw = (opts?.busca !== undefined ? opts.busca : filtroBusca).trim();
+      const validados = validarFiltrosListagem({
+        aba: abaAtual,
+        dataInicio: opts?.dataInicio !== undefined ? opts.dataInicio : filtroDataInicioBr,
+        dataFim: opts?.dataFim !== undefined ? opts.dataFim : filtroDataFimBr,
+        numNf: opts?.numNf !== undefined ? opts.numNf : filtroNumNf,
+        busca: opts?.busca !== undefined ? opts.busca : filtroBusca,
+        notify: Boolean(opts?.manual),
+      });
+      if (!validados) return;
 
-      const dIniIso = dIniRaw ? parseBrDateToIso(dIniRaw) : null;
-      if (dIniRaw && !dIniIso) {
-        if (opts?.manual) {
-          showError('Data Inicial inválida. Utilize o formato DD/MM/AAAA.');
-        }
+      if (abaAtual !== 'pendentes' && !opts?.manual && !abaConsultada) {
         return;
       }
 
-      const dFimIso = dFimRaw ? parseBrDateToIso(dFimRaw) : null;
-      if (dFimRaw && !dFimIso) {
-        if (opts?.manual) {
-          showError('Data Final inválida. Utilize o formato DD/MM/AAAA.');
-        }
-        return;
-      }
-
-      if (dIniIso && dFimIso && dIniIso > dFimIso) {
-        if (opts?.manual) {
-          showError('A Data Inicial não pode ser maior que a Data Final.');
-        }
-        return;
-      }
-
-      const temFiltro = Boolean(dIniIso || dFimIso || nfRaw || buscaRaw);
-
-      // Apenas a aba Pendentes carrega automaticamente; as demais exigem filtro aplicado
-      if (abaAtual !== 'pendentes') {
-        if (!temFiltro) {
-          if (opts?.manual) {
-            setOrdens([]);
-            setAbaConsultada(false);
-            showInfo('Informe ao menos um filtro (Período, Nota Fiscal ou Ordem / Cliente / Pedido) para consultar.');
-          }
-          return;
-        }
-        if (!opts?.manual && !abaConsultada) {
-          return;
-        }
-      }
-
+      const { dIniIso, dFimIso, nfRaw, buscaRaw } = validados;
       const reqId = ++listRequestIdRef.current;
 
       try {
@@ -791,14 +819,61 @@ export function OrdensSeparacaoPage() {
         }
       }
     },
-    [abaListagem, abaConsultada, filtroDataInicioBr, filtroDataFimBr, filtroNumNf, filtroBusca, showError, showInfo],
+    [
+      abaListagem,
+      abaConsultada,
+      filtroDataInicioBr,
+      filtroDataFimBr,
+      filtroNumNf,
+      filtroBusca,
+      validarFiltrosListagem,
+      showError,
+    ],
   );
+
+  const handleAplicarFiltros = () => {
+    const validados = validarFiltrosListagem({
+      aba: abaListagem,
+      dataInicio: filtroDataInicioBr,
+      dataFim: filtroDataFimBr,
+      numNf: filtroNumNf,
+      busca: filtroBusca,
+      notify: true,
+    });
+    if (!validados) return;
+    setFiltrosOpen(false);
+    void carregarOrdens({ manual: true });
+  };
+
+  const handleLimparFiltros = () => {
+    setFiltroDataInicioBr('');
+    setFiltroDataFimBr('');
+    setFiltroNumNf('');
+    setFiltroBusca('');
+    setFiltrosOpen(false);
+    if (abaListagem === 'pendentes') {
+      setAbaConsultada(true);
+      void carregarOrdens({
+        aba: 'pendentes',
+        dataInicio: '',
+        dataFim: '',
+        numNf: '',
+        busca: '',
+        manual: true,
+      });
+    } else {
+      listRequestIdRef.current += 1;
+      setLoading(false);
+      setOrdens([]);
+      setAbaConsultada(false);
+    }
+  };
 
   const selecionarAbaListagem = (novaAba: AbaListagem) => {
     setAbaListagem(novaAba);
-    if (novaAba === 'pendentes') {
+    if (novaAba === 'pendentes' || temFiltrosAtivos) {
       setAbaConsultada(true);
-      void carregarOrdens({ aba: 'pendentes', manual: true });
+      void carregarOrdens({ aba: novaAba, manual: true });
     } else {
       listRequestIdRef.current += 1;
       setLoading(false);
@@ -890,18 +965,44 @@ export function OrdensSeparacaoPage() {
   };
 
   // Abrir detalhes da Ordem de Separação
-  const abrirOrdemDetalhe = async (numSeparacao: number, abaInicial: 'geral' | 'itens' | 'obs' = 'geral') => {
+  const abrirOrdemDetalhe = async (
+    numSeparacao: number,
+    abaInicial: 'geral' | 'itens' | 'obs' = 'geral',
+    situacaoLista?: number,
+  ) => {
     const baseUrl = GlobalConfig.getBaseUrl();
     const token = GlobalConfig.getJwToken();
     const empresa = GlobalConfig.getCodEmpresa() ?? 1;
     const usuario = GlobalConfig.getUsuario() || 'ADMIN';
     if (!baseUrl || !token) return;
 
+    let validouEdicao = false;
+    if (situacaoLista !== undefined && !isOrdemSomenteLeitura(situacaoLista)) {
+      try {
+        const { permitido, mensagem } = await verificarAcaoTransacao('PCP008', 37);
+        if (!permitido) {
+          showError(mensagem || 'Você não possui permissão para editar Ordens de Separação.');
+          return;
+        }
+        validouEdicao = true;
+      } catch (err: any) {
+        showError(err?.message || 'Erro ao validar permissão para editar Ordem de Separação.');
+        return;
+      }
+    }
+
     try {
       setSalvando(true);
       const resp = await obterOrdemSeparacaoDetalheCall(baseUrl, token, empresa, numSeparacao, usuario);
       if (resp.succeeded && resp.jsonBody) {
         const d: OrdemDetalhe = resp.jsonBody;
+        if (!validouEdicao && !isOrdemSomenteLeitura(d.situacaoSeparacao)) {
+          const { permitido, mensagem } = await verificarAcaoTransacao('PCP008', 37);
+          if (!permitido) {
+            showError(mensagem || 'Você não possui permissão para editar Ordens de Separação.');
+            return;
+          }
+        }
         sincronizarDetalheNaTela(d);
         setGeraSolicEmbalagem(false);
         limparCamposInclusao();
@@ -920,6 +1021,17 @@ export function OrdensSeparacaoPage() {
 
   // Abrir nova Ordem de Separação
   const abrirNovaOrdem = async () => {
+    try {
+      const { permitido, mensagem } = await verificarAcaoTransacao('PCP008', 36);
+      if (!permitido) {
+        showError(mensagem || 'Você não possui permissão para incluir Ordem de Separação.');
+        return;
+      }
+    } catch (err: any) {
+      showError(err?.message || 'Erro ao validar permissão para incluir Ordem de Separação.');
+      return;
+    }
+
     const baseUrl = GlobalConfig.getBaseUrl();
     const token = GlobalConfig.getJwToken();
     const empresa = GlobalConfig.getCodEmpresa() ?? 1;
@@ -2892,7 +3004,10 @@ export function OrdensSeparacaoPage() {
             <IoArrowBack size={18} />
           </button>
           <div>
-            <h1>Ordens de Separação</h1>
+            <div className="page-title-beta-row">
+              <h1>Ordens de Separação</h1>
+              <BetaHelpBadge />
+            </div>
             <p>Consulta, criação, liberação, conferência QR Code e expedição de lotes.</p>
           </div>
         </div>
@@ -2918,6 +3033,16 @@ export function OrdensSeparacaoPage() {
               placeholder="Pesquisar por ordem, pedido, NF, cliente ou CFOP..."
               className="clientes-search"
             />
+
+            <button
+              className={`icon-button module-action-button${temFiltrosAtivos ? ' module-action-button--active' : ''}`}
+              type="button"
+              onClick={() => setFiltrosOpen(true)}
+              aria-label="Filtros avançados"
+              title="Filtros avançados"
+            >
+              <IoFilterOutline size={16} />
+            </button>
 
             <button
               className="icon-button module-action-button"
@@ -2982,91 +3107,6 @@ export function OrdensSeparacaoPage() {
           </button>
         </div>
 
-        {/* FILTROS AVANÇADOS (PERÍODO, NF E BUSCA) */}
-        <div className="separacao-menu-filters">
-          <div className="separacao-filter-field">
-            <span>Data Inicial</span>
-            <CustomDatePicker
-              value={filtroDataInicioBr}
-              onChange={setFiltroDataInicioBr}
-              placeholder="DD/MM/AAAA"
-            />
-          </div>
-          <div className="separacao-filter-field">
-            <span>Data Final</span>
-            <CustomDatePicker
-              value={filtroDataFimBr}
-              onChange={setFiltroDataFimBr}
-              placeholder="DD/MM/AAAA"
-            />
-          </div>
-          <label className="separacao-filter-field">
-            <span>Nota Fiscal</span>
-            <input
-              type="text"
-              value={filtroNumNf}
-              onChange={(e) => setFiltroNumNf(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void carregarOrdens({ manual: true });
-              }}
-              placeholder="Nº NF..."
-            />
-          </label>
-          <label className="separacao-filter-field separacao-filter-field--wide">
-            <span>Ordem / Cliente / Pedido</span>
-            <input
-              type="text"
-              value={filtroBusca}
-              onChange={(e) => setFiltroBusca(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void carregarOrdens({ manual: true });
-              }}
-              placeholder="Ordem, pedido, cliente, CFOP..."
-            />
-          </label>
-          <div className="separacao-menu-actions-inline">
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => void carregarOrdens({ manual: true })}
-              disabled={loading}
-            >
-              <IoSearchOutline size={15} />
-              Filtrar
-            </button>
-            {(filtroDataInicioBr || filtroDataFimBr || filtroNumNf || filtroBusca) && (
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => {
-                  setFiltroDataInicioBr('');
-                  setFiltroDataFimBr('');
-                  setFiltroNumNf('');
-                  setFiltroBusca('');
-                  if (abaListagem === 'pendentes') {
-                    setAbaConsultada(true);
-                    void carregarOrdens({
-                      aba: 'pendentes',
-                      dataInicio: '',
-                      dataFim: '',
-                      numNf: '',
-                      busca: '',
-                      manual: true,
-                    });
-                  } else {
-                    listRequestIdRef.current += 1;
-                    setLoading(false);
-                    setOrdens([]);
-                    setAbaConsultada(false);
-                  }
-                }}
-              >
-                Limpar
-              </button>
-            )}
-          </div>
-        </div>
-
         {/* TABELA PRINCIPAL */}
         <div className="data-cards-region">
           <DataListSortBar
@@ -3089,7 +3129,7 @@ export function OrdensSeparacaoPage() {
             <p className="module-empty">Carregando ordens de separação...</p>
           ) : abaListagem !== 'pendentes' && !abaConsultada ? (
             <p className="module-empty">
-              Informe ao menos um filtro (Período, Nota Fiscal ou Ordem / Cliente / Pedido) e clique em <strong>Filtrar</strong> para consultar.
+              Informe ao menos um filtro (Período, Nota Fiscal ou Ordem / Cliente / Pedido) em Filtros avançados para consultar.
             </p>
           ) : ordensFiltradas.length === 0 ? (
             <p className="module-empty">Nenhuma ordem de separação encontrada para os filtros selecionados.</p>
@@ -3118,7 +3158,7 @@ export function OrdensSeparacaoPage() {
                       { label: 'Usuário', value: item.codigoUsuario || '-' },
                     ]}
                     status={<span className={`separacao-status-pill ${badge.cls}`}>{badge.text}</span>}
-                    onOpen={() => void abrirOrdemDetalhe(item.numSeparacao)}
+                    onOpen={() => void abrirOrdemDetalhe(item.numSeparacao, 'geral', item.situacaoSeparacao)}
                     actions={
                       <>
                           <button
@@ -3126,7 +3166,7 @@ export function OrdensSeparacaoPage() {
                             className="icon-button"
                             title="Consultar / Editar"
                             aria-label="Consultar / Editar"
-                            onClick={() => void abrirOrdemDetalhe(item.numSeparacao)}
+                            onClick={() => void abrirOrdemDetalhe(item.numSeparacao, 'geral', item.situacaoSeparacao)}
                           >
                             <IoCreateOutline size={16} />
                           </button>
@@ -5424,6 +5464,71 @@ export function OrdensSeparacaoPage() {
           </article>
         </section>
       )}
+
+      {/* Filtros avançados */}
+      <AdvancedFiltersPanel
+        open={filtrosOpen}
+        onClose={() => setFiltrosOpen(false)}
+        onApply={handleAplicarFiltros}
+        applyDisabled={loading}
+        title="Filtros avançados"
+      >
+        <div className="module-form">
+          <div className="form-grid-2">
+            <label>
+              <span>Data Inicial</span>
+              <CustomDatePicker
+                value={filtroDataInicioBr}
+                onChange={setFiltroDataInicioBr}
+                placeholder="DD/MM/AAAA"
+              />
+            </label>
+
+            <label>
+              <span>Data Final</span>
+              <CustomDatePicker
+                value={filtroDataFimBr}
+                onChange={setFiltroDataFimBr}
+                placeholder="DD/MM/AAAA"
+              />
+            </label>
+
+            <label>
+              <span>Nota Fiscal</span>
+              <input
+                type="text"
+                value={filtroNumNf}
+                onChange={(e) => setFiltroNumNf(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAplicarFiltros();
+                }}
+                placeholder="Nº NF..."
+              />
+            </label>
+
+            <label>
+              <span>Ordem / Cliente / Pedido</span>
+              <input
+                type="text"
+                value={filtroBusca}
+                onChange={(e) => setFiltroBusca(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAplicarFiltros();
+                }}
+                placeholder="Ordem, pedido, cliente, CFOP..."
+              />
+            </label>
+          </div>
+
+          {temFiltrosAtivos ? (
+            <div className="form-actions">
+              <button type="button" className="secondary-button" onClick={handleLimparFiltros}>
+                Limpar filtros
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </AdvancedFiltersPanel>
     </main>
   );
 }

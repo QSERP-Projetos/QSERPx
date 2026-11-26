@@ -3127,3 +3127,902 @@ select.module-input-error,
   background: var(--color-primary);
   color: var(--color-on-primary, var(--color-bg));
 }
+
+/* ---------------------------------------------------------------------------
+   19. Solicitação de NF Diversa (PCP)
+--------------------------------------------------------------------------- */
+.solicitacao-nf-diversa-page .snfd-tabs,
+.snfd-form-modal .snfd-tabs {
+  display: flex;
+  flex: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.solicitacao-nf-diversa-page .snfd-tabs {
+  margin-bottom: 2px;
+}
+
+.solicitacao-nf-diversa-page .snfd-tabs::-webkit-scrollbar,
+.snfd-form-modal .snfd-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.snfd-modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.snfd-modal-subtitle {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+
+.snfd-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.snfd-span-2 {
+  grid-column: span 2;
+}
+
+.snfd-emb-tipo {
+  min-width: 110px;
+}
+
+.snfd-emb-serial {
+  flex: 1 1 220px;
+}
+
+.snfd-detalhe-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.snfd-subbox {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-soft, var(--color-border));
+  background: var(--color-bg);
+}
+
+.snfd-subbox__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.snfd-subbox__head strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  color: var(--color-heading);
+}
+
+.snfd-subbox__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.snfd-subbox__controls input[type="search"] {
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.snfd-scan-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.snfd-scan-bar__field {
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.snfd-scan-bar__field label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.snfd-scan-bar__field input {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.snfd-scan-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.snfd-resumo-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-soft, var(--color-border));
+  background: var(--color-bg);
+  font-size: 0.86rem;
+}
+
+.snfd-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-soft, var(--color-border));
+  background: var(--color-bg);
+}
+
+.snfd-meta-label {
+  display: block;
+  font-size: 0.74rem;
+  color: var(--color-muted);
+}
+
+.snfd-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+.snfd-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.snfd-cell-sub {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--color-muted);
+}
+
+.snfd-table-input {
+  width: 90px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.snfd-confirm-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-warning, var(--color-border));
+  background: var(--color-bg);
+}
+
+.snfd-confirm-inline p,
+.snfd-confirm-text {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.snfd-confirm-inline__list {
+  margin: 0;
+  padding-inline-start: 18px;
+  font-size: 0.84rem;
+}
+
+.snfd-confirm-inline__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.solicitacao-nf-diversa-page .table-scroll thead {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+}
+
+@media (max-width: 768px) {
+  .snfd-span-2 {
+    grid-column: 1 / -1;
+  }
+}
+
+/* =========================================================================
+   20. FATURAMENTO / GERENCIADOR NF-E (.faturamento-page / .fat-*)
+   ========================================================================= */
+
+.faturamento-page .modal-backdrop {
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.faturamento-page .modal-card {
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.faturamento-page .modal-card[data-expanded="true"] {
+  overflow: hidden;
+}
+
+.faturamento-page .modal-card__header,
+.faturamento-page .fat-modal-tabs,
+.faturamento-page .modal-card__footer {
+  flex: none;
+}
+
+.faturamento-page .fat-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  overscroll-behavior: contain;
+}
+
+.faturamento-page .modal-card .table-scroll {
+  max-height: 38vh;
+  overflow: auto;
+}
+
+.faturamento-page .modal-card[data-expanded="true"] .table-scroll {
+  max-height: 48vh;
+}
+
+.faturamento-page .tributacao-help-modal {
+  width: min(680px, 100%);
+}
+
+.fat-table-compact .clientes-cep-input {
+  min-width: 124px;
+}
+
+.fat-table-compact .clientes-cep-input .fat-cell-input {
+  width: 82px;
+}
+
+.faturamento-page .clientes-cep-search {
+  height: var(--control-height);
+  width: var(--control-height);
+  min-width: var(--control-height);
+  flex-shrink: 0;
+}
+
+.faturamento-page .fat-table-compact .clientes-cep-search {
+  height: 32px;
+  width: 32px;
+  min-width: 32px;
+}
+
+.faturamento-page .fat-tabs,
+.faturamento-page .fat-modal-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 4px;
+}
+
+.faturamento-page .fat-tabs .contas-receber-tab,
+.faturamento-page .fat-modal-tabs .contas-receber-tab {
+  flex: none;
+  white-space: nowrap;
+}
+
+.fat-modal-tabs {
+  padding-inline: 20px;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.fat-hint-text {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--color-muted);
+}
+
+.fat-warning-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--status-warning);
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.fat-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fat-subpanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface-alt);
+}
+
+.fat-subpanel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.fat-subcard {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
+}
+
+.fat-fila-toolbar,
+.fat-actions-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.fat-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.faturamento-page .fat-actions-grid > button {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.fat-checkbox-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.fat-checkbox-row input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+}
+
+.fat-cell-sub {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--color-muted);
+}
+
+.fat-cell-input {
+  width: 96px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.faturamento-page .module-form td input:not([type='checkbox']):not([type='radio']) {
+  min-height: 34px;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.fat-table-compact th,
+.fat-table-compact td {
+  padding: 8px 10px;
+}
+
+.faturamento-page .fat-row-selectable {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.faturamento-page .fat-row-selectable:hover {
+  background: var(--table-row-hover, var(--color-surface-alt));
+}
+
+.faturamento-page .fat-row-selected {
+  background: color-mix(in srgb, var(--color-text) 10%, var(--color-surface)) !important;
+  outline: 2px solid var(--color-text);
+  outline-offset: -2px;
+}
+
+.faturamento-page .fat-row-selected td {
+  border-top: 1px solid var(--color-text);
+  border-bottom: 1px solid var(--color-text);
+}
+
+.faturamento-page .fat-row-selected td:first-child {
+  box-shadow: inset 4px 0 0 var(--color-text);
+}
+
+.fat-xml-preview {
+  margin: 0;
+  padding: 12px;
+  max-height: 55vh;
+  overflow: auto;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.fat-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 0.84rem;
+}
+
+.fat-kv {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fat-kv small {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.faturamento-page .table-scroll thead {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+}
+
+.form-grid-2__full {
+  grid-column: 1 / -1;
+}
+
+.form-grid-2__full .searchable-select,
+.form-grid-2__full textarea,
+.form-grid-2__full input {
+  width: 100%;
+}
+
+.form-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px 10px;
+}
+
+.form-grid-4 > *,
+.form-grid-3 > *,
+.form-grid-2 > * {
+  min-width: 0;
+}
+
+.form-grid-4 input,
+.form-grid-3 input,
+.form-grid-2 input {
+  min-width: 0;
+}
+
+.form-grid-3__span2 {
+  grid-column: span 2;
+}
+
+@media (max-width: 768px) {
+  .form-grid-3__span2 {
+    grid-column: 1 / -1;
+  }
+
+  .form-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fat-actions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fat-modal-tabs {
+    padding-inline: 12px;
+  }
+}
+
+
+/* ---------------------------------------------------------------------------
+   Apuração Reforma Tributária (CBS RFB v2)
+   --------------------------------------------------------------------------- */
+.list-layout-page.apuracao-reforma-page .clientes-panel.list-layout-panel {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.apuracao-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+
+.apuracao-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
+}
+
+.apuracao-summary-card small {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.apuracao-summary-card strong {
+  font-size: 1.05rem;
+  color: var(--color-heading);
+}
+
+.apuracao-summary-card span {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+
+.apuracao-quota-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.apuracao-quota-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
+}
+
+.apuracao-quota-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.apuracao-quota-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-heading);
+}
+
+.apuracao-quota-card__desc {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--color-muted);
+  line-height: 1.4;
+}
+
+.apuracao-quota-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+.modal-card.apuracao-modal-medium {
+  width: min(620px, 94vw);
+}
+
+.modal-card.apuracao-modal-wide {
+  width: min(860px, 94vw);
+}
+
+.apuracao-modal-medium .module-form,
+.apuracao-modal-wide .module-form {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.apuracao-modal-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.apuracao-json-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.apuracao-secret-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.apuracao-secret-input input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.apuracao-modal-subtitle {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+
+.apuracao-helper {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  line-height: 1.45;
+}
+
+.apuracao-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
+  font-size: 0.86rem;
+  color: var(--color-text);
+}
+
+.apuracao-alert--warning {
+  border-color: var(--status-warning);
+}
+
+.apuracao-alert--danger {
+  border-color: var(--status-danger);
+}
+
+.apuracao-alert p {
+  margin: 0;
+  flex: 1 1 240px;
+}
+
+@media (max-width: 1024px) {
+  .apuracao-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .apuracao-summary-grid,
+  .apuracao-quota-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================================
+   22. SELO (BETA) E POPOVER DE AJUDA (.beta-help)
+   ========================================================================= */
+
+.page-title-beta-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.beta-help {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.beta-help__pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+}
+
+.beta-help__trigger {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+  border-radius: 999px;
+  border-color: var(--status-warning);
+  background: var(--color-surface);
+  color: var(--status-warning);
+}
+
+.beta-help__trigger:hover,
+.beta-help__trigger:focus-visible {
+  background: var(--color-surface-alt);
+  color: var(--color-heading);
+}
+
+.beta-help__popover {
+  width: min(360px, calc(100vw - 24px));
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--status-warning);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-modal);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  z-index: 10090;
+}
+
+.beta-help__popover:is(:popover-open, .\:popover-open) {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@supports not selector(:popover-open) {
+  .beta-help__popover:not(.\:popover-open) {
+    display: none;
+  }
+}
+
+@supports (position-area: block-end) {
+  .beta-help__popover {
+    inset: auto;
+    margin: 6px 0 0;
+    position-area: block-end span-inline-end;
+    position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+  }
+}
+
+@supports not (position-area: block-end) {
+  .beta-help__popover {
+    position: fixed;
+    inset: auto 12px 16px 12px;
+    width: min(420px, calc(100vw - 24px));
+    margin: 0 auto;
+  }
+}
+
+.beta-help__title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-heading);
+}
+
+.beta-help__popover p {
+  margin: 0;
+  color: var(--color-text);
+}
+
+/* =========================================================================
+   23. AGRUPADORES DE TRIBUTOS (.fat-trib-group)
+   ========================================================================= */
+
+.fat-trib-group {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+}
+
+.fat-trib-group__legend {
+  padding: 2px 10px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-heading);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+.fat-trib-group .clientes-cep-input input {
+  padding-inline: 10px;
+}
+
+.fat-trib-group__cst-row {
+  display: grid;
+  grid-template-columns: minmax(112px, 1.25fr) repeat(2, minmax(0, 1fr));
+  gap: 8px 10px;
+}
+
+.fat-trib-group__cst-row > *,
+.fat-trib-group__cst-row input {
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .fat-trib-group__cst-row {
+    grid-template-columns: minmax(98px, 1.15fr) repeat(2, minmax(0, 1fr));
+  }
+}
