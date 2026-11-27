@@ -22,7 +22,6 @@ import {
   inserirOuAtualizarTransacaoCall,
   listUsuariosCall,
   logoutCall,
-  tokenCall,
 } from '../../../services/apiCalls';
 import { buscaLicencaCliente, licencaPorHd } from '../../../services/supabaseQueries';
 import { filterListByTerm } from '../../../utils/filterListByTerm';
@@ -71,10 +70,6 @@ const formatSupabaseDate = (value?: string) => {
   const month = String(parsed.getMonth() + 1).padStart(2, '0');
   const day = String(parsed.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-};
-
-const resolveToken = (response: any) => {
-  return String(response?.jsonBody?.token ?? response?.data?.token ?? response?.data?.Token ?? '').trim();
 };
 
 const formatToday = () => {
@@ -302,36 +297,15 @@ export function SessoesPage() {
 
     const baseUrl = GlobalConfig.getBaseUrl();
     const token = GlobalConfig.getJwToken();
-    const chaveApi = GlobalConfig.getChaveApi();
-    const guid = GlobalConfig.getGuidID();
     const numeroHd = GlobalConfig.getNumHD();
 
-    if (!baseUrl || !token || !chaveApi || !guid || !numeroHd) {
+    if (!baseUrl || !token || !numeroHd) {
       showToast('Informações de licença/sessão não encontradas.', 'error');
       return;
     }
 
     setLicencaLoading(true);
     try {
-      const tokenResp = await tokenCall(baseUrl, {
-        usuario: 'null',
-        nomeEmpresa: 'null',
-        codigoEmpresa: 0,
-        chaveApi,
-        idGuid: guid,
-        tipo: 1,
-      });
-
-      if (!tokenResp.succeeded) {
-        showToast('Falha ao gerar token de segurança.', 'error');
-        return;
-      }
-
-      const tokenLicenca = resolveToken(tokenResp);
-      if (tokenLicenca) {
-        GlobalConfig.setJwToken(tokenLicenca);
-      }
-
       const licencas = await licencaPorHd({ numeroHd, idSistema: 1 });
       if (!licencas || licencas.length === 0) {
         showToast('Licença não encontrada para este HD.', 'error');
@@ -371,13 +345,13 @@ export function SessoesPage() {
         tipo_banco: licenca?.tipo_banco ?? licenca?.tipoBanco,
       };
 
-      const licencaResp = await adicionarLicencaCall(baseUrl, tokenLicenca || token, licencaPayload);
+      const licencaResp = await adicionarLicencaCall(baseUrl, token, licencaPayload);
       if (!licencaResp.succeeded) {
         showToast(getApiErrorMessage(licencaResp, 'Falha ao atualizar licença no servidor.'), 'error');
         return;
       }
 
-      const transacaoResp = await inserirOuAtualizarTransacaoCall(baseUrl, tokenLicenca || token, licencaView as any[]);
+      const transacaoResp = await inserirOuAtualizarTransacaoCall(baseUrl, token, licencaView as any[]);
       if (!transacaoResp.succeeded) {
         showToast(getApiErrorMessage(transacaoResp, 'Falha ao atualizar transações da licença.'), 'error');
         return;

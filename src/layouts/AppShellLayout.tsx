@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { IoHomeOutline, IoLogOutOutline, IoMenuOutline } from 'react-icons/io5';
 import { createPortal } from 'react-dom';
@@ -12,7 +12,7 @@ import { useDynamicMenu } from '../hooks/useDynamicMenu';
 import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { GlobalConfig } from '../services/globalConfig';
-import { verificarSessaoCall, logoutCall } from '../services/apiCalls';
+import { authLogoutCall, verificarSessaoCall, logoutCall } from '../services/apiCalls';
 import { ModalHeaderActions } from '../components/ModalHeaderActions';
 
 const resolveRouteFromTransaction = (transactionCode: string, title: string): string | undefined => {
@@ -259,7 +259,7 @@ export function AppShellLayout() {
     }
   }, [location.pathname, menus]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     if (logoutPending) return;
     if (GlobalConfig.isAtualizando()) {
       showToast('Não é possível sair durante uma atualização em andamento.', 'error');
@@ -270,12 +270,24 @@ export function AppShellLayout() {
 
     const baseUrl = GlobalConfig.getBaseUrl();
     const token = GlobalConfig.getJwToken();
+    const refreshToken = GlobalConfig.getRefreshTokenFallback();
     const codigoEmpresa = GlobalConfig.getCodEmpresa();
     const idSessao = GlobalConfig.getIdSessaoUsuario();
 
     try {
-      if (baseUrl && token && codigoEmpresa && idSessao) {
-        await logoutCall(baseUrl, codigoEmpresa, idSessao, token);
+      if (baseUrl) {
+        if (token && codigoEmpresa && idSessao) {
+          await logoutCall(baseUrl, codigoEmpresa, idSessao, token);
+        }
+        await authLogoutCall(
+          baseUrl,
+          {
+            refreshToken: refreshToken || undefined,
+            codigoEmpresa,
+            idSessao,
+          },
+          token || undefined,
+        );
       }
     } catch {
       showToast('Não foi possível finalizar a sessão no servidor. Encerrando localmente.', 'info');
@@ -285,7 +297,7 @@ export function AppShellLayout() {
       setLogoutConfirmOpen(false);
       navigate(ROUTES.login, { replace: true });
     }
-  };
+  }, [logoutPending, navigate, showToast]);
 
   useEffect(() => {
     const onForceLogout = () => {

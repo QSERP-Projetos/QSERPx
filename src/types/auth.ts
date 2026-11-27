@@ -1,8 +1,11 @@
 export type SelectCompanyState = {
   usuario: string;
-  senha: string;
   baseUrl: string;
-  token: string;
+  selectionToken: string;
   empresas: any[];
   versao: string;
+  numHD?: string;
+  chaveCriptoHD?: string;
+  codigoLicenca?: number | null;
+  tipoLicenca?: string | null;
 };

@@ -16,11 +16,9 @@ import { ListSearchField } from '../../../components/ListSearchField';
 import { GlobalConfig } from '../../../services/globalConfig';
 import {
   acoesUsuariosCall,
-  healthCheckCall,
   listPedidosCompraCall,
   obterUsuariosTransacoesSistemaAcaoCall,
   pedidoCompraPutCall,
-  tokenCall,
 } from '../../../services/apiCalls';
 import { filterListByTerm } from '../../../utils/filterListByTerm';
 import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
@@ -162,10 +160,6 @@ const resolvePedidoMaterialInfo = (pedido: PedidoCompra) => {
     codigoMaterial: itemRef.codigoMaterial || '-',
     quantidade: itemRef.quantidade || '-',
   };
-};
-
-const resolveToken = (payload: any): string => {
-  return String(payload?.jsonBody?.token ?? payload?.data?.token ?? payload?.data?.Token ?? '').trim();
 };
 
 const parseDateForSort = (value: any) => {
@@ -417,31 +411,6 @@ export function PedidoCompraLiberacaoPage() {
         codigoUsuario: usuario,
       });
 
-      const healthResp = await healthCheckCall(baseUrl);
-      if (!healthResp.succeeded) {
-        showToast('Serviço indisponível para liberação neste momento.', 'error');
-        return;
-      }
-
-      const tokenResp = await tokenCall(baseUrl, {
-        usuario,
-        nomeEmpresa: GlobalConfig.getNomeEmpresa() || '',
-        codigoEmpresa,
-        chaveApi: GlobalConfig.getChaveApi(),
-        idGuid: GlobalConfig.getGuidID(),
-        tipo: 2,
-      });
-
-      if (!tokenResp.succeeded) {
-        showToast('Falha ao gerar token para liberar pedido.', 'error');
-        return;
-      }
-
-      const tokenLiberacao = resolveToken(tokenResp);
-      if (tokenLiberacao) {
-        GlobalConfig.setJwToken(tokenLiberacao);
-      }
-
       const resp = await pedidoCompraPutCall(
         baseUrl,
         {
@@ -452,7 +421,7 @@ export function PedidoCompraLiberacaoPage() {
           usuario,
           senha,
         },
-        tokenLiberacao || tokenAtual,
+        tokenAtual,
       );
 
       if (!resp.succeeded) {

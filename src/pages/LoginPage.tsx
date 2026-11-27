@@ -13,11 +13,10 @@ import {
 import { APP_NAME, APP_VERSION } from '../constants/appInfo';
 import { ROUTES } from '../constants/routes';
 import { GlobalConfig } from '../services/globalConfig';
+import apiManager from '../services/apiManager';
 import {
+  authLoginCall,
   healthCheckCall,
-  loginCall,
-  loginUsuarioCall,
-  tokenCall,
 } from '../services/apiCalls';
 import { completeCompanySession } from '../services/authFlow';
 import { useTheme } from '../contexts/ThemeContext';
@@ -100,137 +99,80 @@ export function LoginPage() {
         return;
       }
 
-      const tokenTipo1Resp = await tokenCall(baseUrl, {
-        usuario: '',
-        nomeEmpresa: '',
-        codigoEmpresa: 0,
-        chaveApi: '',
-        idGuid: '',
-        tipo: 1,
-      });
-
-      const tokenTipo1 =
-        (tokenTipo1Resp.data as any)?.token ||
-        (tokenTipo1Resp.data as any)?.Token ||
-        (tokenTipo1Resp.data as any)?.data?.token;
-
-      if (!tokenTipo1Resp.succeeded || !tokenTipo1) {
-        showToast('Falha ao gerar token.', 'error');
-        return;
-      }
-
-      GlobalConfig.setJwToken(tokenTipo1);
-
       const usuarioUpper = emailTrimmed.toUpperCase();
-      GlobalConfig.setUsuario(usuarioUpper);
+      apiManager.resetDisconnectGuard();
 
-      const loginResp = await loginCall(baseUrl, tokenTipo1, usuarioUpper, password);
-      const loginData = (loginResp.data as any) || {};
-      const loginJsonBody = (loginResp.jsonBody as any) || {};
-      const loginMessage = loginData?.message || loginJsonBody?.message;
+      const loginResp = await authLoginCall(baseUrl, {
+        usuario: usuarioUpper,
+        senha: password,
+      });
+      const loginData = (loginResp.data as any) || (loginResp.jsonBody as any) || {};
+      const loginMessage = loginData?.message;
 
-      if (!loginResp.succeeded || loginMessage) {
-        showToast(loginMessage || 'Falha na autenticação.', 'error');
+      if (!loginResp.succeeded) {
+        if (loginData?.licencaBloqueada) {
+          setLicencaBloqueadaMensagem(loginMessage || 'Sistema inacessível. Entre em contato com o suporte.');
+        } else {
+          showToast(loginMessage || 'Usuário ou senha inválidos.', 'error');
+        }
         return;
       }
 
-      const codigoUsuarioDetalhe = String(
-        loginData?.codigo_Usuario ??
-        loginData?.codigo_usuario ??
-        loginJsonBody?.codigo_Usuario ??
-        loginJsonBody?.codigo_usuario ??
-        usuarioUpper,
-      )
-        .trim()
-        .toUpperCase();
+      GlobalConfig.setUsuario(usuarioUpper);
+      GlobalConfig.setNivelUsuario(Number(loginData?.nivelUsuario ?? 0) || 0);
+      GlobalConfig.aplicarTipoMenuUsuario(usuarioUpper);
 
-      // Busca detalhes do usuário para obter nivel_Usuario
-      let nivelUsuarioLogin = 0;
-      try {
-        const userDetUrl = `${baseUrl.replace(/\/$/, '')}/api/v1/usuarios/${codigoUsuarioDetalhe}`;
-        const userDetRes = await fetch(userDetUrl, {
-          method: 'GET',
-          headers: { 'Authorization': `Bearer ${tokenTipo1}`, 'Content-Type': 'application/json' },
-        });
-        if (userDetRes.ok) {
-          const det = await userDetRes.json() as Record<string, unknown>;
-          nivelUsuarioLogin = Number(
-            det?.nivel_Usuario ?? det?.nivel_usuario ?? det?.Nivel_Usuario ?? 0
-          ) || 0;
-        }
-      } catch {
-        // Não bloquear login por falha pontual.
+      if (loginData?.codigoLicenca != null) {
+        const parsedLic = parseInt(String(loginData.codigoLicenca), 10);
+        if (!Number.isNaN(parsedLic)) GlobalConfig.setCodigoLicenca(parsedLic);
       }
-      // Tipo de menu e preferencia local do front-end (por usuario), nao vem do banco.
-      GlobalConfig.aplicarTipoMenuUsuario(codigoUsuarioDetalhe);
-
-      // Busca código de licença
-      let codigoLicencaAtual: number | null = null;
-      try {
-        const authHeader = { 'Authorization': `Bearer ${tokenTipo1}`, 'Content-Type': 'application/json' };
-        const licencaRes = await fetch(`${baseUrl.replace(/\/$/, '')}/api/v1/buscaLicencaAtual`, { method: 'GET', headers: authHeader });
-        if (licencaRes.ok) {
-          const licencaData = await licencaRes.json() as { codigoLicenca?: number; tipo?: string };
-          if (licencaData.codigoLicenca != null) {
-            codigoLicencaAtual = typeof licencaData.codigoLicenca === 'number'
-              ? licencaData.codigoLicenca
-              : parseInt(String(licencaData.codigoLicenca), 10);
-            if (!Number.isNaN(codigoLicencaAtual)) GlobalConfig.setCodigoLicenca(codigoLicencaAtual);
-            else codigoLicencaAtual = null;
-          }
-          if (licencaData.tipo) GlobalConfig.setTipoLicenca(licencaData.tipo);
-        }
-      } catch {
-        // silently ignore
+      if (loginData?.tipoLicenca) {
+        GlobalConfig.setTipoLicenca(String(loginData.tipoLicenca));
       }
 
-      // Verifica se a licença está bloqueada
-      if (codigoLicencaAtual != null) {
-        try {
-          const verificaUrl = `${baseUrl.replace(/\/$/, '')}/api/v1/verificalicencabloqueada` +
-            `?CodigoLicenca=${codigoLicencaAtual}&codigoUsuario=${codigoUsuarioDetalhe}&nivelUsuario=${nivelUsuarioLogin}`;
-          const verificaRes = await fetch(verificaUrl, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${tokenTipo1}`, 'Content-Type': 'application/json' },
-          });
-          if (!verificaRes.ok) {
-            const errData = await verificaRes.json().catch(() => ({})) as { message?: string };
-            setLicencaBloqueadaMensagem(errData?.message || 'Sistema inacessível. Entre em contato com o suporte.');
-            return;
-          }
-        } catch {
-          // silently ignore — se não conseguir verificar, prossegue
-        }
-      }
-
-      const loginUsuarioResp = await loginUsuarioCall(baseUrl, tokenTipo1, usuarioUpper);
-      const empresas = (loginUsuarioResp.data as any) || [];
-
-      if (!Array.isArray(empresas) || empresas.length === 0) {
+      const empresas = Array.isArray(loginData?.empresas) ? loginData.empresas : [];
+      if (empresas.length === 0) {
         showToast('Nenhuma empresa retornada para este usuário.', 'error');
         return;
       }
 
-      if (empresas.length > 1) {
+      if (loginData?.requiresCompanySelection && loginData?.selectionToken && empresas.length > 1) {
         navigate(ROUTES.selectCompany, {
           state: {
             usuario: usuarioUpper,
-            senha: password,
             baseUrl,
-            token: tokenTipo1,
+            selectionToken: String(loginData.selectionToken),
             empresas,
             versao,
+            numHD: loginData?.numHD,
+            chaveCriptoHD: loginData?.chaveCriptoHD,
+            codigoLicenca: loginData?.codigoLicenca ?? null,
+            tipoLicenca: loginData?.tipoLicenca ?? null,
           },
         });
         return;
       }
 
+      const accessToken = String(loginData?.accessToken || '');
+      if (!accessToken) {
+        showToast('Falha ao obter token de acesso.', 'error');
+        return;
+      }
+
+      if (loginData?.refreshToken) {
+        GlobalConfig.setRefreshTokenFallback(String(loginData.refreshToken));
+      }
+
       const result = await completeCompanySession({
         baseUrl,
-        tokenTipo1,
+        accessToken,
         usuario: usuarioUpper,
         versao,
         empresa: empresas[0],
+        preloadedHd: {
+          numHD: loginData?.numHD,
+          chaveCriptoHD: loginData?.chaveCriptoHD,
+        },
       });
 
       if (!result.success) {

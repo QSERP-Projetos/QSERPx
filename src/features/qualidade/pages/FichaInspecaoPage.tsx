@@ -22,7 +22,6 @@ import { GlobalConfig } from '../../../services/globalConfig';
 import {
   acoesUsuariosCall,
   alterarLaudoInspecaoCall,
-  healthCheckCall,
   incluirFichaInspecaoCall,
   incluirValoresLaudoInspecaoCall,
   listFichaInspecaoCall,
@@ -30,7 +29,6 @@ import {
   listMotivoDemeritoCall,
   listaInspetoresCall,
   obterUsuariosTransacoesSistemaAcaoCall,
-  tokenCall,
 } from '../../../services/apiCalls';
 import { filterListByTerm } from '../../../utils/filterListByTerm';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
@@ -159,10 +157,6 @@ const parseDecimal = (value: string) => {
   if (!normalized) return null;
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
-};
-
-const resolveToken = (response: any) => {
-  return String(response?.jsonBody?.token ?? response?.data?.token ?? response?.data?.Token ?? '').trim();
 };
 
 const parseDateForSort = (value: any) => {
@@ -597,32 +591,7 @@ export function FichaInspecaoPage({
     try {
       const { baseUrl, token, codigoEmpresa, usuario } = await registrarAcoesUsuario();
 
-      const healthResp = await healthCheckCall(baseUrl);
-      if (!healthResp.succeeded) {
-        showToast('Falha na comunicação com o servidor.', 'error');
-        return;
-      }
-
-      const tokenResp = await tokenCall(baseUrl, {
-        usuario,
-        nomeEmpresa: GlobalConfig.getNomeEmpresa(),
-        codigoEmpresa,
-        chaveApi: GlobalConfig.getChaveApi(),
-        idGuid: GlobalConfig.getGuidID(),
-        tipo: 2,
-      });
-
-      if (!tokenResp.succeeded) {
-        showToast('Falha ao gerar token para abertura da ficha.', 'error');
-        return;
-      }
-
-      const tokenNovaFicha = resolveToken(tokenResp);
-      if (tokenNovaFicha) {
-        GlobalConfig.setJwToken(tokenNovaFicha);
-      }
-
-      const resp = await incluirFichaInspecaoCall(baseUrl, tokenNovaFicha || token, {
+      const resp = await incluirFichaInspecaoCall(baseUrl, token, {
         codigoEmpresa,
         usuarioAtual: usuario,
         codigoLote,
