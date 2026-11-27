@@ -12,6 +12,7 @@ import {
 import { ROUTES } from '../../../constants/routes';
 import { useToast } from '../../../contexts/ToastContext';
 import { SearchableSelect } from '../../../components/SearchableSelect';
+import { useTransactionAccess } from '../../../hooks/useTransactionAccess';
 import { GlobalConfig } from '../../../services/globalConfig';
 import {
   acoesUsuariosCall,
@@ -126,6 +127,7 @@ const MODO_CADASTRO_OPTIONS = [
 export function ClientesPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const permissaoStatus = useTransactionAccess('BAS001', 'Clientes');
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -217,8 +219,9 @@ export function ClientesPage() {
   );
 
   useEffect(() => {
+    if (permissaoStatus !== 'autorizado') return;
     void carregarClientes();
-  }, [carregarClientes]);
+  }, [carregarClientes, permissaoStatus]);
 
   const clientesFiltrados = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -599,6 +602,20 @@ export function ClientesPage() {
 
   const bloqueadoPorBuscaDocumento = !modoConsulta && formModoCadastro === 'documento';
   const camposSomenteLeitura = modoConsulta || bloqueadoPorBuscaDocumento;
+
+  if (permissaoStatus === 'verificando') {
+    return (
+      <main className="clientes-page list-layout-page">
+        <section className="clientes-panel list-layout-panel">
+          <p className="module-empty">Verificando permissão de acesso...</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (permissaoStatus === 'negado') {
+    return null;
+  }
 
   return (
     <main className="clientes-page list-layout-page">

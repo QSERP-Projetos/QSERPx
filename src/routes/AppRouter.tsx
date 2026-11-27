@@ -24,7 +24,6 @@ import { ApuracaoReformaTributariaPage } from '../features/fiscal/pages/Apuracao
 import { PedidoCompraLiberacaoPage } from '../features/compras/pages/PedidoCompraLiberacaoPage';
 import { ClientesPage } from '../features/basico/pages/ClientesPage';
 import { ServicosPage } from '../features/basico/pages/ServicosPage';
-import { AlmoxarifadoPage } from '../features/basico/pages/AlmoxarifadoPage';
 import { TributacaoMaterialPage } from '../features/basico/pages/TributacaoMaterialPage';
 import { SessoesPage } from '../features/seguranca/pages/SessoesPage';
 import { TipoApontamentoPage } from '../features/seguranca/pages/TipoApontamentoPage';
@@ -126,7 +125,7 @@ export function AppRouter() {
           <Route path={ROUTES.comprasPedidoLiberacao} element={<PedidoCompraLiberacaoPage />} />
           <Route path={ROUTES.basicoClientes} element={<ClientesPage />} />
           <Route path={ROUTES.basicoServicos} element={<ServicosPage />} />
-          <Route path={ROUTES.basicoAlmoxarifado} element={<AlmoxarifadoPage />} />
+          <Route path={ROUTES.basicoAlmoxarifado} element={<Navigate to={ROUTES.home} replace />} />
           <Route path={ROUTES.basicoTributacaoMaterial} element={<TributacaoMaterialPage />} />
           <Route path={ROUTES.segurancaUsuarios} element={<UsuariosPage />} />
           <Route path={ROUTES.segurancaTipoApontamento} element={<TipoApontamentoPage />} />

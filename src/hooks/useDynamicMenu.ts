@@ -218,33 +218,19 @@ export const useDynamicMenu = () => {
           }
         }
 
-        // Garante que a opção Almoxarifado esteja presente no módulo Básico sem colidir com BAS003 (Tributação do Material)
-        const basicoIndex = menusComDocumentos.findIndex((item) => item.id === 'basico' || item.transactionCode === 'BAS');
-        const almoxarifadoSubitem = { title: 'Almoxarifado', transactionCode: 'ALM' };
+        // Oculta a opção Almoxarifado (em desenvolvimento) e exibe o módulo Básico apenas com as transações permitidas
+        const menusFiltrados = menusComDocumentos
+          .map((menu) => ({
+            ...menu,
+            subitems: menu.subitems.filter((sub) => {
+              const titleNorm = String(sub.title || '').trim().toLowerCase();
+              const codeNorm = String(sub.transactionCode || '').trim().toUpperCase();
+              return !titleNorm.includes('almoxarif') && codeNorm !== 'ALM';
+            }),
+          }))
+          .filter((menu) => menu.subitems.length > 0);
 
-        if (basicoIndex >= 0) {
-          const basicoMenu = menusComDocumentos[basicoIndex];
-          const hasAlmox = basicoMenu.subitems.some(
-            (s) => String(s.title || '').toLowerCase().includes('almoxarif')
-          );
-          if (!hasAlmox) {
-            basicoMenu.subitems.push(almoxarifadoSubitem);
-          }
-        } else {
-          menusComDocumentos.push({
-            id: 'basico',
-            title: 'Básico',
-            icon: 'list-outline',
-            transactionCode: 'BAS',
-            subitems: [
-              { title: 'Clientes', transactionCode: 'BAS001' },
-              { title: 'Serviços', transactionCode: 'BAS002' },
-              almoxarifadoSubitem,
-            ],
-          });
-        }
-
-        setMenus(menusComDocumentos);
+        setMenus(menusFiltrados);
       } finally {
         if (mounted) setLoading(false);
       }

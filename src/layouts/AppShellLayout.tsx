@@ -88,7 +88,6 @@ const resolveRouteFromTransaction = (transactionCode: string, title: string): st
       ? ROUTES.comprasPedidoLiberacao
       : undefined) ||
     (normalizedTitle.includes('cliente') ? ROUTES.basicoClientes : undefined) ||
-    (normalizedTitle.includes('almoxarif') ? ROUTES.basicoAlmoxarifado : undefined) ||
     ((normalizedTitle.includes('tributacao') || normalizedTitle.includes('tributa')) && normalizedTitle.includes('material')
       ? ROUTES.basicoTributacaoMaterial
       : undefined) ||

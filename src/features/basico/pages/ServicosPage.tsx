@@ -17,6 +17,7 @@ import { SearchableSelect } from '../../../components/SearchableSelect';
 import { ModalHeaderActions } from '../../../components/ModalHeaderActions';
 import { DataList, DataListItem } from '../../../components/DataList';
 import { REQUIRED_FIELDS_MESSAGE, useRequiredFields } from '../../../hooks/useRequiredFields';
+import { useTransactionAccess } from '../../../hooks/useTransactionAccess';
 
 type Servico = {
   codigo_Servico?: number | null;
@@ -65,6 +66,7 @@ export function ServicosPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const obrig = useRequiredFields();
+  const permissaoStatus = useTransactionAccess('BAS002', 'Serviços');
 
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -231,8 +233,9 @@ export function ServicosPage() {
   }, [form, showToast, carregarServicos, obrig]);
 
   useEffect(() => {
+    if (permissaoStatus !== 'autorizado') return;
     void carregarServicos();
-  }, [carregarServicos]);
+  }, [carregarServicos, permissaoStatus]);
 
   const servicosFiltrados = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -354,6 +357,20 @@ export function ServicosPage() {
   const handleField = (field: keyof Servico, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
+
+  if (permissaoStatus === 'verificando') {
+    return (
+      <main className="servicos-page">
+        <section className="servicos-panel list-layout-panel">
+          <p className="module-empty">Verificando permissão de acesso...</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (permissaoStatus === 'negado') {
+    return null;
+  }
 
   return (
     <main className="servicos-page">
