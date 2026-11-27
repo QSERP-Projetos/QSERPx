@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IoCheckmarkCircle, IoCloseCircleOutline, IoCopyOutline, IoWarningOutline } from 'react-icons/io5';
-import { healthCheckCall } from '../services/apiCalls';
+import {
+  adicionarLicencaCall,
+  buscarNumeroHDCall,
+  consultaLicencaCall,
+  healthCheckCall,
+  inserirOuAtualizarTransacaoCall,
+  inserirTransacoesSistemaAcaoCall,
+  tokenCall,
+} from '../services/apiCalls';
+import { buscaLicencaCliente, licencaPorHd, licencaTransacoesAcao } from '../services/supabaseQueries';
 import { GlobalConfig } from '../services/globalConfig';
 import { ROUTES } from '../constants/routes';
 import { useTheme } from '../contexts/ThemeContext';
@@ -116,18 +125,152 @@ export function ConfigScreen({
 
       await GlobalConfig.setBaseUrl(baseUrl);
 
+      const tokenResp = await tokenCall(baseUrl, {
+        usuario: undefined,
+        nomeEmpresa: undefined,
+        codigoEmpresa: 0,
+        chaveApi: undefined,
+        idGuid: undefined,
+        tipo: 1,
+      });
+
+      const token =
+        (tokenResp.data as any)?.token ||
+        (tokenResp.data as any)?.Token ||
+        (tokenResp.data as any)?.data?.token;
+
+      if (!tokenResp.succeeded || !token) {
+        setStatus('error');
+        setErrorMessage('Falha ao gerar token.');
+        return;
+      }
+
+      GlobalConfig.setJwToken(token);
+
+      const hdResp = await buscarNumeroHDCall(baseUrl, token, false);
+      const numHD = (hdResp.data as any)?.num_HD || (hdResp.data as any)?.num_hd;
+      const chave = (hdResp.data as any)?.chave_Criptografada || (hdResp.data as any)?.chave_criptografada;
+
+      if (!hdResp.succeeded || !numHD) {
+        setStatus('error');
+        setErrorMessage('Falha ao buscar número do HD.');
+        return;
+      }
+
+      GlobalConfig.setNumHD(numHD);
+      GlobalConfig.setChaveCriptoHD(chave || '');
+      setNumHdValue(numHD);
+
+      const licencas = await licencaPorHd({ numeroHd: numHD, idSistema: 1 });
+      if (!licencas || licencas.length === 0) {
+        setStatus('error');
+        setErrorMessage(`Licença não encontrada. Informe ao suporte o HD: ${numHD}`);
+        return;
+      }
+
+      const lic = licencas[0] as any;
+      GlobalConfig.setNumAcessos(lic?.numero_acessos);
+      GlobalConfig.setSituacaoLicenca(lic?.situacao_licenca);
+      GlobalConfig.setDataValidadeLicenca(lic?.data_validade);
+
+      const idLicenca = lic?.id;
+      const idCliente = lic?.id_cliente;
+
+      const addResp = await adicionarLicencaCall(baseUrl, token, {
+        id: lic?.id,
+        situacao_licenca: lic?.situacao_licenca,
+        data_validade: lic?.data_validade,
+        mensagem_fim_validade: lic?.mensagem_fim_validade,
+        dias_ant_mensagem_fim_validade: lic?.dias_ant_mensagem_fim_validade,
+        numero_acessos: lic?.numero_acessos,
+        numero_hd: numHD,
+        instancia_sql: lic?.instancia_sql,
+        nome_banco: lic?.nome_banco,
+        versao_sistema: lic?.versao_sistema,
+        usuario_sql: lic?.usuario_sql,
+        senha_sql: lic?.senha_sql,
+        versao_limite: lic?.versao_limite,
+        tipo_licenca: lic?.tipo_licenca,
+        tipo_banco: lic?.tipo_banco,
+      });
+
+      if (!addResp.succeeded) {
+        setStatus('error');
+        setErrorMessage('Falha ao gravar dados da licença no banco de dados.');
+        return;
+      }
+
+      const consultaResp = await consultaLicencaCall(baseUrl, token, idLicenca, numHD);
+      if (!consultaResp.succeeded) {
+        setStatus('error');
+        setErrorMessage('Falha ao consultar a licença gravada no banco de dados.');
+        return;
+      }
+
+      const validade = lic?.data_validade ? new Date(lic.data_validade) : undefined;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const vencida = validade ? validade.getTime() < today.getTime() : false;
+      const bloqueada = lic?.situacao_licenca === 9;
+
+      if (vencida || bloqueada) {
+        const msg = `${vencida ? 'Licença vencida' : ''}${vencida && bloqueada ? ' e ' : ''}${
+          bloqueada ? 'Licença bloqueada' : ''
+        }`;
+        setStatus('error');
+        setErrorMessage(msg || 'Licença inválida.');
+        return;
+      }
+
+      const licencaCliente = await buscaLicencaCliente({
+        idCliente: idCliente?.toString(),
+        idLicenca: idLicenca?.toString(),
+      });
+
+      if (!licencaCliente || licencaCliente.length === 0) {
+        setStatus('error');
+        setErrorMessage(`Transações da licença não encontradas. HD: ${numHD}`);
+        return;
+      }
+
+      const incluirResp = await inserirOuAtualizarTransacaoCall(baseUrl, token, licencaCliente);
+      if (!incluirResp.succeeded) {
+        setStatus('error');
+        setErrorMessage('Falha ao sincronizar transações.');
+        return;
+      }
+
+      const transacoesAcoes = await licencaTransacoesAcao({
+        idLicenca: idLicenca?.toString(),
+        idCliente: idCliente?.toString(),
+      });
+
+      if (!transacoesAcoes) {
+        setStatus('error');
+        setErrorMessage('Falha ao buscar ações de transações.');
+        return;
+      }
+
+      const inserirAcoesResp = await inserirTransacoesSistemaAcaoCall(baseUrl, token, transacoesAcoes);
+      if (!inserirAcoesResp.succeeded) {
+        setStatus('error');
+        setErrorMessage('Falha ao inserir ações de transações.');
+        return;
+      }
+
       setStatus('success');
       setStatusMessage(
         redirectToLoginAfterSave
-          ? 'Conexão validada! Faça login para sincronizar licença e acessar o sistema.'
-          : 'Conexão validada com sucesso.',
+          ? 'Configuração concluída. Redirecionando para o login...'
+          : 'Configuração concluída com sucesso.',
       );
       showToast('URL validada e configuração salva.', 'success');
 
       if (redirectToLoginAfterSave) {
+        // Redirecionar automaticamente para login após 2 segundos
         setTimeout(() => {
           navigate(ROUTES.login);
-        }, 1500);
+        }, 2000);
       } else {
         onSaveSuccess?.();
       }

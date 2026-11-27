@@ -1320,60 +1320,6 @@ export const healthCheckCall = async (baseUrl: string): Promise<ApiCallResponse>
 };
 
 // ============================================
-// API: Autenticação JWT (Login / SelectCompany / Refresh / Logout)
-// ============================================
-export const authLoginCall = async (
-  baseUrl: string,
-  payload: { usuario: string; senha: string; codigoEmpresa?: number },
-): Promise<ApiCallResponse<LoginResponse>> => {
-  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/auth/login`;
-  return apiManager.makeApiCall(url, ApiCallType.POST, {}, {}, payload);
-};
-
-export const authSelectCompanyCall = async (
-  baseUrl: string,
-  payload: { codigoEmpresa: number; selectionToken?: string },
-): Promise<ApiCallResponse<LoginResponse>> => {
-  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/auth/select-company`;
-  return apiManager.makeApiCall(
-    url,
-    ApiCallType.POST,
-    payload.selectionToken ? { Authorization: `Bearer ${payload.selectionToken}` } : {},
-    {},
-    payload,
-  );
-};
-
-export const authRefreshCall = async (
-  baseUrl: string,
-  refreshToken?: string,
-): Promise<ApiCallResponse> => {
-  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/auth/refresh`;
-  return apiManager.makeApiCall(
-    url,
-    ApiCallType.POST,
-    {},
-    {},
-    refreshToken ? { refreshToken } : {},
-  );
-};
-
-export const authLogoutCall = async (
-  baseUrl: string,
-  payload?: { refreshToken?: string; codigoEmpresa?: number; idSessao?: number },
-  jwtToken?: string,
-): Promise<ApiCallResponse> => {
-  const url = `${normalizeBaseUrl(baseUrl)}/api/v1/auth/logout`;
-  return apiManager.makeApiCall(
-    url,
-    ApiCallType.POST,
-    jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
-    {},
-    payload || {},
-  );
-};
-
-// ============================================
 // API: Token
 // ============================================
 export const tokenCall = async (
@@ -3069,10 +3015,6 @@ export default {
   listPreparacaoMaquinaEquipCall,
   deletarUsuarioTransacaoSistemaCall,
   healthCheckCall,
-  authLoginCall,
-  authSelectCompanyCall,
-  authRefreshCall,
-  authLogoutCall,
   tokenCall,
   consultaLicencaCall,
   adicionarLicencaCall,

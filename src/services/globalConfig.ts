@@ -31,7 +31,6 @@ const STORAGE_KEYS = {
   baseUrlPersistent: 'qserpx_baseUrl_persistent',
   baseUrlQSAtualiza: 'qserpx_baseUrl_qs_atualiza',
   session: 'sessionData',
-  refreshFallback: 'qserpx_refresh_fb',
   uuid: 'uuidNavegador',
   codigoLicenca: 'qserpx_codigo_licenca',
   codigoLicencaTeste: 'qserpx_codigo_licenca_teste',
@@ -112,8 +111,6 @@ export class GlobalConfig {
   private static codigoLicencaTeste: number | null = null;
   private static tipoLicenca: string | null = null;
   private static _atualizando = false;
-  private static accessTokenMemory = '';
-  private static refreshTokenFallbackMemory = '';
 
   /**
    * Salva URL com persistência robusta (sessionStorage + localStorage)
@@ -210,8 +207,6 @@ export class GlobalConfig {
       this.session = {
         ...defaultSession,
         ...parsed,
-        // Access Token fica somente em memória (nunca persistido no localStorage)
-        jwToken: '',
         tipoApontProd: parsed.tipoApontProd || parsed.tipoApontProd || 'Apontamento Padrão',
         tipoApontMaoObra: parsed.tipoApontMaoObra || parsed.tipoApontMaoObra || 'Apontamento Padrão',
         tipoParadaMaquina: parsed.tipoParadaMaquina || 'Apontamento Padrão',
@@ -221,21 +216,10 @@ export class GlobalConfig {
     } catch {
       this.session = { ...defaultSession };
     }
-
-    try {
-      this.refreshTokenFallbackMemory = window.sessionStorage.getItem(STORAGE_KEYS.refreshFallback) || '';
-    } catch {
-      this.refreshTokenFallbackMemory = '';
-    }
   }
 
   static async saveSession(): Promise<void> {
-    // Nunca gravar jwToken no localStorage (mantido apenas em memória RAM).
-    const sanitized: SessionData = {
-      ...this.session,
-      jwToken: '',
-    };
-    safeSet(STORAGE_KEYS.session, JSON.stringify(sanitized));
+    safeSet(STORAGE_KEYS.session, JSON.stringify(this.session));
   }
 
   static async clearConfig(): Promise<void> {
@@ -248,14 +232,6 @@ export class GlobalConfig {
       permitirApontamentoSemOperacao,
       tipoMenuSistema,
     } = this.session;
-
-    this.accessTokenMemory = '';
-    this.refreshTokenFallbackMemory = '';
-    try {
-      window.sessionStorage.removeItem(STORAGE_KEYS.refreshFallback);
-    } catch {
-      // ignore sessionStorage failure
-    }
 
     this.session = {
       ...defaultSession,
@@ -289,34 +265,12 @@ export class GlobalConfig {
   }
 
   static setJwToken(token: string): void {
-    this.accessTokenMemory = token || '';
-    this.session.jwToken = this.accessTokenMemory;
+    this.session.jwToken = token;
+    void this.saveSession();
   }
 
   static getJwToken(): string {
-    return this.accessTokenMemory || this.session.jwToken;
-  }
-
-  static setRefreshTokenFallback(token?: string | null): void {
-    this.refreshTokenFallbackMemory = token || '';
-    try {
-      if (this.refreshTokenFallbackMemory) {
-        window.sessionStorage.setItem(STORAGE_KEYS.refreshFallback, this.refreshTokenFallbackMemory);
-      } else {
-        window.sessionStorage.removeItem(STORAGE_KEYS.refreshFallback);
-      }
-    } catch {
-      // ignore sessionStorage failure
-    }
-  }
-
-  static getRefreshTokenFallback(): string {
-    if (this.refreshTokenFallbackMemory) return this.refreshTokenFallbackMemory;
-    try {
-      return window.sessionStorage.getItem(STORAGE_KEYS.refreshFallback) || '';
-    } catch {
-      return '';
-    }
+    return this.session.jwToken;
   }
 
   static setNumHD(value: string): void {

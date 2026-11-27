@@ -1,4 +1,3 @@
-import apiManager from './apiManager';
 import { GlobalConfig } from './globalConfig';
 
 export interface PedidoVenda {
@@ -70,7 +69,7 @@ export const getPedidoVendaForEdit = async (
     Tipo_Pedido_Venda: String(tipoPedidoVenda),
   });
 
-  const response = await apiManager.authorizedFetch(`${baseUrl}/api/v1/PedidosVenda?${queryParams}`, {
+  const response = await fetch(`${baseUrl}/api/v1/PedidosVenda?${queryParams}`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${jwToken}`,
@@ -119,7 +118,7 @@ export const listPedidosVenda = async (params: {
   queryParams.set('Nivel_Usuario', nivelStr);
   queryParams.set('NivelUsuario', nivelStr);
 
-  const response = await apiManager.authorizedFetch(`${baseUrl}/api/v1/PedidosVenda?${queryParams}`, {
+  const response = await fetch(`${baseUrl}/api/v1/PedidosVenda?${queryParams}`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${jwToken}`,
@@ -151,7 +150,7 @@ export const incluirPedidoVenda = async (pedido: any): Promise<any> => {
   const baseUrl = GlobalConfig.getBaseUrl();
   const jwToken = GlobalConfig.getJwToken();
 
-  const response = await apiManager.authorizedFetch(`${baseUrl}/api/v1/PedidosVenda`, {
+  const response = await fetch(`${baseUrl}/api/v1/PedidosVenda`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${jwToken}`,
@@ -172,7 +171,7 @@ export const validarItensPlanilhaExcel = async (payload: ItensPlanilhaExcelReque
   const baseUrl = GlobalConfig.getBaseUrl();
   const jwToken = GlobalConfig.getJwToken();
 
-  const response = await apiManager.authorizedFetch(`${baseUrl.replace(/\/$/, '')}/api/v1/ValidarItensPlanilhaExcel`, {
+  const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/v1/ValidarItensPlanilhaExcel`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${jwToken}`,
@@ -208,7 +207,7 @@ export const alterarPedidoVenda = async (
     url = `${url}/${encodeURIComponent(String(numPedido))}`;
   }
 
-  const response = await apiManager.authorizedFetch(url, {
+  const response = await fetch(url, {
     method: 'PUT',
     headers: {
       Authorization: `Bearer ${jwToken}`,
@@ -233,7 +232,7 @@ export const duplicarPedidoVenda = async (
   const jwToken = GlobalConfig.getJwToken();
   const body = payload ?? { Codigo_Empresa: GlobalConfig.getCodEmpresa() };
 
-  const response = await apiManager.authorizedFetch(`${baseUrl.replace(/\/$/, '')}/api/v1/DuplicaPedidoVenda/${numPedido}`, {
+  const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/v1/DuplicaPedidoVenda/${numPedido}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${jwToken}`,
@@ -271,7 +270,7 @@ export const deletarPedidoVenda = async (
     url.searchParams.append('numItem', String(numItem));
   }
 
-  const response = await apiManager.authorizedFetch(url.toString(), {
+  const response = await fetch(url.toString(), {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${jwToken}`,

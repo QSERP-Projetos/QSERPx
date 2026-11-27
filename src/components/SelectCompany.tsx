@@ -5,9 +5,8 @@ import type { SelectCompanyState } from '../types/auth';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
 import { LogoIcon } from '../components/LogoIcon';
-import { authSelectCompanyCall, loginUsuarioCall } from '../services/apiCalls';
+import { loginUsuarioCall } from '../services/apiCalls';
 import { completeCompanySession } from '../services/authFlow';
-import { GlobalConfig } from '../services/globalConfig';
 
 export function SelectCompany() {
   const navigate = useNavigate();
@@ -44,7 +43,7 @@ export function SelectCompany() {
 
       setLoadingEmpresas(true);
       try {
-        const response = await loginUsuarioCall(routeState.baseUrl, routeState.selectionToken, routeState.usuario);
+        const response = await loginUsuarioCall(routeState.baseUrl, routeState.token, routeState.usuario);
         const data = (response.data as any) || [];
         if (response.succeeded && Array.isArray(data) && data.length > 0) {
           setEmpresasList(data);
@@ -93,52 +92,12 @@ export function SelectCompany() {
 
     setLoading(true);
     try {
-      const codigoEmpresa = Number(
-        selectedEmpresa?.empresa?.codigo_empresa ??
-        selectedEmpresa?.empresa?.codigo_Empresa ??
-        selectedCode,
-      );
-
-      const authResp = await authSelectCompanyCall(routeState.baseUrl, {
-        codigoEmpresa,
-        selectionToken: routeState.selectionToken,
-      });
-
-      const authData = (authResp.data as any) || authResp.jsonBody || {};
-      const accessToken = authData?.accessToken || authData?.token || '';
-
-      if (!authResp.succeeded || !accessToken) {
-        if (authData?.licencaBloqueada) {
-          showToast(authData?.message || 'Sistema inacessível. Entre em contato com o suporte.', 'error', 5000);
-        } else {
-          showToast(authData?.message || 'Sessão expirada. Faça login novamente.', 'error');
-          if (authResp.statusCode === 401) {
-            navigate(ROUTES.login, { replace: true });
-          }
-        }
-        return;
-      }
-
-      if (authData?.refreshToken) {
-        GlobalConfig.setRefreshTokenFallback(String(authData.refreshToken));
-      }
-      if (authData?.codigoLicenca != null) {
-        GlobalConfig.setCodigoLicenca(Number(authData.codigoLicenca));
-      }
-      if (authData?.tipoLicenca) {
-        GlobalConfig.setTipoLicenca(String(authData.tipoLicenca));
-      }
-
       const result = await completeCompanySession({
         baseUrl: routeState.baseUrl,
-        accessToken,
+        tokenTipo1: routeState.token,
         usuario: routeState.usuario,
         versao: routeState.versao,
         empresa: selectedEmpresa,
-        preloadedHd: {
-          numHD: authData?.numHD || routeState.numHD,
-          chaveCriptoHD: authData?.chaveCriptoHD || routeState.chaveCriptoHD,
-        },
       });
 
       if (!result.success) {

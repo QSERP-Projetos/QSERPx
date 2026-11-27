@@ -7,6 +7,7 @@ import {
   inserirOuAtualizarTransacaoCall,
   inserirTransacoesSistemaAcaoCall,
   obterUsuariosTransacoesSistemaCall,
+  tokenCall,
   usuarioDetalheCall,
 } from './apiCalls';
 import { buscaLicencaCliente, licencaPorHd, licencaTransacoesAcao } from './supabaseQueries';
@@ -14,14 +15,10 @@ import { GlobalConfig } from './globalConfig';
 
 type CompleteCompanyParams = {
   baseUrl: string;
-  accessToken: string;
+  tokenTipo1: string;
   usuario: string;
   versao: string;
   empresa: any;
-  preloadedHd?: {
-    numHD?: string;
-    chaveCriptoHD?: string;
-  };
 };
 
 type CompleteCompanyResult = {
@@ -41,18 +38,16 @@ const formatDate = (value?: string) => {
 
 export const completeCompanySession = async ({
   baseUrl,
-  accessToken,
+  tokenTipo1,
   usuario,
   versao,
   empresa,
-  preloadedHd,
 }: CompleteCompanyParams): Promise<CompleteCompanyResult> => {
   const nomeFantasia = empresa?.empresa?.nome_Fantasia || empresa?.empresa?.nome_fantasia || '';
   const codigoEmpresa =
     empresa?.empresa?.codigo_empresa || empresa?.empresa?.codigo_Empresa || empresa?.empresa?.Codigo_Empresa || 0;
   const cnpj = empresa?.empresa?.num_CGC || empresa?.empresa?.num_cgc || empresa?.empresa?.Num_CGC || '';
 
-  GlobalConfig.setJwToken(accessToken);
   GlobalConfig.setUsuario(usuario);
   GlobalConfig.setNomeEmpresa(nomeFantasia);
   GlobalConfig.setCodEmpresa(Number(codigoEmpresa));
@@ -60,14 +55,14 @@ export const completeCompanySession = async ({
 
   const idSessaoAtual = GlobalConfig.getIdSessaoUsuario();
   if (idSessaoAtual) {
-    await acoesUsuariosCall(baseUrl, accessToken, {
+    await acoesUsuariosCall(baseUrl, tokenTipo1, {
       codigoEmpresa: Number(codigoEmpresa),
       idSessao: idSessaoAtual,
       codigoUsuario: usuario,
     });
   }
 
-  const userDet = await usuarioDetalheCall(baseUrl, accessToken, usuario);
+  const userDet = await usuarioDetalheCall(baseUrl, tokenTipo1, usuario);
   if (!userDet.succeeded) {
     return { success: false, message: 'O usuário não possui nível cadastrado no sistema.' };
   }
@@ -77,16 +72,32 @@ export const completeCompanySession = async ({
   // Tipo de menu e preferencia local do front-end (por usuario), nao vem do banco.
   GlobalConfig.aplicarTipoMenuUsuario(usuario);
 
-  let numHD = preloadedHd?.numHD || '';
-  let chaveHD = preloadedHd?.chaveCriptoHD || '';
+  const tokenTipo2Resp = await tokenCall(baseUrl, {
+    usuario,
+    nomeEmpresa: nomeFantasia,
+    codigoEmpresa: Number(codigoEmpresa),
+    chaveApi: '',
+    idGuid: '',
+    tipo: 2,
+  });
 
-  if (!numHD) {
-    const hdResp = await buscarNumeroHDCall(baseUrl, accessToken, false);
-    numHD = (hdResp.data as any)?.num_HD || (hdResp.data as any)?.num_hd || '';
-    chaveHD = (hdResp.data as any)?.chave_Criptografada || (hdResp.data as any)?.chave_criptografada || '';
-    if (!hdResp.succeeded || !numHD) {
-      return { success: false, message: 'Falha ao buscar Número do HD, verifique sua conexão.' };
-    }
+  const tokenTipo2 =
+    (tokenTipo2Resp.data as any)?.token ||
+    (tokenTipo2Resp.data as any)?.Token ||
+    (tokenTipo2Resp.data as any)?.data?.token;
+
+  if (!tokenTipo2Resp.succeeded || !tokenTipo2) {
+    return { success: false, message: 'Falha ao gerar token (tipo 2).' };
+  }
+
+  GlobalConfig.setJwToken(tokenTipo2);
+
+  const hdResp = await buscarNumeroHDCall(baseUrl, tokenTipo1, false);
+  const numHD = (hdResp.data as any)?.num_HD || (hdResp.data as any)?.num_hd;
+  const chaveHD = (hdResp.data as any)?.chave_Criptografada || (hdResp.data as any)?.chave_criptografada || '';
+
+  if (!hdResp.succeeded || !numHD) {
+    return { success: false, message: 'Falha ao buscar Número do HD, verifique sua conexão.' };
   }
 
   GlobalConfig.setNumHD(numHD);
@@ -112,7 +123,7 @@ export const completeCompanySession = async ({
   GlobalConfig.setSituacaoLicenca(situacaoLicenca);
   GlobalConfig.setDataValidadeLicenca(dataValida);
 
-  const addResp = await adicionarLicencaCall(baseUrl, accessToken, {
+  const addResp = await adicionarLicencaCall(baseUrl, tokenTipo1, {
     id: lic?.id,
     situacao_licenca: lic?.situacao_licenca,
     data_validade: formatDate(lic?.data_validade),
@@ -134,7 +145,7 @@ export const completeCompanySession = async ({
     return { success: false, message: 'Falha ao gravar dados da licença.' };
   }
 
-  const consultaResp = await consultaLicencaCall(baseUrl, accessToken, idLicenca, numHD);
+  const consultaResp = await consultaLicencaCall(baseUrl, tokenTipo1, idLicenca, numHD);
   if (!consultaResp.succeeded) {
     return { success: false, message: 'Falha ao consultar a licença gravada.' };
   }
@@ -161,7 +172,7 @@ export const completeCompanySession = async ({
     return { success: false, message: 'Transações da licença não encontradas.' };
   }
 
-  const incluirResp = await inserirOuAtualizarTransacaoCall(baseUrl, accessToken, licencaCliente);
+  const incluirResp = await inserirOuAtualizarTransacaoCall(baseUrl, tokenTipo1, licencaCliente);
   if (!incluirResp.succeeded) {
     return { success: false, message: 'Falha ao sincronizar transações.' };
   }
@@ -175,14 +186,14 @@ export const completeCompanySession = async ({
     return { success: false, message: 'Falha ao buscar ações de transações.' };
   }
 
-  const inserirAcoesResp = await inserirTransacoesSistemaAcaoCall(baseUrl, accessToken, transacoesAcoes);
+  const inserirAcoesResp = await inserirTransacoesSistemaAcaoCall(baseUrl, tokenTipo1, transacoesAcoes);
   if (!inserirAcoesResp.succeeded) {
     return { success: false, message: 'Falha ao inserir ações de transações.' };
   }
 
   const uuidNavegador = await GlobalConfig.ensureUuidNavegador();
 
-  const adicionarSessaoResp = await adicionarSessaoSistemaCall(baseUrl, accessToken, {
+  const adicionarSessaoResp = await adicionarSessaoSistemaCall(baseUrl, tokenTipo2, {
     usuario,
     idsistema: 1,
     codigoempresa: Number(codigoEmpresa),
@@ -201,7 +212,7 @@ export const completeCompanySession = async ({
   );
   if (idSessaoUsuario) GlobalConfig.setIdSessaoUsuario(idSessaoUsuario);
 
-  const transResp = await obterUsuariosTransacoesSistemaCall(baseUrl, accessToken, usuario, '', false);
+  const transResp = await obterUsuariosTransacoesSistemaCall(baseUrl, tokenTipo2, usuario, '', false);
   const payload = transResp.data as any;
   const listaTransacoes = Array.isArray(payload?.transacoes)
     ? payload.transacoes

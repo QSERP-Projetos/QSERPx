@@ -29,19 +29,16 @@ export interface ApiCallResponse<T = any> {
 export interface ApiCallRequestOptions {
   timeoutMs?: number;
   responseType?: 'json' | 'blob' | 'text';
-  skipAuthRefresh?: boolean;
 }
 
 class ApiManager {
   private static instance: ApiManager;
   private axiosInstance: AxiosInstance;
   private disconnectHandled = false;
-  private refreshPromise: Promise<string | null> | null = null;
 
   private constructor() {
     this.axiosInstance = axios.create({
       timeout: 30000,
-      withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -55,10 +52,6 @@ class ApiManager {
     return ApiManager.instance;
   }
 
-  public resetDisconnectGuard(): void {
-    this.disconnectHandled = false;
-  }
-
   public async makeApiCall<T = any>(
     apiUrl: string,
     callType: ApiCallType,
@@ -67,157 +60,64 @@ class ApiManager {
     body: any = null,
     requestOptions: ApiCallRequestOptions = {},
   ): Promise<ApiCallResponse<T>> {
-    const isAuthPublic = this.isPublicAuthRoute(apiUrl);
-    const hasCustomAuth = Boolean(headers?.Authorization || headers?.authorization);
-
-    const requestHeaders: Record<string, string> = {
-      ...(headers || {}),
-    };
-
-    if (!isAuthPublic && !hasCustomAuth) {
-      const currentToken = GlobalConfig.getJwToken();
-      if (currentToken) {
-        requestHeaders.Authorization = `Bearer ${currentToken}`;
-      }
-    }
-
-    const firstAttempt = await this.executeRequest<T>(apiUrl, callType, requestHeaders, params, body, requestOptions);
-
-    if (
-      firstAttempt.statusCode === 401 &&
-      !isAuthPublic &&
-      !requestOptions.skipAuthRefresh &&
-      !hasCustomAuth
-    ) {
-      const baseUrl = this.extractBaseUrl(apiUrl) || GlobalConfig.getBaseUrl();
-      if (baseUrl) {
-        const refreshedToken = await this.refreshAccessToken(baseUrl);
-        if (refreshedToken) {
-          const retryHeaders = {
-            ...requestHeaders,
-            Authorization: `Bearer ${refreshedToken}`,
-          };
-          return this.executeRequest<T>(apiUrl, callType, retryHeaders, params, body, requestOptions);
-        }
-
-        this.handleDisconnected('Sessão expirada. Faça login novamente.');
-      }
-    }
-
-    return firstAttempt;
-  }
-
-  public async authorizedFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
-    const buildHeaders = (tokenOverride?: string): Headers => {
-      const hdrs = new Headers(init.headers || {});
-      const token = tokenOverride ?? GlobalConfig.getJwToken();
-      if (token && !hdrs.has('Authorization')) {
-        hdrs.set('Authorization', `Bearer ${token}`);
-      } else if (tokenOverride) {
-        hdrs.set('Authorization', `Bearer ${tokenOverride}`);
-      }
-      return hdrs;
-    };
-
-    const firstResp = await fetch(input, {
-      ...init,
-      credentials: init.credentials ?? 'include',
-      headers: buildHeaders(),
-    });
-
-    if (firstResp.status === 401) {
-      const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-      if (!this.isPublicAuthRoute(urlStr)) {
-        const baseUrl = this.extractBaseUrl(urlStr) || GlobalConfig.getBaseUrl();
-        if (baseUrl) {
-          const newToken = await this.refreshAccessToken(baseUrl);
-          if (newToken) {
-            return fetch(input, {
-              ...init,
-              credentials: init.credentials ?? 'include',
-              headers: buildHeaders(newToken),
-            });
-          }
-          this.handleDisconnected('Sessão expirada. Faça login novamente.');
-        }
-      }
-    }
-
-    return firstResp;
-  }
-
-  public async refreshAccessToken(baseUrlInput?: string): Promise<string | null> {
-    if (this.refreshPromise) {
-      return this.refreshPromise;
-    }
-
-    const baseUrl = (baseUrlInput || GlobalConfig.getBaseUrl() || '').replace(/\/+$/, '');
-    if (!baseUrl) return null;
-
-    this.refreshPromise = (async () => {
-      try {
-        const fallbackRefresh = GlobalConfig.getRefreshTokenFallback();
-        const response = await this.axiosInstance.request({
-          method: ApiCallType.POST,
-          url: `${baseUrl}/api/v1/auth/refresh`,
-          withCredentials: true,
-          headers: { 'Content-Type': 'application/json' },
-          data: fallbackRefresh ? { refreshToken: fallbackRefresh } : {},
-        });
-
-        const payload = response.data as any;
-        const token = payload?.accessToken || payload?.token;
-        if (!token) return null;
-
-        GlobalConfig.setJwToken(String(token));
-        if (payload?.refreshToken) {
-          GlobalConfig.setRefreshTokenFallback(String(payload.refreshToken));
-        }
-        this.disconnectHandled = false;
-        return String(token);
-      } catch {
-        return null;
-      } finally {
-        this.refreshPromise = null;
-      }
-    })();
-
-    return this.refreshPromise;
-  }
-
-  private async executeRequest<T>(
-    apiUrl: string,
-    callType: ApiCallType,
-    requestHeaders: Record<string, string>,
-    params: ApiCallParams,
-    body: any,
-    requestOptions: ApiCallRequestOptions,
-  ): Promise<ApiCallResponse<T>> {
     try {
+      const requestHeaders: Record<string, string> = {
+        ...(headers || {}),
+      };
+
+      const shouldBypassGuards = this.shouldBypassGlobalGuards(apiUrl);
+      const baseUrl = this.extractBaseUrl(apiUrl);
+
+      if (!shouldBypassGuards && baseUrl) {
+        const healthOk = await this.checkApiHealth(baseUrl);
+        if (!healthOk) {
+          this.handleDisconnected();
+          return {
+            data: null as T,
+            statusCode: 503,
+            succeeded: false,
+            jsonBody: null,
+            bodyText: 'Desconectado do servidor.',
+          };
+        }
+
+        const freshToken = await this.fetchFreshToken(baseUrl);
+        if (!freshToken) {
+          this.handleDisconnected();
+          return {
+            data: null as T,
+            statusCode: 401,
+            succeeded: false,
+            jsonBody: null,
+            bodyText: 'Falha ao renovar token.',
+          };
+        }
+
+        requestHeaders.Authorization = `Bearer ${freshToken}`;
+      }
+
       const config: AxiosRequestConfig = {
         method: callType,
         url: apiUrl,
         headers: requestHeaders,
-        withCredentials: true,
       };
 
       if (requestOptions.responseType) {
         config.responseType = requestOptions.responseType;
       }
 
-      if (
-        typeof requestOptions.timeoutMs === 'number' &&
-        Number.isFinite(requestOptions.timeoutMs) &&
-        requestOptions.timeoutMs > 0
-      ) {
+      if (typeof requestOptions.timeoutMs === 'number' && Number.isFinite(requestOptions.timeoutMs) && requestOptions.timeoutMs > 0) {
         config.timeout = requestOptions.timeoutMs;
       }
 
+      // Preserve query params for every method because some endpoints validate write
+      // requests using query string values in addition to (or instead of) JSON body.
       if (params && Object.keys(params).length > 0) {
         config.params = params;
       }
 
-      if (body !== null && body !== undefined && (callType === ApiCallType.POST || callType === ApiCallType.PUT || callType === ApiCallType.PATCH)) {
+      // Adicionar body para POST/PUT/PATCH
+      if (body && (callType === ApiCallType.POST || callType === ApiCallType.PUT || callType === ApiCallType.PATCH)) {
         config.data = body;
       }
 
@@ -249,6 +149,9 @@ class ApiManager {
       }
       if (status >= 500 || !status) {
         console.error('API Call Error:', error);
+      } else {
+        // intentionally silence client-side non-2xx responses (e.g. 404)
+        // to avoid noisy console output for expected/missing optional endpoints.
       }
 
       return {
@@ -261,16 +164,9 @@ class ApiManager {
     }
   }
 
-  private isPublicAuthRoute(apiUrl: string): boolean {
+  private shouldBypassGlobalGuards(apiUrl: string): boolean {
     const normalized = String(apiUrl || '').toLowerCase();
-    return (
-      normalized.includes('/api/v1/url') ||
-      normalized.includes('/api/v1/auth/login') ||
-      normalized.includes('/api/v1/auth/select-company') ||
-      normalized.includes('/api/v1/auth/refresh') ||
-      normalized.includes('/api/v1/auth/logout') ||
-      normalized.includes('/api/v1/auth/service-token')
-    );
+    return normalized.includes('/api/v1/token') || normalized.includes('/api/v1/url') || normalized.includes('/api/v1/login');
   }
 
   private extractBaseUrl(apiUrl: string): string {
@@ -282,7 +178,61 @@ class ApiManager {
     return raw.slice(0, index).replace(/\/$/, '');
   }
 
-  private handleDisconnected(message = 'Desconectado do servidor. Faça login novamente.'): void {
+  private async checkApiHealth(baseUrl: string): Promise<boolean> {
+    try {
+      const response = await this.axiosInstance.request({
+        method: ApiCallType.GET,
+        url: `${baseUrl}/api/v1/url`,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      return response.status === 200;
+    } catch {
+      return false;
+    }
+  }
+
+  private async fetchFreshToken(baseUrl: string): Promise<string | null> {
+    const usuario = GlobalConfig.getUsuario();
+    const nomeEmpresa = GlobalConfig.getNomeEmpresa();
+    const codigoEmpresa = Number(GlobalConfig.getCodEmpresa() ?? 0);
+
+    if (!usuario || !nomeEmpresa || !codigoEmpresa) {
+      return null;
+    }
+
+    try {
+      const response = await this.axiosInstance.request({
+        method: ApiCallType.GET,
+        url: `${baseUrl}/api/v1/token`,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        params: {
+          Usuario: usuario,
+          Codigo_Empresa: codigoEmpresa,
+          Nome_Empresa: nomeEmpresa,
+          Chave_Api: '',
+          IdGuid: '',
+          Tipo: 2,
+          RetornarComoXml: false,
+        },
+      });
+
+      const payload = response.data as any;
+      const token = payload?.token || payload?.Token || payload?.data?.token;
+      if (!token) return null;
+
+      GlobalConfig.setJwToken(String(token));
+      return String(token);
+    } catch {
+      return null;
+    }
+  }
+
+  private handleDisconnected(): void {
     if (this.disconnectHandled) return;
     this.disconnectHandled = true;
 
@@ -292,7 +242,7 @@ class ApiManager {
       window.dispatchEvent(
         new CustomEvent('qserpx:toast', {
           detail: {
-            message,
+            message: 'Desconectado do servidor. Faça login novamente.',
             type: 'error',
             duration: 2500,
           },
